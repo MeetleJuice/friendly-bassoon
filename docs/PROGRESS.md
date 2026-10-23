@@ -2,7 +2,7 @@
 
 ## 0.6.0 verification and useful agent evidence
 
-Implemented the approved maintenance/UPGRADE_060_PLAN.md after inspecting issues5–8, the supplied successful Qwen3:8b session and focused upstream sources. Adds automatic/manual non-executing Python checks, last_read revisions, recovered/unresolved edit evidence, enforced read-only planning, agent identity, readable diagnostics/history, selected-run sharing and suite4/19offline checks. Linux and Windows release evidence is recorded in VERIFICATION.md; publication is pending until actual installer/0.5 upgrade checks pass. Live Qwen2.5 failure remains open.
+Implemented the approved maintenance/UPGRADE_060_PLAN.md after inspecting issues5–8, the supplied successful Qwen3:8b session and focused upstream sources. Adds automatic/manual non-executing Python checks, last_read revisions, recovered/unresolved edit evidence, enforced read-only planning, agent identity, readable diagnostics/history, selected-run sharing and suite 4/19 offline checks. 215 Linux tests passed / 1 optional live test skipped. Windows source run 40039113039 and tag release run 40039425834 passed, including the actual 0.5 installer upgrade. Published 0.6.0 was downloaded/checksum-verified by the production updater; see VERIFICATION.md. Live Qwen2.5 failure remains open.
 
 ## 0.5.0 projects and native tool certification
 

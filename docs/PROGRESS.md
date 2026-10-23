@@ -2,7 +2,7 @@
 
 ## 0.2.0 update
 
-Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDrive `.env` and `.env.txt` discovery, matching provider-profile setup, startup/manual GitHub update checks, bounded SHA-256-verified installer downloads, pre-install history backups, version-outcome diagnostics, a custom app icon, and a Windows PyInstaller/Inno Setup release pipeline are implemented. The pipeline tests the actual installed app and desktop shortcut before publishing a version-tag release. Windows runner/publication results are tracked in VERIFICATION.md; do not infer them from Linux tests.
+Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDrive `.env` and `.env.txt` discovery, matching provider-profile setup, startup/manual GitHub update checks, bounded SHA-256-verified installer downloads, pre-install history backups, version-outcome diagnostics, a custom app icon, and a Windows PyInstaller/Inno Setup release pipeline are implemented. The pipeline tests the actual installed app and desktop shortcut before publishing a version-tag release. The Windows build/install/shortcut/packaged-startup checks passed in run 39965837080. The version-tag build/publish run 39966453059 also passed and published Aigentics-Setup-0.2.0.exe in GitHub Releases. The actual published download was fetched and checksum-verified; see VERIFICATION.md.
 
 
 ## Delivered: first end-to-end release
@@ -21,7 +21,7 @@ The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled p
 
 ## Next useful action on the user's machine
 
-Follow README Windows installation, discover the actual Ollama models, select one, and run the Windows smoke procedure on a disposable project. Save a session-content capture for a non-sensitive example, label its outcome, and inspect/export the evidence. Use that evidence to choose the next improvement.
+Download Aigentics-Setup-0.2.0.exe from GitHub Releases and run the wizard. Let startup discover the Desktop .env/.env.txt and Ollama models, then run the Windows acceptance procedure on a disposable project. Save a session-content capture for a non-sensitive example, label its outcome, and inspect/export the evidence. Use that evidence to choose the next improvement.
 
 ## Deferred work (not claimed complete)
 

@@ -1,5 +1,14 @@
 # Verification
 
+## 0.2.0 setup/update verification
+
+Linux automated validation: **61 passed, 1 skipped** (optional real Ollama), with lint passing. New tests cover `.env` and `.env.txt`/UTF-8 BOM, bounded Desktop and OneDrive lookup, disabled discovery, unavailable Ollama, malformed/oversized key files, no environment interpolation, profile preservation, installed-model selection, persistent preferences, database backup retention, stable version ordering, downgrade rejection, trusted release URLs, asset validation, verified/cache downloads, checksum/digest mismatch, corrupt/oversized downloads, cancellation cleanup, credential-free updater HTTP, re-verification before launch, argv boundaries and background desktop update status/events.
+
+Windows packaging uses `.github/workflows/windows-release.yml`. It compiles the actual installer, installs it into a temporary folder, checks the Desktop shortcut target and launches the installed executable in smoke mode. At the time of this source update, the remote Windows run and installer publication have not yet been verified. Consult the repository Actions run and Release Assets; do not treat the Linux suite as proof of Windows packaging success. The human Windows 10/Ollama/API acceptance checks below still apply.
+
+The `--smoke-test` mode bypasses startup network/key-file discovery and validates native tabs/shared agent initialization and clean shutdown. This permits repeatable packaged-executable checks without touching the runner's Desktop credentials or using external models.
+
+
 ## Executed in this cloud machine
 
 Linux, Python 3.12.14, PySide6 6.8.3. The development dependencies and editable source package were installed with pip using normal TLS verification. Exact Linux dependency versions are recorded in `requirements-linux.lock`. Final executed results:

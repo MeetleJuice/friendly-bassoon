@@ -2,9 +2,24 @@
 
 A native Python / PySide6 desktop coding-agent application. Agents and Workbench use the same bounded runtime. Ollama runs locally; no paid API is required. This is an early functional release, not the full long-term product described in the original brief.
 
-## Windows 10/11: install and launch
+## Windows 10/11: easy installation
 
-Use a 64-bit Python **3.12** installation (supported range: 3.11–3.13). Open the repository folder in VS Code and use its PowerShell terminal:
+Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.2.0.exe** from **Assets** once the Windows build publishes it. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
+
+The installer is currently unsigned. Do not confuse the green **Code → Download ZIP** source download with the installer in Release Assets. The Windows build publishes an installer only after its tests and installed-executable/shortcut smoke pass. Check [Actions](https://github.com/MeetleJuice/friendly-bassoon/actions) if the asset is not available yet. See [installer details](docs/INSTALLER.md).
+
+On first launch:
+
+1. The app looks for local Ollama and fills the installed-model list.
+2. It checks your Desktop for `.env` or `.env.txt` (a Notepad file is fine). Keys load into memory and recognized providers get profiles; no cloud model is contacted during discovery.
+3. The untouched default agent can select an installed coding model. Use **Setup & updates** to review/change it, refresh discovery or disable automatic key-file loading.
+4. Open **Workbench**, create a disposable project, and try: “Create hello.py that prints Hello, Aigentics. Use your file tools, then explain what changed.” Review the real diff before approving it.
+
+The app checks GitHub Releases at launch. **Setup & updates → Download update → Install & restart** verifies the installer, backs up history, and opens the wizard when your tasks are finished. It does not install in the middle of a task. Your projects, key file and history remain separate from application binaries.
+
+### Source/development installation
+
+Use 64-bit Python 3.12 (supported 3.11–3.13). Open this folder in VS Code's PowerShell terminal:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -12,23 +27,13 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m aigentics
 ```
 
-No virtual-environment activation or PowerShell execution-policy change is needed. After installation, double-click `Start-Aigentics.cmd` to launch. The `.venv` folder is local to this checkout. A signed installer/executable is not included.
-
-1. Start Ollama on your Windows machine. Run `ollama list` to see installed model names.
-2. In **Agents → Providers & credentials**, keep the `ollama` profile at `http://127.0.0.1:11434`. Click **Discover models / test connection**.
-3. In **Studio**, choose an installed model by its exact name, configure your agent, and save it. The default `qwen2.5-coder:7b` is a suggestion, not an automatic download. You can use your `qwen2.5-coder:14b`; speed and context capacity depend on quantization, GPU offloading and available RAM/VRAM.
-4. Try the **Laboratory**. It uses a disposable scratch folder and the real runtime, with an optional model override. It does not simulate inference. Lab history is retained, but its scratch folder is deleted on normal application exit.
-5. In **Workbench**, open a small disposable project or create one, select the saved agent, and enter a focused task. Every proposed file write shows a diff. Commands are disabled by default; enable them in the agent only when needed, then approve each exact command individually.
-
-Example task:
-
-> Inspect this project. Create hello.py that prints “Hello, Aigentics”. Read any existing hello.py before editing it. After I approve the edit, explain what actually changed.
-
-To run tests through an agent, enable `run_command` and command permission, save the agent, and request an appropriate test command. Review its argv, directory and timeout. Command execution records the actual exit code; the model's prose cannot establish a passing test.
+After source installation, `Start-Aigentics.cmd` is an alternative launch shortcut. Source development remains available, but the release installer is the simplest user workflow. Desktop/software updates require a published release; arbitrary changes on main are not installed automatically.
 
 ## Your Desktop .env
 
-In **Providers & credentials**, choose **Load selected .env into memory** and select your existing file. Only variable names appear in the interface. This does not copy the file, persist its values, or change the process environment. Reload it after restarting, or save a key through **Save key to OS vault**. The latter uses `keyring` and the operating-system credential store, with no plaintext fallback.
+Desktop `.env` and `.env.txt` are detected and loaded into memory automatically on startup. Windows' OS-reported Desktop is checked first, with normal/OneDrive Desktop candidates next; there is no whole-drive scan. Disable this in **Setup & updates** if desired, or choose another file manually. Files must contain `NAME=value` entries and be smaller than 1 MB. Values are not executed or interpolated from the system environment.
+
+Only variable names may appear in the provider interface, never their values. Automatic setup creates matching Groq, OpenRouter, NVIDIA, Gemini-compatible or OpenAI profiles for recognized key names, preserves existing profiles, and makes no cloud requests. Each startup reloads Desktop keys into memory. The original file is not copied into the app, committed, uploaded or written into history. **Save key to OS vault** remains available with no plaintext fallback.
 
 Create/save a cloud provider profile and set `credential_ref` to its variable name, e.g. `GROQ_API_KEY`. Agents reference profile IDs, never keys. Do not paste credentials into tasks or instructions. Loaded credentials are redacted before sending tool results and user tasks to a model, but unknown secret formats cannot be detected reliably. Review exports before sharing them.
 
@@ -47,7 +52,7 @@ The `openai` adapter supports native-tool-capable OpenAI-compatible APIs. Exampl
 }
 ```
 
-Other endpoint examples: OpenRouter `https://openrouter.ai/api/v1`, NVIDIA `https://integrate.api.nvidia.com/v1`. Their individual model capabilities and live credentials have **not** been verified in this environment. Model discovery may be unavailable on some compatible services; manual model entry works. Gemini's native API is deferred. Cloud profiles require HTTPS. Redirects are not followed, preventing credential forwarding to another destination.
+Other endpoint examples: OpenRouter `https://openrouter.ai/api/v1`, NVIDIA `https://integrate.api.nvidia.com/v1`. Their individual model capabilities and live credentials have **not** been verified in this environment. Model discovery may be unavailable on some compatible services; manual model entry works. Gemini's OpenAI-compatible endpoint can be auto-configured; its native protocol remains deferred. Cloud profiles require HTTPS. Redirects are not followed, preventing credential forwarding to another destination.
 
 Fallbacks are an ordered JSON list in Studio. They activate on transient network errors, timeouts, HTTP 429 and selected server errors. Authentication, malformed protocol and capability errors fail visibly. A fallback may send the current context to another configured service: configure only destinations you intend to use. No automatic cloud fallback is installed by default.
 
@@ -97,3 +102,5 @@ For an interactive Linux desktop, launch `.venv/bin/python -m aigentics` from a 
 ## Verification and remaining work
 
 See [verification and Windows smoke testing](docs/VERIFICATION.md), [architecture](docs/ARCHITECTURE.md), and [progress](docs/PROGRESS.md). File tools apply workspace restrictions, but approved host commands are **not sandboxed**. Avoid untrusted projects and use version control/backups for real work.
+
+Software-release build and update integrity details: [docs/INSTALLER.md](docs/INSTALLER.md).

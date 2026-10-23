@@ -8,6 +8,8 @@ import threading
 from pathlib import Path
 from uuid import uuid4
 from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile
+from PySide6.QtGui import QIcon, QDesktopServices
+from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -32,8 +34,12 @@ from PySide6.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
     QInputDialog,
+    QProgressBar,
 )
+from . import __version__
 from .credentials import Credentials
+from .discovery import desktop_locations, discover as discover_local, suggested_model
+from .updates import Updater, RELEASES_URL, launch_installer
 from .models import Agent, Profile, ModelRef, TOOLS
 from .providers import Provider
 from .runtime import Runtime
@@ -104,12 +110,113 @@ class Worker(QThread):
             self.failed.emit(self.credentials.redact(f"{type(exc).__name__}: {exc}"))
 
 
+class ModelPicker(QComboBox):
+    """Editable installed-model picker, also accepting manual cloud model IDs."""
+
+    def __init__(self):
+        super().__init__()
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.NoInsert)
+
+    def text(self):
+        return self.currentText()
+
+    def setText(self, value):
+        self.setEditText(value)
+
+    def set_models(self, models):
+        selected = self.currentText()
+        self.clear()
+        self.addItems(models)
+        self.setEditText(selected)
+
+
+class SetupDialog(QDialog):
+    def __init__(self, window):
+        super().__init__(window)
+        self.setWindowTitle("Aigentics · Setup & updates")
+        self.resize(700, 650)
+        layout = QVBoxLayout(self)
+        title = QLabel("MAKE YOURSELF AT HOME")
+        title.setObjectName("title")
+        layout.addWidget(title)
+        explanation = QLabel(
+            "Ollama and Desktop key files are discovered locally. Keys stay in memory; "
+            "discovery never makes cloud model requests."
+        )
+        explanation.setWordWrap(True)
+        layout.addWidget(explanation)
+        self.ollama = QLabel(window.discovery_status)
+        self.env = QLabel(window.env_status)
+        for label in (self.ollama, self.env):
+            label.setWordWrap(True)
+            layout.addWidget(label)
+        self.models = QComboBox()
+        self.models.addItems(window.discovered_models)
+        layout.addWidget(self.models)
+        row = QHBoxLayout()
+        layout.addLayout(row)
+        button(
+            "Use selected model", lambda: window.use_discovered_model(self.models.currentText()), row, True
+        )
+        button("Refresh discovery", window.refresh_discovery, row)
+        button("Choose key file…", window.load_env, row)
+        self.auto_ollama = QCheckBox("Find installed Ollama models at startup")
+        self.auto_env = QCheckBox("Load keys from Desktop .env or .env.txt at startup")
+        self.auto_updates = QCheckBox("Check GitHub Releases for updates at startup")
+        self.record_setup = QCheckBox("Record local setup and update diagnostics")
+        for check, setting in (
+            (self.auto_ollama, "auto_ollama"),
+            (self.auto_env, "auto_desktop_env"),
+            (self.auto_updates, "auto_updates"),
+            (self.record_setup, "setup_diagnostics"),
+        ):
+            check.setChecked(window.store.setting(setting, True))
+            check.toggled.connect(lambda enabled, name=setting: window.store.set_setting(name, enabled))
+            layout.addWidget(check)
+        layout.addWidget(QLabel("Software updates · Installed version " + __version__))
+        self.update = QLabel(window.update_status)
+        self.update.setWordWrap(True)
+        layout.addWidget(self.update)
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.progress.hide()
+        layout.addWidget(self.progress)
+        row = QHBoxLayout()
+        layout.addLayout(row)
+        button("Check for updates", window.check_updates, row)
+        self.download = button("Download update", window.download_update, row, True)
+        self.download.setEnabled(window.available_release is not None)
+        self.install = button("Install & restart", window.install_update, row)
+        self.install.setEnabled(window.downloaded_update is not None and sys.platform == "win32")
+        button("Open releases", lambda: QDesktopServices.openUrl(QUrl(RELEASES_URL)), layout)
+        note = QLabel(
+            "Updates are offered before installation and never replace the app during an agent task. "
+            "Your projects and history stay separate from the installed application."
+        )
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        layout.addStretch(1)
+        button("Done", self.accept, layout)
+
+
 class Window(QMainWindow):
-    def __init__(self, store, credentials):
+    def __init__(self, store, credentials, startup=False):
         super().__init__()
         self.store, self.credentials = store, credentials
         self.runtime = Runtime(store, credentials)
         self.worker = None
+        self.discovery_worker = None
+        self.update_worker = None
+        self.setup_dialog = None
+        self.discovered_models = []
+        self.model_lists = {}
+        self.available_release = None
+        self.downloaded_update = None
+        self.discovery_status = "Ollama discovery has not run yet."
+        self.env_status = "Desktop key-file discovery has not run yet."
+        self.update_status = "Updates are checked against published GitHub Releases."
+        self.updater = Updater(store.path.parent / "updates")
         self.agent_id = None
         self.workspace = None
         self.parent_session = None
@@ -124,7 +231,13 @@ class Window(QMainWindow):
         root, layout = panel()
         title = QLabel("AIGENTICS  /  DESKTOP")
         title.setObjectName("title")
-        layout.addWidget(title)
+        heading = QHBoxLayout()
+        layout.addLayout(heading)
+        heading.addWidget(title, 1)
+        button("Setup & updates", self.open_setup, heading)
+        self.setup_banner = QLabel("Local setup is available from Setup & updates.")
+        self.setup_banner.setWordWrap(True)
+        layout.addWidget(self.setup_banner)
         layout.addWidget(QLabel("Local execution. Inspectable evidence. Agents you control."))
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
@@ -135,6 +248,287 @@ class Window(QMainWindow):
         self.refresh_agents()
         self.refresh_profiles()
         self.refresh_history()
+        pending = store.setting("pending_update", None)
+        if pending:
+            self.setup_event(
+                "update.installed" if pending["version"] == __version__ else "update.not_completed",
+                {
+                    "from_version": pending["from_version"],
+                    "target_version": pending["version"],
+                    "running_version": __version__,
+                },
+            )
+            store.set_setting("pending_update", None)
+        if startup:
+            QTimer.singleShot(250, self.startup_tasks)
+
+    def setup_event(self, kind, data):
+        if self.store.setting("setup_diagnostics", True):
+            self.store.event(None, kind, data)
+
+    def open_setup(self):
+        if self.setup_dialog is None:
+            self.setup_dialog = SetupDialog(self)
+        self.update_setup_view()
+        self.setup_dialog.show()
+        self.setup_dialog.raise_()
+        self.setup_dialog.activateWindow()
+
+    def update_setup_view(self):
+        if self.setup_dialog:
+            self.setup_dialog.ollama.setText(self.discovery_status)
+            self.setup_dialog.env.setText(self.env_status)
+            self.setup_dialog.update.setText(self.update_status)
+            chosen = self.setup_dialog.models.currentText()
+            self.setup_dialog.models.clear()
+            self.setup_dialog.models.addItems(self.discovered_models)
+            if chosen in self.discovered_models:
+                self.setup_dialog.models.setCurrentText(chosen)
+            self.setup_dialog.download.setEnabled(
+                self.available_release is not None and not self.background_updates_running()
+            )
+            self.setup_dialog.install.setEnabled(
+                self.downloaded_update is not None and sys.platform == "win32"
+            )
+
+    def refresh_model_choices(self, *_):
+        self.agent_model.set_models(self.model_lists.get(self.agent_profile.currentData(), []))
+        lab_agent = next((a for a in self.store.agents() if a.id == self.lab_agent.currentData()), None)
+        if lab_agent:
+            self.lab_model.set_models(self.model_lists.get(lab_agent.primary.profile_id, []))
+
+    def manual_models_discovered(self, identity, models):
+        self.model_lists[identity] = models
+        self.refresh_model_choices()
+        self.provider_output.setPlainText("Connection succeeded. Models:\n" + "\n".join(models))
+        self.setup_event(
+            "setup.models_discovered",
+            {"profile_id": identity, "model_count": len(models), "source": "manual"},
+        )
+
+    def startup_tasks(self):
+        if self.store.setting("auto_ollama", True) or self.store.setting("auto_desktop_env", True):
+            self.refresh_discovery()
+        if self.store.setting("auto_updates", True):
+            self.check_updates()
+
+    def apply_discovered_profiles(self, profiles):
+        existing = {profile.id for profile in self.store.profiles()}
+        added = []
+        for profile in profiles:
+            if profile.id not in existing:
+                self.store.save_profile(profile)
+                added.append(profile.id)
+        if added:
+            self.refresh_profiles()
+        return added
+
+    def refresh_discovery(self):
+        if self.discovery_worker and self.discovery_worker.isRunning():
+            return
+        desktops = desktop_locations(QStandardPaths.writableLocation(QStandardPaths.DesktopLocation))
+        auto_env = self.store.setting("auto_desktop_env", True)
+        auto_ollama = self.store.setting("auto_ollama", True)
+        profiles = self.store.profiles()
+        local = next((p for p in profiles if p.id == "ollama" and p.kind == "ollama"), None)
+        self.discovery_status = "Looking for local Ollama models…"
+        self.env_status = (
+            "Checking known Desktop locations…" if auto_env else "Automatic Desktop key loading is off."
+        )
+        self.update_setup_view()
+        if self.discovery_worker:
+            self.discovery_worker.deleteLater()
+        worker = Worker(
+            lambda job: discover_local(
+                self.credentials,
+                desktops,
+                job.cancel,
+                load_desktop_env=auto_env,
+                find_ollama=auto_ollama,
+                ollama_profile=local,
+            ),
+            self.credentials,
+            self,
+        )
+        self.discovery_worker = worker
+        worker.succeeded.connect(self.discovery_completed)
+        worker.failed.connect(lambda message: self.background_failed("setup", message))
+        worker.start()
+
+    def discovery_completed(self, result):
+        self.discovery_status, self.env_status = result.ollama_status, result.env_status
+        self.discovered_models = result.models
+        self.model_lists["ollama"] = result.models
+        added = self.apply_discovered_profiles(result.profiles)
+        self.refresh_model_choices()
+        if result.models and not self.store.setting("initial_model_selected", False):
+            for agent in self.store.agents():
+                if (
+                    agent.revision == 1
+                    and agent.name == "Coding partner"
+                    and agent.primary.profile_id == "ollama"
+                    and agent.primary.model == "qwen2.5-coder:7b"
+                    and not self.store.sessions()
+                    and self.agent_model.text() == agent.primary.model
+                ):
+                    chosen = (
+                        agent.primary.model
+                        if agent.primary.model in result.models
+                        else suggested_model(result.models)
+                    )
+                    agent.primary = ModelRef(profile_id="ollama", model=chosen)
+                    self.store.save_agent(agent)
+                    self.store.set_setting("initial_model_selected", True)
+                    self.refresh_agents()
+                    break
+        self.setup_event("setup.discovery_completed", result.evidence() | {"profiles_added": added})
+        self.provider_output.setPlainText(
+            self.discovery_status
+            + "\n"
+            + self.env_status
+            + ("\nProvider profiles added: " + ", ".join(added) if added else "")
+        )
+        self.setup_banner.setText(self.discovery_status + "  " + self.env_status)
+        self.update_setup_view()
+        self.refresh_history()
+
+    def use_discovered_model(self, model):
+        if not model:
+            self.error("No installed model was found. Start Ollama and refresh discovery.")
+            return
+
+        def perform():
+            index = self.agent_profile.findData("ollama")
+            if index < 0:
+                raise ValueError("Save a local Ollama provider profile first")
+            self.agent_profile.setCurrentIndex(index)
+            self.agent_model.setText(model)
+            self.save_agent()
+            self.setup_banner.setText(
+                "Saved " + model + " for " + self.agent_name.text() + ". Open Workbench to begin."
+            )
+
+        self.guarded(perform)
+
+    def background_updates_running(self):
+        return self.update_worker is not None and self.update_worker.isRunning()
+
+    def start_update_worker(self, function, completed):
+        if self.background_updates_running():
+            return False
+        if self.update_worker:
+            self.update_worker.deleteLater()
+        worker = Worker(function, self.credentials, self)
+        self.update_worker = worker
+        worker.succeeded.connect(completed)
+        worker.failed.connect(lambda message: self.background_failed("update", message))
+        worker.activity.connect(self.update_progress)
+        worker.finished.connect(self.update_setup_view)
+        worker.start()
+        return True
+
+    def check_updates(self):
+        if self.background_updates_running():
+            return
+        self.update_status = "Checking published releases…"
+        self.update_setup_view()
+        self.setup_event("update.check_started", {"running_version": __version__})
+        self.start_update_worker(lambda worker: self.updater.check(worker.cancel), self.update_checked)
+
+    def update_checked(self, release):
+        self.available_release = release
+        self.update_status = (
+            "Version " + release.version + " is available. Download it when you are ready."
+            if release
+            else "No newer published Windows installer was found."
+        )
+        if release:
+            self.setup_banner.setText(self.update_status + " Open Setup & updates.")
+        self.setup_event(
+            "update.check_completed",
+            {"available_version": release.version if release else None, "running_version": __version__},
+        )
+        self.update_setup_view()
+
+    def download_update(self):
+        if not self.available_release or self.background_updates_running():
+            return
+        release = self.available_release
+        self.update_status = "Downloading installer from GitHub; installation will wait for your approval."
+        self.update_setup_view()
+        self.setup_event(
+            "update.download_started", {"version": release.version, "expected_bytes": release.size}
+        )
+        if self.setup_dialog:
+            self.setup_dialog.progress.setValue(0)
+            self.setup_dialog.progress.show()
+        self.start_update_worker(
+            lambda worker: self.updater.download(
+                release,
+                worker.cancel,
+                lambda received, total: worker.activity.emit({"received": received, "total": total}),
+            ),
+            self.update_downloaded,
+        )
+
+    def update_progress(self, progress):
+        if self.setup_dialog:
+            self.setup_dialog.progress.setValue(int(100 * progress["received"] / progress["total"]))
+
+    def update_downloaded(self, update):
+        self.downloaded_update = update
+        self.update_status = (
+            "Installer downloaded and SHA-256 verified. Finish your task, then choose Install & restart."
+        )
+        if sys.platform != "win32":
+            self.update_status += " This installer runs on Windows."
+        self.setup_event(
+            "update.download_verified",
+            {"version": update.release.version, "bytes": update.release.size, "sha256": update.sha256},
+        )
+        self.update_setup_view()
+
+    def install_update(self):
+        if not self.downloaded_update:
+            return
+        if any(job and job.isRunning() for job in (self.worker, self.discovery_worker, self.update_worker)):
+            self.error("Finish or cancel the current operation before installing an update.")
+            return
+        if (
+            QMessageBox.question(
+                self,
+                "Install update?",
+                "Back up local history, close Aigentics and open the update wizard? "
+                "The wizard can reopen Aigentics when finished.",
+            )
+            != QMessageBox.Yes
+        ):
+            return
+
+        def perform():
+            self.store.backup()
+            self.setup_event(
+                "update.install_requested",
+                {"version": self.downloaded_update.release.version, "database_backup": True},
+            )
+            launch_installer(self.downloaded_update)
+            self.store.set_setting(
+                "pending_update",
+                {"version": self.downloaded_update.release.version, "from_version": __version__},
+            )
+            self.close()
+
+        self.guarded(perform)
+
+    def background_failed(self, category, message):
+        if category == "setup":
+            self.discovery_status = (
+                "Discovery could not finish. Use Providers & credentials to configure manually."
+            )
+        else:
+            self.update_status = message
+        self.setup_event(category + ".failed", {"message": message})
+        self.update_setup_view()
 
     def error(self, message):
         QMessageBox.warning(self, "Aigentics", self.credentials.redact(str(message)))
@@ -174,11 +568,12 @@ class Window(QMainWindow):
         self.agent_name = QLineEdit()
         self.agent_description = QLineEdit()
         self.agent_profile = QComboBox()
-        self.agent_model = QLineEdit()
+        self.agent_model = ModelPicker()
         form.addRow("Name", self.agent_name)
         form.addRow("Description", self.agent_description)
         form.addRow("Provider profile", self.agent_profile)
-        form.addRow("Model (exact installed name)", self.agent_model)
+        form.addRow("Model (installed list or manual name)", self.agent_model)
+        self.agent_profile.currentIndexChanged.connect(self.refresh_model_choices)
         el.addWidget(QLabel("Instructions"))
         self.instructions = QPlainTextEdit()
         el.addWidget(self.instructions, 2)
@@ -245,7 +640,7 @@ class Window(QMainWindow):
         self.lab_agent = QComboBox()
         labl.addWidget(self.lab_agent)
         labl.addWidget(QLabel("Model override for this test only (blank uses the saved agent model)"))
-        self.lab_model = QLineEdit()
+        self.lab_model = ModelPicker()
         labl.addWidget(self.lab_model)
         self.lab_prompt = QPlainTextEdit(
             "List this project's files using your tools, then explain what you found."
@@ -428,6 +823,7 @@ class Window(QMainWindow):
     def save_agent(self):
         agent = self.store.save_agent(self.form_agent())
         self.agent_id = agent.id
+        self.store.set_setting("initial_model_selected", True)
         self.refresh_agents()
         self.statusBar().showMessage(f"Saved {agent.name} revision {agent.revision}")
 
@@ -495,6 +891,7 @@ class Window(QMainWindow):
         if index >= 0:
             self.agent_profile.setCurrentIndex(index)
         self.load_profile()
+        self.refresh_model_choices()
 
     def load_profile(self, *_):
         profile = next((p for p in self.store.profiles() if p.id == self.profile_select.currentData()), None)
@@ -557,9 +954,7 @@ class Window(QMainWindow):
                     worker.cancel,
                     time.monotonic() + profile.timeout_seconds,
                 ),
-                lambda models: self.provider_output.setPlainText(
-                    "Connection succeeded. Models:\n" + "\n".join(models)
-                ),
+                lambda models: self.manual_models_discovered(profile.id, models),
             )
 
         self.guarded(perform)
@@ -569,11 +964,21 @@ class Window(QMainWindow):
             self, "Select your .env (values stay in memory)", "", "All files (*)"
         )
         if path:
-            self.guarded(
-                lambda: self.provider_output.setPlainText(
-                    "Loaded variable names:\n" + "\n".join(self.credentials.load_env(Path(path)))
+
+            def perform():
+                names = self.credentials.load_env(Path(path))
+                self.provider_output.setPlainText("Loaded variable names:\n" + "\n".join(names))
+                result = discover_local(
+                    self.credentials, [], threading.Event(), load_desktop_env=False, find_ollama=False
                 )
-            )
+                self.apply_discovered_profiles(result.profiles)
+                self.env_status = f"Loaded {len(names)} variables from your selected key file into memory."
+                self.setup_event(
+                    "setup.key_file_loaded", {"variable_count": len(names), "source": "selected_file"}
+                )
+                self.update_setup_view()
+
+            self.guarded(perform)
 
     def save_credential(self):
         def perform():
@@ -861,22 +1266,44 @@ class Window(QMainWindow):
         self.refresh_history()
 
     def closeEvent(self, event):
-        if self.worker and self.worker.isRunning():
-            self.cancel_run()
-            self.statusBar().showMessage("Stopping the current operation. Close again once it finishes.")
+        active = [
+            worker
+            for worker in (self.worker, self.discovery_worker, self.update_worker)
+            if worker and worker.isRunning()
+        ]
+        if active:
+            for worker in active:
+                worker.cancel.set()
+            self.statusBar().showMessage("Stopping active operations before closing…")
+            if not hasattr(self, "close_timer"):
+                self.close_timer = QTimer(self)
+                self.close_timer.timeout.connect(self.finish_close)
+            self.close_timer.start(100)
             event.ignore()
             return
         self.lab_dir.cleanup()
         self.store.close()
         event.accept()
 
+    def finish_close(self):
+        if not any(
+            worker and worker.isRunning()
+            for worker in (self.worker, self.discovery_worker, self.update_worker)
+        ):
+            self.close_timer.stop()
+            self.close()
+
 
 def main():
+    smoke = "--smoke-test" in sys.argv
+    if smoke:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication(sys.argv)
     app.setApplicationName("Aigentics Desktop")
     app.setOrganizationName("Aigentics")
     app.setStyle("Fusion")
     app.setStyleSheet(STYLE)
+    app.setWindowIcon(QIcon(str(Path(__file__).parent / "assets" / "icon.ico")))
     data = Path(
         os.environ.get("AIGENTICS_DATA_DIR")
         or QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
@@ -889,6 +1316,20 @@ def main():
         )
         return
     credentials = Credentials()
-    window = Window(Store(data / "aigentics.sqlite3", credentials), credentials)
+    window = Window(Store(data / "aigentics.sqlite3", credentials), credentials, startup=not smoke)
     window.show()
-    sys.exit(app.exec())
+    smoke_state = {"ok": False}
+    if smoke:
+
+        def smoke_finish():
+            if window.tabs.count() != 2 or window.run_agent.count() == 0:
+                app.exit(2)
+                return
+            smoke_state["ok"] = True
+            window.tabs.setCurrentIndex(1)
+            app.processEvents()
+            window.close()
+
+        QTimer.singleShot(150, smoke_finish)
+    code = app.exec()
+    sys.exit(2 if smoke and not smoke_state["ok"] else code)

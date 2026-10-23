@@ -44,3 +44,12 @@ Session export format v1 includes the session snapshot, ordered events, optional
 5. Promote a verified change through ordinary source control and releases. Automatic prompt mutation, autonomous patching, remote analytics and PULSE are not implemented.
 
 Current summaries are descriptive counts and sums. They are not statistically controlled experiments, cost estimates, automatic failure clustering or quality scores. Per-provider usage units must not be combined blindly. Ollama token counters and duration nanoseconds are labeled as received.
+
+
+## 0.2.0 setup and update evidence
+
+`setup.discovery_completed` records counts of installed models, candidate Desktop key files, loaded variables, provider IDs added, duration and exception types. Neither .env values/content nor Desktop paths are put into the event. Manual key-file loading records counts and source only. The presence/identity of a provider profile can still be inferred from local configuration.
+
+Update events record startup/manual check outcomes, available/running versions, requested/downloaded byte counts, verification SHA-256, backup occurrence and the version observed after an installer handoff. No provider credentials, transcripts or project files are included in update HTTP. Settings can disable automatic Ollama discovery, automatic Desktop key loading, startup update checks, or the additional setup/update diagnostics. Runtime/session evidence remains a separate feature with existing retention controls.
+
+Three local pre-update SQLite backups are kept. They can contain older retained session content; deleting a session from the live database does not scrub those backups. See INSTALLER.md. Updates are integrity-checked against the trusted GitHub release channel, not independently publisher-signed.

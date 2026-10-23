@@ -1,5 +1,10 @@
 # Build progress and next actions
 
+## 0.2.0 update
+
+Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDrive `.env` and `.env.txt` discovery, matching provider-profile setup, startup/manual GitHub update checks, bounded SHA-256-verified installer downloads, pre-install history backups, version-outcome diagnostics, a custom app icon, and a Windows PyInstaller/Inno Setup release pipeline are implemented. The pipeline tests the actual installed app and desktop shortcut before publishing a version-tag release. Windows runner/publication results are tracked in VERIFICATION.md; do not infer them from Linux tests.
+
+
 ## Delivered: first end-to-end release
 
 - Native PySide6 shell with connected Agents/Workbench tabs.
@@ -12,7 +17,7 @@
 
 ## Validation boundaries
 
-The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Final automated result: 36 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
+The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Final automated result: 61 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
 
 ## Next useful action on the user's machine
 
@@ -21,7 +26,7 @@ Follow README Windows installation, discover the actual Ollama models, select on
 ## Deferred work (not claimed complete)
 
 - Live Windows 10/11, OS-vault and local/cloud model acceptance; model-quality/performance measurements on the RTX 3050.
-- Signed Windows installer, distribution update channel and platform CI results.
+- Authenticode-signed Windows installer, independent update signing and Windows 10 hardware acceptance. The release/update channel and Windows build/smoke workflow are now implemented.
 - Native Gemini adapter and provider-specific live certification, richer capability settings, token streaming, throttling/backoff controls.
 - Fully atomic/race-resistant file edits, multi-file transactions/rollback, Windows Job Objects and OS execution sandboxing.
 - Search ignores beyond the current sensitive/cache directories, repository mapping, tokenizer-aware context compression and large-project optimization.

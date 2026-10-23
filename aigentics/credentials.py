@@ -18,10 +18,16 @@ class Credentials:
     def load_env(self, path: Path):
         from dotenv import dotenv_values
 
-        values = dotenv_values(path)
+        if not path.is_file() or path.stat().st_size > 1_000_000:
+            raise ValueError("Select a .env file smaller than 1 MB")
+        values = dotenv_values(path, encoding="utf-8-sig", interpolate=False)
         with self._lock:
             self._values.update({k: v for k, v in values.items() if v})
         return sorted(k for k, v in values.items() if v)
+
+    def names(self):
+        with self._lock:
+            return set(self._values)
 
     def get(self, ref: str):
         if not ref:

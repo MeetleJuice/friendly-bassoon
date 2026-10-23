@@ -52,3 +52,8 @@ python -m pip install -e ".[dev]" "pyinstaller==6.16.0"
 The manual smoke script creates/removes an Aigentics Desktop shortcut and uses a temporary installation directory; use a disposable test account/machine. Keep release signing credentials outside source control. The current workflow does not have an Authenticode certificate, independent update-signing key, or Windows 10 hardware acceptance result.
 
 For 0.3.0 the Windows smoke also runs the installed built-in diagnostic suite and a checksum-pinned 0.2.0-to-current upgrade, verifying saved agents, settings, session messages and schema migration. See DIAGNOSTICS.md for approved support reporting, which is separate from software installation and source-code releases.
+
+
+## 0.4.0 upgrade preservation
+
+The release pipeline now upgrades the actual public 0.3.0 installer using its previously recorded SHA-256, preserving synthetic saved agents, settings, session messages and diagnostic sharing state through schema 3→4. Startup uses the existing OS data directory. No Desktop/project/key folders are moved. Use Local data to inspect records and backup/installer sizes. Backups obey the age setting plus newest-three cap; existing exports/public issues are separate. Publication/run IDs and final hashes are in VERIFICATION.md and ENGINEERING_LOG.md.

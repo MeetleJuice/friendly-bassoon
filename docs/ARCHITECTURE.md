@@ -49,3 +49,10 @@ No provider failover, project file or model message can expand the agent's saved
 Known text-tool response shapes are detected, never executed. Two maximum protocol-correction attempts share the existing step/time/context budgets. Real native calls still pass schemas, saved capabilities and per-action approvals. Native protocol recovery and tool/goal success are separate recorded outcomes. Schema validation feedback omits argument input values.
 
 The runtime adds `response_only`, `needs_review` and `protocol_error` states; `completed` means actual tool execution ended, with human goal assessment still separate. Default activity is readable; the detailed-record toggle retains inspection of recorded evidence. Diagnostics aggregates the latest 20 sessions without uploading their contents.
+
+
+## 0.4.0 metadata and maintenance
+
+`catalog.py` owns explicit, deduplicated metadata GET batches with bounded concurrency and no generation/retry behavior. `records_ui.py` presents API reports, timestamps, cached choices and retention controls; it reuses the diagnostic worker lifecycle and sharing preview rather than inventing a second uploader. Schema v4 persists catalog snapshots separately from versioned diagnostic/API reports. Provider adapters emit low-cardinality HTTP/protocol codes and structural response evidence. Health suite 2 collects a bounded trace from its disposable local run and adds offline catalog/retention checks.
+
+The durable engineering workspace is `docs/maintenance/`; actual user data stays in the existing OS data folder. Cloud artifacts and temporary acceptance data live outside the checkout. Catalog discovery, live tool certification, public support sharing, source changes and release installation retain separate acceptance criteria.

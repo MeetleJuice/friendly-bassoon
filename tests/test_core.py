@@ -29,7 +29,7 @@ def test_validation_and_revision_persistence(store, credentials):
     assert a.revision == 2
     other = Store(store.path, credentials, recover=False)
     assert other.agents()[0].name == "Updated"
-    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 4
     other.close()
 
 
@@ -407,7 +407,7 @@ def test_schema_upgrade_preserves_evidence_and_user_assessments(store, credentia
         store.db.execute("DROP TABLE assessments")
         store.db.execute("PRAGMA user_version=1")
     reopened = Store(store.path, credentials, recover=False)
-    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 4
     assert reopened.events(sid)
     reopened.assess(sid, "needs_work", "The command passed, but the feature is incomplete.")
     assert reopened.assessment(sid)["label"] == "needs_work"

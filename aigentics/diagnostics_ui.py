@@ -142,6 +142,9 @@ class DiagnosticsDialog(QDialog):
         sharing.addWidget(self.title)
         self.preview = QPlainTextEdit()
         sharing.addWidget(self.preview, 1)
+        add_button(
+            "Copy preview", lambda: QApplication.clipboard().setText(self.preview.toPlainText()), sharing
+        )
         self.approved = QCheckBox("I approve sharing exactly this preview with the public GitHub repository.")
         self.approved.toggled.connect(self.approval_changed)
         sharing.addWidget(self.approved)
@@ -162,7 +165,8 @@ class DiagnosticsDialog(QDialog):
         self.history.blockSignals(True)
         self.history.clear()
         for row in self.rows:
-            self.history.addItem(row["created"][:19] + " · " + row["state"], row["id"])
+            label = "API checks" if row["payload"].get("kind") == "api_models" else "Diagnostics"
+            self.history.addItem(row["created"][:19] + " · " + label + " · " + row["state"], row["id"])
         self.history.blockSignals(False)
         index = self.history.findData(selected) if selected else 0
         if index >= 0:
@@ -173,7 +177,53 @@ class DiagnosticsDialog(QDialog):
         if 0 <= index < len(self.rows):
             self.report = self.rows[index]["payload"]
             self.output.setPlainText(self.describe(self.report))
+            self.output.appendPlainText(self.comparison(self.report))
             self.prepare_preview()
+
+    def comparison(self, report):
+        model = next(
+            (
+                r.get("evidence", {}).get("model")
+                for r in report.get("checks", [])
+                if r["id"] == "selected_local_model"
+            ),
+            None,
+        )
+        for row in self.rows:
+            previous = row["payload"]
+            if previous["created"] >= report["created"] or previous.get("suite_version") != report.get(
+                "suite_version"
+            ):
+                continue
+            if previous.get("kind", "health") != report.get("kind", "health") or previous["state"] in (
+                "running",
+                "interrupted",
+                "cancelled",
+            ):
+                continue
+            prior_model = next(
+                (
+                    r.get("evidence", {}).get("model")
+                    for r in previous.get("checks", [])
+                    if r["id"] == "selected_local_model"
+                ),
+                None,
+            )
+            if model != prior_model:
+                continue
+            before = {r["id"]: (r["status"], r["code"]) for r in previous.get("checks", [])}
+            changes = [
+                r["id"] + ": " + str(before[r["id"]]) + " → " + str((r["status"], r["code"]))
+                for r in report.get("checks", [])
+                if r["id"] in before and before[r["id"]] != (r["status"], r["code"])
+            ]
+            return (
+                "\nCompared with "
+                + previous["id"]
+                + " (same suite/model):\n"
+                + ("\n".join(changes) if changes else "No status/code changes in shared checks.")
+            )
+        return "\nNo earlier comparable report with the same suite and model is retained."
 
     @staticmethod
     def describe(report):
@@ -181,6 +231,8 @@ class DiagnosticsDialog(QDialog):
         for row in report.get("checks", []):
             lines.append(row["status"].upper() + " · " + row["id"].replace("_", " ") + " · " + row["code"])
             lines.append(row["message"])
+            if row["id"] == "selected_local_model":
+                lines.append(json.dumps(row.get("evidence", {}), indent=2))
         if "summary" in report:
             lines.append("\nCounts: " + json.dumps(report["summary"]))
         return "\n".join(lines)

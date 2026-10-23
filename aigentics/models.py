@@ -81,3 +81,4 @@ class Reply(Strict):
     content: str = ""
     calls: list[ToolCall] = Field(default_factory=list, max_length=16)
     usage: dict = Field(default_factory=dict)
+    evidence: dict = Field(default_factory=dict)

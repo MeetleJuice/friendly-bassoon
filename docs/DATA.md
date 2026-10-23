@@ -62,3 +62,12 @@ SQLite schema v3 adds a diagnostic report table while retaining existing session
 Only the report builder's allowlisted metadata is eligible for sharing. No source tree, session transcript, task text, prompt hash, workspace path, agent name or raw exception body is included automatically. Local counts can detect the known text-tool shape in existing opt-in transcripts without sharing that content. Model names are an explicit sharing option. Public issue submission requires approval of the exact preview; edits revoke that approval.
 
 Sharing states are `local`, `draft_opened`, `submitted` and `unknown`. A draft is not proof of upload. Ambiguous issue-creation requests are never retried automatically. Code changes, diagnostic reports and versioned installers remain separate. See DIAGNOSTICS.md and RESEARCH.md for implementation rationale and user controls.
+
+
+## 0.4.0 catalogs and retention controls
+
+SQLite schema v4 adds `model_catalogs` without replacing existing agents, settings, sessions, messages, reports or sharing states. A successful explicit model-list check stores bounded identifiers, fetched UTC timestamp, partial-page flag and a connection fingerprint (adapter/base URL/credential reference; no secret value). Failures do not replace the prior successful list. IDs are local and not automatically included in support reports. Startup restores valid retained lists without cloud calls.
+
+**Local data** provides counts, disk usage, the actual data-folder location, catalog clearing and retention controls. Defaults: 30 days, 20 completed diagnostic/API reports, 10 MB combined report-payload/catalog budget, 20,000 session/configuration events. Report count ranges 5–200, payload budget 1–100 MB. Oldest completed records/catalogs are pruned to fit; active sessions/reports are protected and may temporarily exceed limits. The report budget is not a total database/disk cap; definitions, revisions, opt-in messages, installers and backups are separate. Each report remains bounded at 250 KB; catalog API responses at 2 MB and 5,000 IDs.
+
+Pre-update backups now obey the same age setting as well as the newest-three cap. A live deletion does not selectively scrub unexpired backups. Exported files and public issues remain outside local retention. No automatic telemetry server or silent report upload was added. Template hashes and structural synthetic-test traces provide evidence without full template, prompt or model-text retention.

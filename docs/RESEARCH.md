@@ -30,3 +30,10 @@ Reviewed 2026-10-23. These are primary upstream sources, not an exhaustive ranki
 ## Deliberately deferred
 
 Full agent teams, uncontrolled self-modification, automatic benchmark-driven prompt mutation, whole-project content collection, complete checkpoint/rollback support, hosted observability, independent update signing and registered GitHub OAuth are not claimed implemented. The current improvement loop is: observe → diagnose → approve sharing → reproduce → test a change → publish a verified release.
+
+
+## 0.4.0 metadata/protocol follow-up
+
+Reviewed the first-party [Ollama API contract](https://github.com/ollama/ollama/blob/main/docs/api.md) and [OpenAI model resource](https://github.com/openai/openai-python/blob/main/src/openai/resources/models.py): model listing is separate from chat/generation. The app uses GET `/api/tags` for Ollama and GET `/models` for compatible services, with no generation request. Ollama `/api/show` template/capability metadata is collected only during the separate optional local workflow; the template is hashed, not saved. No raw user keys or live paid model calls were available in the cloud. Compatible provider support is contract-based and still requires the user's live metadata acceptance; no universal credential/tool certification is inferred from a list.
+
+The practical retention decision is bounded structured records plus a stable maintenance index, not an expanding pile of raw logs. Same-suite/model comparisons distinguish measurement changes from behavioral changes. Existing Issues #1/#2 provide a baseline; additional structure is needed before identifying the live protocol cause.

@@ -181,7 +181,10 @@ class Runtime:
                                 {"profile": ref.profile_id, "model": ref.model, **capabilities},
                             )
                             if not capabilities["tools"]:
-                                raise ProviderError("Selected model/profile does not support native tools")
+                                raise ProviderError(
+                                    "Selected model/profile does not support native tools",
+                                    code="TOOLS_UNSUPPORTED",
+                                )
                             checked.add(route)
                         request_id = str(uuid4())
                         event(
@@ -215,13 +218,20 @@ class Runtime:
                                 "usage": reply.usage,
                                 "tool_calls": len(reply.calls),
                                 "content_chars": len(reply.content),
+                                "response_shape": reply.evidence,
                             },
                         )
                         break
                     except ProviderError as exc:
                         event(
                             "provider.failed",
-                            {"profile": ref.profile_id, "error": str(exc), "retryable": exc.retryable},
+                            {
+                                "profile": ref.profile_id,
+                                "error": str(exc),
+                                "retryable": exc.retryable,
+                                "code": exc.code,
+                                "http_status": exc.http_status,
+                            },
                         )
                         if not exc.retryable or route + 1 >= len(chain):
                             raise

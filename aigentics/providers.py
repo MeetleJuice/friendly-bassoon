@@ -1,14 +1,16 @@
 """Small native adapters. No simulated calls and no invisible cross-provider retries."""
 
 import json
+import hashlib
 import httpx
 from .models import Reply, ToolCall
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, message, retryable=False):
+    def __init__(self, message, retryable=False, code="PROVIDER_ERROR", http_status=None):
         super().__init__(message)
         self.retryable = retryable
+        self.code, self.http_status = code, http_status
 
 
 class Provider:
@@ -34,6 +36,8 @@ class Provider:
                         raise ProviderError(
                             f"{self.profile.name}: HTTP {code}. Check endpoint, model, credentials and quota.",
                             code in (408, 429, 500, 502, 503, 504),
+                            code="HTTP_ERROR",
+                            http_status=code,
                         )
                     chunks, size = [], 0
                     for chunk in response.iter_bytes():
@@ -44,31 +48,52 @@ class Provider:
                     return json.loads(b"".join(chunks))
         except (httpx.TimeoutException, httpx.NetworkError) as exc:
             raise ProviderError(
-                f"{self.profile.name}: connection failed or timed out ({type(exc).__name__})", True
+                f"{self.profile.name}: connection failed or timed out ({type(exc).__name__})",
+                True,
+                code="TIMEOUT" if isinstance(exc, httpx.TimeoutException) else "CONNECTION_ERROR",
             ) from exc
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise ProviderError("Provider returned malformed JSON") from exc
+            raise ProviderError("Provider returned malformed JSON", code="MALFORMED_JSON") from exc
 
     def discover(self):
         data = self.request("GET", "/api/tags" if self.profile.kind == "ollama" else "/models")
         try:
-            return (
+            models = (
                 [m["name"] for m in data["models"]]
                 if self.profile.kind == "ollama"
                 else [m["id"] for m in data["data"]]
             )
-        except (KeyError, TypeError) as exc:
-            raise ProviderError("Unexpected model discovery response") from exc
+            if len(models) > 5000 or any(
+                not isinstance(m, str) or not m.strip() or len(m) > 200 or any(ord(c) < 32 for c in m)
+                for m in models
+            ):
+                raise ValueError("Invalid model identifier or catalog size")
+            self.discovery_partial = bool(data.get("has_more") or data.get("next_page_token"))
+            return sorted(set(models))
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise ProviderError("Unexpected model discovery response", code="INVALID_MODEL_LIST") from exc
 
     def capabilities(self, model):
         if not self.profile.supports_tools:
             return {"tools": False, "source": "profile"}
         if self.profile.kind == "ollama":
             data = self.request("POST", "/api/show", json={"model": model})
+            if not isinstance(data, dict):
+                raise ProviderError("Unexpected model information response", code="INVALID_MODEL_INFO")
+            template = data.get("template")
+            metadata = {}
+            if isinstance(template, str):
+                metadata = {
+                    "template_sha256": hashlib.sha256(template.encode()).hexdigest(),
+                    "template_chars": len(template),
+                    "template_mentions_tools": "tools" in template.lower(),
+                }
             capabilities = data.get("capabilities")
             if capabilities is not None:
-                return {"tools": "tools" in capabilities, "source": "ollama.show"}
-            return {"tools": True, "source": "profile; older Ollama cannot report capabilities"}
+                if not isinstance(capabilities, list) or any(not isinstance(c, str) for c in capabilities):
+                    raise ProviderError("Invalid model capabilities", code="INVALID_MODEL_INFO")
+                return {"tools": "tools" in capabilities, "source": "ollama.show", **metadata}
+            return {"tools": True, "source": "profile; older Ollama cannot report capabilities", **metadata}
         return {"tools": True, "source": "profile declaration; verify selected cloud model"}
 
     def chat(self, model, messages, tools):
@@ -101,6 +126,8 @@ class Provider:
             if tools:
                 body["tools"] = tools
             data = self.request("POST", "/api/chat", json=body)
+            if not isinstance(data, dict):
+                raise ProviderError("Unexpected chat response", code="INVALID_CHAT_RESPONSE")
             usage = {k: data[k] for k in ("prompt_eval_count", "eval_count", "total_duration") if k in data}
             message = data.get("message", {})
         else:
@@ -119,10 +146,12 @@ class Provider:
                         "Provider stopped before a complete response; reduce context or change model"
                     )
                 message = choice["message"]
-            except (KeyError, IndexError, TypeError) as exc:
-                raise ProviderError("Unexpected chat response") from exc
+            except (KeyError, IndexError, TypeError, AttributeError) as exc:
+                raise ProviderError("Unexpected chat response", code="INVALID_CHAT_RESPONSE") from exc
             usage = data.get("usage", {})
         try:
+            if not isinstance(message, dict):
+                raise ValueError("Invalid message object")
             calls = []
             for i, c in enumerate(message.get("tool_calls") or []):
                 f = c["function"]
@@ -136,6 +165,17 @@ class Provider:
                 )
             if len({c.id for c in calls}) != len(calls):
                 raise ValueError("Duplicate tool call identifiers")
-            return Reply(content=message.get("content") or "", calls=calls, usage=usage)
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ProviderError("Malformed native tool-call response; no tools were executed") from exc
+            reason = data.get("done_reason") if self.profile.kind == "ollama" else choice.get("finish_reason")
+            evidence = {
+                "tool_calls_field_present": "tool_calls" in message,
+                "content_field_present": "content" in message,
+                "thinking_chars": len(message["thinking"]) if isinstance(message.get("thinking"), str) else 0,
+                "finish_reason": reason
+                if reason in ("stop", "length", "tool_calls", "load", "unload")
+                else "other",
+            }
+            return Reply(content=message.get("content") or "", calls=calls, usage=usage, evidence=evidence)
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise ProviderError(
+                "Malformed native tool-call response; no tools were executed", code="MALFORMED_NATIVE_CALL"
+            ) from exc

@@ -59,6 +59,7 @@ class DiscoveryResult:
     env_found: int = 0
     variables_loaded: int = 0
     ollama_status: str = "Not checked"
+    ollama_success: bool = False
     env_status: str = "Not checked"
     errors: list[str] = field(default_factory=list)
     duration_ms: int = 0
@@ -122,6 +123,7 @@ def discover(
                 update={"timeout_seconds": 3}
             )
             result.models = provider_factory(profile, credentials).discover()
+            result.ollama_success = True
             result.ollama_status = (
                 f"Ollama connected. Found {len(result.models)} installed models."
                 if result.models

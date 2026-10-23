@@ -31,16 +31,21 @@ class Store:
         if recover:
             for row in self.db.execute("SELECT id FROM sessions WHERE state='running'").fetchall():
                 self.finish(row["id"], "interrupted", "Previous process stopped before session completion")
-            for row in self.db.execute("SELECT id,payload FROM diagnostics WHERE state='running'").fetchall():
-                payload = json.loads(row["payload"])
-                payload["state"] = "interrupted"
-                self.save_diagnostic(payload)
+            self.recover_diagnostics()
         self.prune()
+
+    def recover_diagnostics(self):
+        with self.lock:
+            rows = self.db.execute("SELECT payload FROM diagnostics WHERE state='running'").fetchall()
+        for row in rows:
+            payload = json.loads(row["payload"])
+            payload["state"] = "interrupted"
+            self.save_diagnostic(payload)
 
     def _migrate(self):
         with self.lock, self.db:
             version = self.db.execute("PRAGMA user_version").fetchone()[0]
-            if version > 3:
+            if version > 4:
                 raise RuntimeError("Database is newer than this application; upgrade the application")
             if version < 1:
                 self.db.executescript("""
@@ -74,6 +79,68 @@ class Store:
                 PRAGMA user_version=3;
                 """)
 
+            if version < 4:
+                self.db.executescript("""
+                CREATE TABLE IF NOT EXISTS model_catalogs(profile_id TEXT PRIMARY KEY,
+                    signature TEXT, fetched TEXT, models TEXT, partial INTEGER);
+                PRAGMA user_version=4;
+                """)
+
+    @staticmethod
+    def catalog_signature(profile):
+        return Store.fingerprint(
+            {key: getattr(profile, key) for key in ("kind", "base_url", "credential_ref")}
+        )
+
+    def save_catalog(self, profile, models, partial=False):
+        if len(models) > 5000 or any(not isinstance(m, str) or len(m) > 200 for m in models):
+            raise ValueError("Model catalog exceeds limits")
+        with self.lock, self.db:
+            self.db.execute(
+                "INSERT OR REPLACE INTO model_catalogs VALUES(?,?,?,?,?)",
+                (
+                    profile.id,
+                    self.catalog_signature(profile),
+                    now(),
+                    self.credentials.json(models),
+                    int(partial),
+                ),
+            )
+
+    def catalogs(self):
+        profiles = {p.id: p for p in self.profiles()}
+        with self.lock:
+            rows = self.db.execute("SELECT * FROM model_catalogs ORDER BY profile_id").fetchall()
+        return {
+            r["profile_id"]: dict(r) | {"models": json.loads(r["models"])}
+            for r in rows
+            if r["profile_id"] in profiles
+            and r["signature"] == self.catalog_signature(profiles[r["profile_id"]])
+        }
+
+    def clear_catalogs(self):
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM model_catalogs")
+        self.compact()
+
+    def data_inventory(self):
+        """Local counts/sizes, never source files or credential files."""
+        with self.lock:
+            result = {
+                table: self.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in ("sessions", "messages", "events", "diagnostics", "model_catalogs")
+            }
+        result["database_bytes"] = sum(
+            p.stat().st_size
+            for p in (self.path, Path(str(self.path) + "-wal"), Path(str(self.path) + "-shm"))
+            if p.is_file()
+        )
+        for name, pattern in (("backups", "aigentics-*.sqlite3"), ("updates", "Aigentics-Setup-*.exe")):
+            files = [p for p in (self.path.parent / name).glob(pattern) if p.is_file() and not p.is_symlink()]
+            result[name + "_count"] = len(files)
+            result[name + "_bytes"] = sum(p.stat().st_size for p in files)
+        return result
+
     def save_diagnostic(self, report):
         raw = self.credentials.json(report)
         if len(raw.encode("utf-8")) > 250000:
@@ -89,7 +156,7 @@ class Store:
         with self.lock:
             return [
                 dict(row) | {"payload": json.loads(row["payload"])}
-                for row in self.db.execute("SELECT * FROM diagnostics ORDER BY created DESC LIMIT 50")
+                for row in self.db.execute("SELECT * FROM diagnostics ORDER BY created DESC LIMIT 232")
             ]
 
     def diagnostic_submission(self, report_id, state, url=""):
@@ -323,13 +390,35 @@ class Store:
         days = max(1, min(3650, int(self.setting("retention_days", 30))))
         cap = max(100, min(1000000, int(self.setting("max_events", 20000))))
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        report_cap = max(5, min(200, int(self.setting("max_reports", 20))))
+        byte_cap = max(1, min(100, int(self.setting("report_storage_mb", 10)))) * 1024 * 1024
         with self.lock, self.db:
             self.db.execute("DELETE FROM sessions WHERE updated < ? AND state != 'running'", (cutoff,))
             self.db.execute("DELETE FROM diagnostics WHERE created < ? AND state != 'running'", (cutoff,))
             self.db.execute(
                 "DELETE FROM diagnostics WHERE state != 'running' AND id NOT IN "
-                "(SELECT id FROM diagnostics ORDER BY created DESC LIMIT 20)"
+                "(SELECT id FROM diagnostics WHERE state != 'running' ORDER BY created DESC LIMIT ?)",
+                (report_cap,),
             )
+            self.db.execute("DELETE FROM model_catalogs WHERE fetched < ?", (cutoff,))
+
+            # Bound retained diagnostic payloads and model catalogs together. Keep active reports.
+            def report_bytes():
+                return self.db.execute(
+                    "SELECT COALESCE((SELECT SUM(length(CAST(payload AS BLOB))) FROM diagnostics),0) + "
+                    "COALESCE((SELECT SUM(length(CAST(models AS BLOB))) FROM model_catalogs),0)"
+                ).fetchone()[0]
+
+            for row in self.db.execute(
+                "SELECT 'report',id,created FROM diagnostics WHERE state != 'running' UNION ALL "
+                "SELECT 'catalog',profile_id,fetched FROM model_catalogs ORDER BY 3"
+            ).fetchall():
+                if report_bytes() <= byte_cap:
+                    break
+                if row[0] == "report":
+                    self.db.execute("DELETE FROM diagnostics WHERE id=?", (row[1],))
+                else:
+                    self.db.execute("DELETE FROM model_catalogs WHERE profile_id=?", (row[1],))
             self.db.execute("DELETE FROM events WHERE session_id IS NULL AND timestamp < ?", (cutoff,))
             self.db.execute(
                 "DELETE FROM events WHERE session_id IS NULL AND sequence NOT IN (SELECT sequence FROM events WHERE session_id IS NULL ORDER BY sequence DESC LIMIT ?)",
@@ -343,7 +432,17 @@ class Store:
                 if count <= cap:
                     break
                 self.db.execute("DELETE FROM sessions WHERE id=?", (row[0],))
+        self.prune_backups(days)
         self.compact()
+
+    def prune_backups(self, days=None):
+        days = days or max(1, min(3650, int(self.setting("retention_days", 30))))
+        cutoff = datetime.now(timezone.utc).timestamp() - days * 86400
+        for index, old in enumerate(
+            sorted((self.path.parent / "backups").glob("aigentics-*.sqlite3"), reverse=True)
+        ):
+            if not old.is_symlink() and (index >= 3 or old.stat().st_mtime < cutoff):
+                old.unlink()
 
     def compact(self):
         with self.lock:
@@ -362,9 +461,7 @@ class Store:
         with self.lock:
             with closing(sqlite3.connect(path)) as destination:
                 self.db.backup(destination)
-        for old in sorted(folder.glob("aigentics-*.sqlite3"), reverse=True)[3:]:
-            if not old.is_symlink():
-                old.unlink()
+        self.prune_backups()
         return path
 
     def close(self):

@@ -26,6 +26,7 @@ def public_report(report, include_model=False):
         for key in (
             "schema_version",
             "suite_version",
+            "kind",
             "id",
             "created",
             "app_version",
@@ -72,12 +73,65 @@ def public_report(report, include_model=False):
         "readback_recorded",
         "protocol_retries",
         "error_type",
+        "native_calls_total",
+        "provider_error_code",
+        "http_status",
+        "failure_stage",
+        "model_count",
+        "request_count",
+        "generation_requests",
+        "partial_catalog",
+        "provider",
+        "catalog_fixture_verified",
+        "retention_fixture_verified",
+        "active_report_protected",
     }
     if include_model:
         allowed.add("model")
     for row in report.get("checks", []):
         check = {key: row[key] for key in ("id", "status", "code", "message", "duration_ms")}
         check["evidence"] = {key: value for key, value in row.get("evidence", {}).items() if key in allowed}
+        evidence = row.get("evidence", {})
+        if "model_metadata" in evidence:
+            check["evidence"]["model_metadata"] = {
+                key: value
+                for key, value in evidence["model_metadata"].items()
+                if key in ("tools", "source", "template_sha256", "template_chars", "template_mentions_tools")
+            }
+        if "request_traces" in evidence:
+            traces = []
+            for trace in evidence["request_traces"][:8]:
+                safe = {
+                    key: trace[key]
+                    for key in (
+                        "step",
+                        "duration_ms",
+                        "native_call_count",
+                        "content_chars",
+                        "text_tool_response",
+                        "tool_schema_sha256",
+                        "advertised_tool_count",
+                    )
+                    if key in trace
+                }
+                safe["response_shape"] = {
+                    key: value
+                    for key, value in trace.get("response_shape", {}).items()
+                    if key
+                    in (
+                        "tool_calls_field_present",
+                        "content_field_present",
+                        "thinking_chars",
+                        "finish_reason",
+                    )
+                }
+                safe["usage"] = {
+                    key: value
+                    for key, value in trace.get("usage", {}).items()
+                    if key in ("prompt_eval_count", "eval_count", "total_duration")
+                }
+                traces.append(safe)
+            check["evidence"]["request_traces"] = traces
         safe_checks.append(check)
     result["checks"] = safe_checks
     # Only bounded aggregate counters are shared; no session IDs, hashes or original messages.
@@ -91,7 +145,8 @@ def public_report(report, include_model=False):
 
 def issue_body(report, credentials, include_model=False):
     public = public_report(report, include_model)
-    title = f"Aigentics diagnostics {report['app_version']}: {report['state']}"
+    label = "API checks" if report.get("kind") == "api_models" else "diagnostics"
+    title = f"Aigentics {label} {report['app_version']}: {report['state']}"
     body = (
         f"<!-- aigentics-report:{report['id']} -->\n"
         "Diagnostic report shared with the user's approval. Synthetic test results and metadata only.\n\n"
@@ -111,7 +166,12 @@ def prepare_browser_draft(title, body):
         match = re.search(r"<!-- aigentics-report:([^>]+) -->", body)
         try:
             payload = json.loads(body.split("```json\n", 1)[1].split("\n```", 1)[0])
-            rows = [f"- {r['id']}: {r['status']} ({r['code']})" for r in payload.get("checks", [])]
+            rows = [
+                f"- {r['id']}"
+                + (" [" + r["evidence"]["provider"] + "]" if r.get("evidence", {}).get("provider") else "")
+                + f": {r['status']} ({r['code']})"
+                for r in payload.get("checks", [])
+            ]
             summary = "\n".join(rows)
         except (ValueError, KeyError, IndexError):
             raise ReportingError("Use the generated report format for browser sharing")
@@ -128,9 +188,25 @@ def prepare_browser_draft(title, body):
                 str(env.get(key, "unknown")) for key in ("os", "os_release", "architecture", "python")
             )
         )
-        model_details = [
-            str(r.get("evidence", {})) for r in payload.get("checks", []) if r["id"] == "selected_local_model"
+        model = next(
+            (r.get("evidence", {}) for r in payload.get("checks", []) if r["id"] == "selected_local_model"),
+            {},
+        )
+        model_details = {key: value for key, value in model.items() if key != "request_traces"}
+        traces = [
+            {
+                "step": t.get("step"),
+                "native": t.get("native_call_count"),
+                "text_tool": t.get("text_tool_response"),
+                "tool_field": t.get("response_shape", {}).get("tool_calls_field_present"),
+                "finish": t.get("response_shape", {}).get("finish_reason"),
+                "input_tokens": t.get("usage", {}).get("prompt_eval_count"),
+                "output_tokens": t.get("usage", {}).get("eval_count"),
+            }
+            for t in model.get("request_traces", [])[-3:]
         ]
+        if traces:
+            model_details["last_three_requests"] = traces
         body = (
             "Diagnostic summary shared with user approval. Full report retained locally.\n"
             + (f"Report ID: {match[1]}\n" if match else "")
@@ -139,7 +215,11 @@ def prepare_browser_draft(title, body):
             + summary
             + "\nRecent run counts: "
             + str(payload.get("recent_runs", {}))
-            + ("\nLocal model result: " + "; ".join(model_details) if model_details else "")
+            + (
+                "\nLocal model result: " + json.dumps(model_details, separators=(",", ":"))
+                if model_details
+                else ""
+            )
         )
         url = ISSUES_URL + "/new?" + urlencode({"title": title, "body": body})
     if len(url) > 7500:

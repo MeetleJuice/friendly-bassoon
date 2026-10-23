@@ -133,7 +133,7 @@ def test_packaged_health_suite_runs_without_pytest_or_user_project(store, creden
     (project / "private.txt").write_text("private project data")
     report = DiagnosticRunner(store, credentials).run(threading.Event(), include_network=False)
     assert report["state"] == "passed"
-    assert report["summary"] == {"passed": 12, "failed": 0, "warning": 0, "skipped": 0}
+    assert report["summary"] == {"passed": 14, "failed": 0, "warning": 0, "skipped": 0}
     assert (project / "private.txt").read_text() == "private project data"
     payload = store.diagnostic_reports()[0]["payload"]
     assert payload["id"] == report["id"]
@@ -338,7 +338,7 @@ def test_v2_database_migrates_without_losing_existing_history(store, credentials
         assert migrated.agents()[0].id == agent.id
         assert migrated.messages(sid)[0]["content"] == "preserve my history"
         assert migrated.diagnostic_reports() == []
-        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 4
 
 
 def test_legacy_saved_text_tool_response_is_reported_as_count_not_content(store, tmp_path):

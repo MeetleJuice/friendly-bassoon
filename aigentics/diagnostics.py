@@ -19,13 +19,57 @@ from urllib.parse import urlsplit
 import ipaddress
 import httpx
 from . import __version__
+from .catalog import CatalogRunner
 from .models import Agent, ModelRef, Profile, Reply, ToolCall
 from .providers import Provider
 from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "1"
+SUITE_VERSION = "2"
+
+
+def model_evidence(events):
+    """Bounded protocol structure only, never raw synthetic/model/provider text."""
+    metadata, traces = {}, []
+    requests = {e["data"]["request_id"]: e["data"] for e in events if e["kind"] == "model.requested"}
+    invalid = {e["data"]["request_id"] for e in events if e["kind"] == "protocol.invalid_response"}
+    failures = [e["data"] for e in events if e["kind"] == "provider.failed"]
+    for event in events:
+        data = event["data"]
+        if event["kind"] == "model.capabilities":
+            metadata = {
+                key: data[key]
+                for key in ("tools", "source", "template_sha256", "template_chars", "template_mentions_tools")
+                if key in data
+            }
+        if event["kind"] == "model.responded":
+            request = requests.get(data["request_id"], {})
+            traces.append(
+                {
+                    "step": request.get("step"),
+                    "duration_ms": data["duration_ms"],
+                    "native_call_count": data["tool_calls"],
+                    "content_chars": data["content_chars"],
+                    "text_tool_response": data["request_id"] in invalid,
+                    "tool_schema_sha256": request.get("tool_schema_sha256"),
+                    "advertised_tool_count": len(request.get("tools_advertised", [])),
+                    "response_shape": data.get("response_shape", {}),
+                    "usage": {
+                        key: value
+                        for key, value in data.get("usage", {}).items()
+                        if key in ("prompt_eval_count", "eval_count", "total_duration")
+                        and isinstance(value, (int, float))
+                    },
+                }
+            )
+    return {
+        "model_metadata": metadata,
+        "request_traces": traces[:8],
+        "provider_error_code": failures[-1].get("code", "PROVIDER_ERROR") if failures else "NONE",
+        "http_status": failures[-1].get("http_status") if failures else None,
+        "native_calls_total": sum(row["native_call_count"] for row in traces),
+    }
 
 
 @dataclass
@@ -130,6 +174,7 @@ class DiagnosticRunner:
         report = {
             "schema_version": 1,
             "suite_version": SUITE_VERSION,
+            "kind": "health",
             "id": str(uuid4()),
             "created": now(),
             "app_version": __version__,
@@ -327,6 +372,48 @@ class DiagnosticRunner:
                         "cloud_requests": 0,
                     }
 
+            def catalogs():
+                calls = []
+
+                def handle(request):
+                    calls.append(request)
+                    _require(
+                        request.method == "GET" and request.url.path == "/models" and not request.content
+                    )
+                    return httpx.Response(200, json={"data": [{"id": "synthetic-model"}]})
+
+                with closing(Store(scratch / "catalog.sqlite3", self.credentials)) as trial:
+                    profile = Profile(
+                        id="catalog",
+                        name="Synthetic catalog",
+                        kind="openai",
+                        base_url="https://catalog.invalid",
+                    )
+                    trial.save_profile(profile)
+                    trial.save_profile(profile.model_copy(update={"id": "alias"}))
+                    runner = CatalogRunner(
+                        trial, self.credentials, lambda p, c: Provider(p, c, httpx.MockTransport(handle))
+                    )
+                    result = runner.run(cancel)
+                    _require(result["state"] == "passed" and len(calls) == 1)
+                    _require(len(trial.catalogs()) == 2)
+                    return {
+                        "catalog_fixture_verified": True,
+                        "generation_requests": 0,
+                        "external_requests": 0,
+                    }
+
+            def retention():
+                with closing(Store(scratch / "retention.sqlite3", self.credentials)) as trial:
+                    trial.set_setting("max_reports", 5)
+                    for index in range(7):
+                        trial.save_diagnostic({"id": str(index), "created": now(), "state": "passed"})
+                    trial.save_diagnostic({"id": "active", "created": now(), "state": "running"})
+                    trial.prune()
+                    _require(len(trial.diagnostic_reports()) == 6)
+                    _require(any(row["id"] == "active" for row in trial.diagnostic_reports()))
+                    return {"retention_fixture_verified": True, "active_report_protected": True}
+
             cases = [
                 ("database", database),
                 ("definitions", definitions),
@@ -340,6 +427,8 @@ class DiagnosticRunner:
                 ("provider_protocol_fixtures", adapters),
                 ("text_tool_regression", lambda: runtime_fixture(True)),
                 ("native_agent_workflow", lambda: runtime_fixture(False)),
+                ("model_catalog_fixture", catalogs),
+                ("report_retention_fixture", retention),
             ]
             for identity, function in cases:
                 if cancel.is_set():
@@ -498,11 +587,19 @@ class DiagnosticRunner:
                         round((time.monotonic() - before) * 1000),
                         {
                             **metadata,
+                            **model_evidence(events),
                             "runtime_state": state,
                             "file_matches": matched,
                             "readback_recorded": readback,
                             "model": agent.primary.model,
                             "protocol_retries": sum(e["kind"] == "protocol.retry_requested" for e in events),
+                            "failure_stage": "none"
+                            if verified
+                            else "native_protocol"
+                            if state == "protocol_error"
+                            else "provider_or_capability"
+                            if state == "failed"
+                            else "workflow_verification",
                         },
                     )
             except Exception as exc:

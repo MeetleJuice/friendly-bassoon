@@ -1,5 +1,9 @@
 # Verification
 
+## 0.4.0 model catalogs, evidence and retention
+
+Linux: **107 passed, 1 skipped** (optional real Ollama); ruff lint/format pass. Tests exercise one metadata GET per connection, no generation, distinct credentials, deduplication, max-four concurrency/cancellation, explicit pagination, malformed/oversized model IDs, HTTP/auth/rate/timeout codes without retries, preserved cache on failure, restart/matching invalidation, report byte/age/backup limits, schema 3→4 preservation, structural Ollama traces and a bounded browser preview that retains failure evidence. The actual API-dialog worker updates model choices. The installed diagnostic suite has 14 offline checks. Windows installer/upgrade and published download validation are pending and will be recorded below. No user key, live cloud generation or live report POST was used. The Qwen failure is not claimed fixed.
+
 ## 0.3.0 diagnostics/reliability verification
 
 Current Linux result: **84 passed, 1 skipped** (optional live Ollama); lint/format pass. New tests cover the observed text-tool response, bounded non-executing recovery, native-call permission preservation, truthful response-only/denied outcomes, 12 real built-in checks, optional model fixture acceptance, cloud-model skipping, allowlisted reports, credential/approval protections, direct API issue protocol, no automatic retry after an ambiguous POST, bounded exact browser previews, report retention/recovery, v2→v3 history preservation, legacy response counts and preview edits revoking approval. No real support issue was created during development.
@@ -71,3 +75,5 @@ The opt-in real Ollama test is skipped unless `AIGENTICS_TEST_OLLAMA_MODEL` is s
 - **Context/step/time limit:** use a focused task, inspect the recorded evidence, and adjust agent bounds deliberately. Context is not silently truncated.
 - **Linux Qt display errors:** run tests with `QT_QPA_PLATFORM=offscreen`; interactive use requires a graphical session and normal Qt system libraries.
 - **Source install on Windows fails:** confirm 64-bit Python 3.11–3.13, preferably 3.12. This release has not been verified on Python 3.14 or 32-bit Windows.
+
+Source --smoke-test and --diagnostic-smoke-test both exited 0 in disposable directories; dependency check passed and the 0.4.0 wheel built with new modules/icon included.

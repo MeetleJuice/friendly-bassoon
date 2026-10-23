@@ -208,6 +208,7 @@ class Window(QMainWindow):
         self.worker = None
         self.diagnostic_worker = None
         self.diagnostics_dialog = None
+        self.records_dialog = None
         self.discovery_worker = None
         self.update_worker = None
         self.setup_dialog = None
@@ -237,6 +238,8 @@ class Window(QMainWindow):
         layout.addLayout(heading)
         heading.addWidget(title, 1)
         button("Diagnose", lambda: self.open_diagnostics(True), heading)
+        button("Test APIs", lambda: self.open_records(True), heading)
+        button("Local data", self.open_records, heading)
         self.update_button = button("Update", self.update_action, heading)
         button("Setup & updates", self.open_setup, heading)
         self.setup_banner = QLabel("Local setup is available from Setup & updates.")
@@ -251,6 +254,7 @@ class Window(QMainWindow):
         self.statusBar().showMessage("Ready · Local diagnostics · No external telemetry")
         self.refresh_agents()
         self.refresh_profiles()
+        self.load_catalog_choices()
         self.refresh_history()
         pending = store.setting("pending_update", None)
         if pending:
@@ -275,6 +279,23 @@ class Window(QMainWindow):
         self.diagnostics_dialog.raise_()
         if autorun:
             QTimer.singleShot(0, self.diagnostics_dialog.start)
+
+    def open_records(self, autorun=False):
+        from .records_ui import RecordsDialog
+
+        if self.records_dialog is None:
+            self.records_dialog = RecordsDialog(self)
+        self.records_dialog.refresh()
+        self.records_dialog.show()
+        self.records_dialog.raise_()
+        if autorun:
+            QTimer.singleShot(0, self.records_dialog.start)
+
+    def load_catalog_choices(self):
+        self.model_lists = {identity: cached["models"] for identity, cached in self.store.catalogs().items()}
+        if self.discovered_models:
+            self.model_lists.setdefault("ollama", self.discovered_models)
+        self.refresh_model_choices()
 
     def update_action(self):
         self.open_setup()
@@ -388,8 +409,14 @@ class Window(QMainWindow):
 
     def discovery_completed(self, result):
         self.discovery_status, self.env_status = result.ollama_status, result.env_status
-        self.discovered_models = result.models
-        self.model_lists["ollama"] = result.models
+        if result.ollama_success or result.models:
+            self.discovered_models = result.models
+            self.model_lists["ollama"] = result.models
+        else:
+            self.discovered_models = self.model_lists.get("ollama", [])
+        profile = next((p for p in self.store.profiles() if p.id == "ollama"), None)
+        if profile and (result.ollama_success or result.models):
+            self.store.save_catalog(profile, result.models)
         added = self.apply_discovered_profiles(result.profiles)
         self.refresh_model_choices()
         if result.models and not self.store.setting("initial_model_selected", False):
@@ -661,6 +688,7 @@ class Window(QMainWindow):
         button("Save profile", lambda: self.guarded(self.save_profile), row, True)
         button("New cloud profile", self.new_profile, row)
         button("Discover models / test connection", self.discover, row)
+        button("Test all APIs", lambda: self.open_records(True), row)
         creds = QFormLayout()
         self.credential_ref, self.credential_value = QLineEdit(), QLineEdit()
         self.credential_value.setEchoMode(QLineEdit.Password)
@@ -949,6 +977,7 @@ class Window(QMainWindow):
         profile = Profile.model_validate_json(self.profile_json.toPlainText())
         self.store.save_profile(profile)
         self.refresh_profiles()
+        self.load_catalog_choices()
         self.profile_select.setCurrentIndex(self.profile_select.findData(profile.id))
 
     def new_profile(self):

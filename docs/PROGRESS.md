@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.4.0 model catalogs and retention
+
+Implemented explicit Test APIs metadata batches, persistent dated catalogs/dropdowns, Local data inventory and age/count/report-size controls, bounded structural Ollama evidence, same-suite/model comparisons, two more packaged diagnostic checks and a maintenance workspace. Linux: 107 passed, 1 optional live-Ollama skipped; lint/format pass. Actual Windows installation/diagnostics and released-0.3.0 upgrade validation are required before publication; final results will be appended. The live Qwen protocol failure remains unresolved.
+
 ## 0.3.0 update
 
 Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 84 passed, 1 optional real-Ollama test skipped. Windows installed diagnostics and the actual 0.2.0 upgrade/data-preservation checks passed, and tag run 39977576531 published 0.3.0. The published installer download/checksum was verified; see VERIFICATION.md.
@@ -26,7 +30,7 @@ The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled p
 
 ## Next useful action on the user's machine
 
-Use the existing app’s Setup & updates to install the published 0.3.0 release (or download Aigentics-Setup-0.3.0.exe from Releases). Let startup discover the Desktop .env/.env.txt and Ollama models, then run the Windows acceptance procedure on a disposable project. Click Diagnose, inspect the actual local-model result, and review/approve a redacted GitHub Issue report if needed. Give the assistant the issue number; manual JSON dragging is no longer required for this support flow.
+After 0.4.0 is published, use Update to install it. Let local discovery finish, click Test APIs once and share its approved report, then run Diagnose once with the same Qwen model and include its name in the approved report. Supply both posted issue URLs. No token is needed for browser sharing and no generation prompts are sent by Test APIs. See maintenance/USER_TESTING.md.
 
 ## Deferred work (not claimed complete)
 

@@ -24,3 +24,5 @@ API listing is a separate suite (`api-models-1`): a valid first-page metadata re
 3. Add a minimal regression before changing adapter behavior. Preserve native tools, validation and approval.
 4. Repeat a live test only after a meaningful change. A different model family is a comparison, not proof of a repaired integration.
 5. Track GitHub account connection, provider forms and model capability certification as future work. Listing a model must never label it a proven coding model.
+
+0.4.0 is published and its installer verified. Awaiting the first user API-check and suite-2 local-model reports; do not infer their outcomes from the release pipeline.

@@ -12,3 +12,5 @@
 | Report sharing | Fixtures/user browser | Exact preview, model opt-in, redaction, approval; draft distinguished from upload | No live issue creation in automated tests |
 
 Run AGENTS.md's checks and record actual counts/run IDs in ENGINEERING_LOG.md and VERIFICATION.md. Keys stay on the user's PC. Prefer one focused acceptance run per meaningful change over repeated tests of every model.
+
+Validated 0.4.0 baseline: 107 passed, 1 live-Ollama skipped; Windows source run 39987348899 and tag/release run 39987814325 passed. The actual released installer download/checksum passed; see VERIFICATION.md.

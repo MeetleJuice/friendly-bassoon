@@ -2,7 +2,7 @@
 
 ## 0.4.0 model catalogs and retention
 
-Implemented explicit Test APIs metadata batches, persistent dated catalogs/dropdowns, Local data inventory and age/count/report-size controls, bounded structural Ollama evidence, same-suite/model comparisons, two more packaged diagnostic checks and a maintenance workspace. Linux: 107 passed, 1 optional live-Ollama skipped; lint/format pass. Actual Windows installation/diagnostics and released-0.3.0 upgrade validation are required before publication; final results will be appended. The live Qwen protocol failure remains unresolved.
+Implemented explicit Test APIs metadata batches, persistent dated catalogs/dropdowns, Local data inventory and age/count/report-size controls, bounded structural Ollama evidence, same-suite/model comparisons, two more packaged diagnostic checks and a maintenance workspace. Linux: 107 passed, 1 optional live-Ollama skipped; lint/format pass. Windows run 39987348899 passed tests, actual installation/14-check diagnostics and released-0.3.0 upgrade preservation; tag run 39987814325 published 0.4.0 and the actual installer download/checksum passed. The live Qwen protocol failure remains unresolved.
 
 ## 0.3.0 update
 
@@ -30,7 +30,7 @@ The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled p
 
 ## Next useful action on the user's machine
 
-After 0.4.0 is published, use Update to install it. Let local discovery finish, click Test APIs once and share its approved report, then run Diagnose once with the same Qwen model and include its name in the approved report. Supply both posted issue URLs. No token is needed for browser sharing and no generation prompts are sent by Test APIs. See maintenance/USER_TESTING.md.
+Use Update to install the published 0.4.0 release. Let local discovery finish, click Test APIs once and share its approved report, then run Diagnose once with the same Qwen model and include its name in the approved report. Supply both posted issue URLs. No token is needed for browser sharing and no generation prompts are sent by Test APIs. See maintenance/USER_TESTING.md.
 
 ## Deferred work (not claimed complete)
 

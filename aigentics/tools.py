@@ -15,6 +15,12 @@ from pydantic import Field, field_validator
 from .models import Strict
 from .registry import TOOL_REGISTRY
 from .retrieval import project_map, retrieve_context, MAX_CONTEXT_CHARS
+from .verification import check_python
+
+
+class StaleFileError(ValueError):
+    """The proposed revision does not match the actual file."""
+
 
 BLOCKED = {".git", ".venv", "node_modules", "__pycache__", ".aws", ".ssh", ".gnupg"}
 MAX_FILE = 100_000
@@ -43,8 +49,8 @@ class RetrieveArgs(SearchArgs):
 class WriteArgs(PathArgs):
     content: str = Field(max_length=MAX_FILE)
     expected_sha256: str = Field(
-        description="SHA256 returned by read_file, or 'new' when creating a file",
-        pattern=r"^(new|[a-f0-9]{64})$",
+        description="Use 'last_read' after read_file in this run, its exact SHA256, or 'new' for creation",
+        pattern=r"^(new|last_read|[a-f0-9]{64})$",
     )
 
     @field_validator("content")
@@ -219,7 +225,9 @@ class Workspace:
         if path.exists():
             old = self.read(args.path)
             if old["sha256"] != args.expected_sha256:
-                raise ValueError("File changed or expected hash is incorrect; read it again")
+                raise StaleFileError(
+                    "File changed or expected hash is incorrect; read it again and use 'last_read'"
+                )
             before = old["content"]
         else:
             if args.expected_sha256 != "new":
@@ -358,6 +366,7 @@ def run_command(root, args, cancel):
 class ToolRunner:
     def __init__(self, workspace, agent, approve, cancel):
         self.workspace, self.agent, self.approve, self.cancel = workspace, agent, approve, cancel
+        self._read_revisions = {}
 
     def execute(self, call):
         if call.name not in self.agent.tools or call.name not in EXECUTORS:
@@ -365,17 +374,30 @@ class ToolRunner:
         args = SCHEMAS[call.name].model_validate(call.arguments)
         if self.cancel.is_set():
             raise InterruptedError("Cancelled")
-        return EXECUTORS[call.name](self, args)
+        result = EXECUTORS[call.name](self, args)
+        if call.name == "read_file":
+            self._read_revisions[str(self.workspace.path(args.path))] = result["sha256"]
+        return result
 
     def _write_file(self, args):
         if not self.agent.allow_writes:
             raise PermissionError("Writes disabled for this agent")
+        if args.expected_sha256 == "last_read":
+            revision = self._read_revisions.get(str(self.workspace.path(args.path)))
+            if not revision:
+                raise StaleFileError("Read this file in the current run before using 'last_read'")
+            args = args.model_copy(update={"expected_sha256": revision})
         diff = self.workspace.prepare_write(args)
         if not self.approve("write_file", {"path": args.path, "diff": diff}):
             raise PermissionError("User denied file change")
         if self.cancel.is_set():
             raise InterruptedError("Cancelled")
-        return self.workspace.write(args)
+        result = self.workspace.write(args)
+        if args.path.lower().endswith(".py"):
+            result["python_check"] = check_python(self.workspace, args.path)
+            if result["python_check"]["sha256"] != result["sha256"]:
+                result["python_check"].update(status="failed", code="CHECK_REVISION_CHANGED")
+        return result
 
     def _run_command(self, args):
         if not self.agent.allow_commands:

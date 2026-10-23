@@ -39,7 +39,9 @@ TOOL_SPECS = (
     ToolSpec(
         "write_file",
         "Write file",
-        "Propose full UTF-8 file content. Requires prior SHA256 and explicit user approval of its diff.",
+        "Propose full UTF-8 content. Read existing files first and use expected_sha256='last_read' "
+        "or the exact returned SHA256; use 'new' for creation. Every diff requires approval. "
+        "Python writes get static checks, never automatic execution.",
         "write",
         False,
     ),

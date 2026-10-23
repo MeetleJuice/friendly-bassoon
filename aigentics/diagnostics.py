@@ -27,7 +27,7 @@ from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "3"
+SUITE_VERSION = "4"
 
 
 def model_evidence(events):
@@ -148,6 +148,7 @@ def safe_recent_summary(store):
     """Allowlisted counts only. No paths, tasks, agent names, prompts, notes or raw errors."""
     states, errors, protocol, legacy = {}, {}, 0, 0
     runtime_codes, runtime_types, stages = {}, {}, {}
+    execution, tool_codes, assessments = {}, {}, {}
     for session in store.sessions()[:20]:
         state = session["state"] if session["state"] in RECENT_STATES else "unknown"
         failed = state in (
@@ -167,8 +168,27 @@ def safe_recent_summary(store):
             ):
                 legacy += 1
         states[state] = states.get(state, 0) + 1
+        assessment = store.assessment(session["id"])
+        label = assessment.get("label") if assessment else "not_assessed"
+        if label in ("goal_met", "needs_work", "not_assessed"):
+            assessments[label] = assessments.get(label, 0) + 1
         for event in store.events(session["id"]):
             data = event["data"]
+            if event["kind"] == "run.summary":
+                from .evidence import bounded_counts
+
+                for name, value in bounded_counts(
+                    data.get("tools", {})
+                    | {
+                        key: data[key]
+                        for key in ("unresolved_tool_errors", "python_files_needing_attention")
+                        if key in data
+                    }
+                ).items():
+                    execution[name] = execution.get(name, 0) + value
+            if event["kind"] == "tool.result" and data.get("code") in RECENT_ERROR_CODES:
+                code = data["code"]
+                tool_codes[code] = tool_codes.get(code, 0) + 1
             if event["kind"] == "protocol.invalid_response":
                 protocol += 1
             if event["kind"] == "tool.result" and data.get("status") == "failed":
@@ -214,6 +234,9 @@ def safe_recent_summary(store):
                 "runtime_error_codes": runtime_codes,
                 "runtime_error_types": runtime_types,
                 "failure_stages": stages,
+                "execution_counts": execution,
+                "tool_error_codes": tool_codes,
+                "user_assessments": assessments,
             }
         ),
     }
@@ -586,6 +609,37 @@ class DiagnosticRunner:
                     _require(result["state"] == "passed" and not trial.sessions())
                     return {"probe_fixture_verified": True, "external_requests": 0}
 
+            def python_check_fixture():
+                from .verification import check_python
+
+                root = scratch / "python-check"
+                root.mkdir()
+                trial = Workspace(root)
+                (root / "good.py").write_text("raise RuntimeError('must never run')\n", encoding="utf-8")
+                (root / "bad.py").write_text("WIDTH, HEIGHT = 800, 60, 600\n", encoding="utf-8")
+                _require(check_python(trial, "good.py")["status"] == "passed")
+                _require(check_python(trial, "bad.py")["code"] == "LITERAL_UNPACK_MISMATCH")
+                return {"python_check_fixture_verified": True, "program_executed": False}
+
+            def revision_fixture():
+                root = scratch / "revision-check"
+                root.mkdir()
+                (root / "file.txt").write_text("before", encoding="utf-8")
+                runner = ToolRunner(Workspace(root), Agent(), lambda *args: True, cancel)
+                runner.execute(tool_call("read_file", path="file.txt"))
+                _require(
+                    runner.execute(
+                        tool_call("write_file", path="file.txt", content="after", expected_sha256="last_read")
+                    )["verified"]
+                )
+                _denied(
+                    lambda: runner.execute(
+                        tool_call("write_file", path="file.txt", content="stale", expected_sha256="last_read")
+                    ),
+                    ValueError,
+                )
+                return {"revision_fixture_verified": True, "stale_edits_blocked": 1}
+
             cases = [
                 ("database", database),
                 ("definitions", definitions),
@@ -604,6 +658,8 @@ class DiagnosticRunner:
                 ("tool_registry_fixture", registry),
                 ("project_retrieval_fixture", retrieval),
                 ("native_probe_fixture", native_probe_fixture),
+                ("python_check_fixture", python_check_fixture),
+                ("revision_fixture", revision_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

@@ -48,6 +48,9 @@ def test_recent_counts_have_typed_defaults(recent):
         "failure_stages": {},
         "protocol_failures": 0,
         "legacy_text_tool_responses": 0,
+        "execution_counts": {},
+        "tool_error_codes": {},
+        "user_assessments": {},
     }
     assert type(counts["protocol_failures"]) is int
     assert type(counts["legacy_text_tool_responses"]) is int
@@ -74,6 +77,9 @@ def test_public_recent_counts_reject_private_keys_and_invalid_values():
         "failure_stages": {"provider": 1},
         "protocol_failures": 0,
         "legacy_text_tool_responses": 0,
+        "execution_counts": {},
+        "tool_error_codes": {},
+        "user_assessments": {},
     }
 
 
@@ -125,6 +131,9 @@ def test_recent_failures_count_sessions_once_and_exclude_successful_fallback(sto
 
 def test_recent_failure_counters_are_limited_to_twenty_sessions():
     class ManySessions:
+        def assessment(self, sid):
+            return None
+
         def sessions(self):
             return [{"id": str(index), "state": "protocol_error"} for index in range(25)]
 

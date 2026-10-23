@@ -35,3 +35,9 @@ Report #3 confirms 15 checks passed and the actual Qwen14b workflow failed. All 
 Report #4 confirms five metadata endpoints passed in 1000 ms: Gemini 60, Groq 11, NVIDIA 85, Ollama 8, OpenRouter 468. One GET per provider, no generation requests; no generation/tool certification is inferred. HTTP-success status/environment were missing, recent counter defaults had wrong types, and four failed sessions lacked useful classifications; 0.5 addresses those report gaps.
 
 The targeted next result is a 0.5 native-call probe (optionally four local routes), plus parser/renderer/template_source in a full suite-3 report. Same model/connection scope is required for retained probe comparisons. No current evidence establishes a repaired live Qwen integration.
+
+## 0.5 live acceptance and 0.6 priorities
+
+Approved issues #5–#8 were read. #5: four Qwen14b route/stream probes all HTTP200, TEXT_TOOL_RESPONSE, zero native calls. #6/#8:17 offline+update checks pass; Qwen14b file test protocol_error, go_template; no file/read-back. #7:five model-list checks pass in969ms, one GET each, zero generation; OpenRouter469, Ollama8, Gemini60, Groq11, NVIDIA85.
+
+The supplied Qwen3:8b session proves native approved file writes/read-back work on the user's installation. It also exposes repeated wrong/stale revision tokens, recovered edits marked needs_review, literal tuple assignment failure, missing runtime verification and confused planning/identity context. No captured launch or final pure-code music result exists. Do not commit the original log/source. 0.6 targets evidence/checks/recovery UX, not a fabricated Qwen2.5 repair. Next useful acceptance: one fresh Qwen3:8b Python edit and its run review, plus actual user gameplay result.

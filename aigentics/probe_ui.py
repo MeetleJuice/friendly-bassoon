@@ -163,6 +163,8 @@ class ProbeDialog(QDialog):
         worker.start()
 
     def completed(self, report):
+        from .evidence import report_guidance
+
         self.report = report
         profile = next((p for p in self.store.profiles() if p.id == report["profile_id"]), None)
         self.apply_button.setEnabled(
@@ -173,7 +175,9 @@ class ProbeDialog(QDialog):
             )
         )
         # Full local evidence stays in SQLite; the normal public builder still applies its allowlist.
-        self.output.setPlainText(self.window.credentials.json(report, indent=2))
+        self.output.setPlainText(
+            report_guidance(report) + "\n\n" + self.window.credentials.json(report, indent=2)
+        )
         self.status.setText(
             "Probe finished: " + report["state"].replace("_", " ") + ". Report saved locally."
         )

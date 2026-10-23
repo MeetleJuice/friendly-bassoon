@@ -2,9 +2,9 @@
 
 ## User workflow
 
-Click **Diagnose** at the top of the installed app. It opens the diagnostic laboratory and starts the checks. The selected local Ollama model test is enabled when a local Ollama agent is selected; it may take up to three minutes and creates only a fixed test file in a temporary directory. It can be disabled before a subsequent run. No cloud model is called automatically.
+Click **Diagnose** at the top of the installed app. Choose the test agent and options, then click **Run diagnostics**. Opening the window makes no model call. The selected local Ollama model test is enabled when a local Ollama agent is selected; it may take up to three minutes and creates only a fixed test file in a temporary directory. Disable it for an app-only check. No cloud model is called automatically.
 
-The app runs 17 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, and active-report retention. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
+The app runs 19 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, active-report retention, registry/retrieval/native-probe fixtures, Python static checking and last-read revision protection. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
 
 This is the **installed app's diagnostic suite**, not every possible test in every project. Developer pytest tests, Windows build/installer tests and upgrade tests run in release CI. No arbitrary project command, project file scan, cloud inference charge or GitHub write is authorized merely by running diagnostics.
 
@@ -62,3 +62,12 @@ For loopback Ollama only, the optional comparison makes four explicit calls with
 Ollama's parser/renderer/template_source are now retained from the existing show request because the returned Go template may not be the active GGUF/Jinja path. Switching routes/streaming is not claimed to fix the Qwen problem. The exact source research is in maintenance/RESEARCH_050.md.
 
 API reports now include actual environment/success HTTP codes; recent failed sessions contribute bounded approved code/type/stage counts without raw messages, task text, paths or IDs. Browser sharing hides direct-token inputs; use ordinary GitHub login and final Create. Reports are still reviewed before public sharing.
+
+
+## 0.6 selected-file and selected-run evidence
+
+Workbench → **Check Python file** reads one protected project .py file (up to100KB), compile-checks it without executing/importing it, and checks simple literal assignment arity. Results include a safe code/line and local revision, never code snippets in the public report. It cannot certify imports, external assets, graphics/audio or gameplay. Python writes get the same automatic check. Saving succeeds independently from this check: a current failed check leaves the run needing review.
+
+History → **Goal met / Needs work** records your actual acceptance. **Share run report** prepares counters/check codes from the selected finished run and the bounded recent20-run aggregates. Source/transcripts/paths/names/assessment notes are excluded; selected model is optional. Without a Goal met assessment, a run review remains needs_attention even if tool execution completed. Preview/approval/browser Create are still required.
+
+Stale-file failures use a fixed STALE_FILE code; recovered errors remain counted. `last_read` references only the revision actually read in this run and does not bypass review or a file change during approval. A different file's success cannot clear an unresolved edit error. Reports use the same age/count/byte limits and no remote telemetry.

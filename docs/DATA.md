@@ -82,3 +82,10 @@ Source maps/excerpts are read on demand with no embedding request or persistent 
 Tool-probe reports share the bounded diagnostic lifecycle: 20 completed reports / 30 days / 10 MB report+catalog payload defaults, configurable in Local data. Scoped private fields identify saved profile/model/connection/route; public reports exclude custom endpoints/profile IDs and synthetic challenge text. Model names remain opt-in. Actual dispatched generation-attempt counts are separate from metadata GETs; a request count does not certify billing or generation success. Remote probes require approval per run; no cloud probe runs at startup.
 
 The existing /api/show request now records bounded parser, renderer and template_source strings. Native/compatible route and streaming are retained, with no raw template or model response text in support reports. No server telemetry or automatic upload was added.
+
+
+## 0.6 verification and feedback
+
+Schema5 and storage locations are retained. Python tool results add fixed status/code/line, full local revision hash and executed=false. Run summaries count historical Python passes/failures, current files needing attention, recovered stale-edit errors and unresolved tool errors. Recovery does not delete the initial failure. Human goal labels stay separate from automatic checks.
+
+`python-static-1` selected-file reports retain local path/workspace/hash for comparison but strip them from public output. `run-review-1` reports retain a local session reference, optional model name and bounded fixed counters/check codes; no task/source/transcript/assessment note is copied. User Goal met is explicitly labeled user_goal_met, never an automatic behavior score. Recent20-run reports include fixed execution/error/assessment counters. All reports share existing retention budgets; exports/issues/backups remain separate.

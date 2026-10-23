@@ -48,6 +48,7 @@ RECENT_ERROR_TYPES = frozenset(
         "CommandFailure",
         "ToolFailure",
         "OtherError",
+        "StaleFileError",
     )
 )
 RECENT_ERROR_CODES = frozenset(
@@ -65,6 +66,7 @@ RECENT_ERROR_CODES = frozenset(
         "TOOLS_UNSUPPORTED",
         "NATIVE_TOOL_PROTOCOL",
         "UNKNOWN_ERROR",
+        "STALE_FILE",
     )
 )
 RECENT_FAILURE_STAGES = frozenset(("provider", "runtime", "native_protocol"))
@@ -94,6 +96,23 @@ def recent_run_counts(recent):
     for key in ("protocol_failures", "legacy_text_tool_responses"):
         count = recent.get(key, 0)
         result[key] = min(count, 32000) if type(count) is int and count >= 0 else 0
+    from .evidence import bounded_counts
+
+    result["execution_counts"] = bounded_counts(recent.get("execution_counts"))
+    for key, allowed in (
+        ("tool_error_codes", RECENT_ERROR_CODES),
+        ("user_assessments", ("goal_met", "needs_work", "not_assessed")),
+    ):
+        value = recent.get(key, {})
+        result[key] = (
+            {
+                name: min(count, 32000)
+                for name, count in value.items()
+                if name in allowed and type(count) is int and count >= 0
+            }
+            if isinstance(value, dict)
+            else {}
+        )
     return result
 
 
@@ -181,6 +200,13 @@ def public_report(report, include_model=False):
         "probe_fixture_verified",
         "project_retrieval_fixture_verified",
         "registry_fixture_verified",
+        "python_check_code",
+        "python_check_line",
+        "program_executed",
+        "python_check_fixture_verified",
+        "revision_fixture_verified",
+        "user_goal_met",
+        "user_assessment",
     }
     if include_model:
         allowed.add("model")
@@ -188,6 +214,27 @@ def public_report(report, include_model=False):
         check = {key: row[key] for key in ("id", "status", "code", "message", "duration_ms")}
         check["evidence"] = {key: value for key, value in row.get("evidence", {}).items() if key in allowed}
         evidence = row.get("evidence", {})
+        if "execution_counts" in evidence:
+            from .evidence import bounded_counts
+
+            check["evidence"]["execution_counts"] = bounded_counts(evidence["execution_counts"])
+        if "tool_error_codes" in evidence:
+            check["evidence"]["tool_error_codes"] = recent_run_counts(
+                {"tool_error_codes": evidence["tool_error_codes"]}
+            )["tool_error_codes"]
+        if "python_check_codes" in evidence:
+            from .verification import PYTHON_CHECK_CODES
+
+            values = evidence["python_check_codes"]
+            check["evidence"]["python_check_codes"] = (
+                {
+                    key: min(value, 32000)
+                    for key, value in values.items()
+                    if key in PYTHON_CHECK_CODES and type(value) is int and value >= 0
+                }
+                if isinstance(values, dict)
+                else {}
+            )
         if "model_metadata" in evidence:
             check["evidence"]["model_metadata"] = {
                 key: value
@@ -248,9 +295,12 @@ def public_report(report, include_model=False):
 
 def issue_body(report, credentials, include_model=False):
     public = public_report(report, include_model)
-    label = {"api_models": "API checks", "tool_probe": "tool-call probe"}.get(
-        report.get("kind"), "diagnostics"
-    )
+    label = {
+        "api_models": "API checks",
+        "tool_probe": "tool-call probe",
+        "run_review": "run review",
+        "python_check": "Python check",
+    }.get(report.get("kind"), "diagnostics")
     title = f"Aigentics {label} {report['app_version']}: {report['state']}"
     body = (
         f"<!-- aigentics-report:{report['id']} -->\n"
@@ -333,6 +383,17 @@ def prepare_browser_draft(title, body):
             "probe_fixture_verified",
             "project_retrieval_fixture_verified",
             "registry_fixture_verified",
+            "python_check_fixture_verified",
+            "revision_fixture_verified",
+            "python_check_code",
+            "python_check_line",
+            "program_executed",
+            "runtime_state",
+            "execution_counts",
+            "tool_error_codes",
+            "user_goal_met",
+            "python_check_codes",
+            "user_assessment",
         )
         compact_checks = {
             row["id"]: {key: row["evidence"][key] for key in compact_keys if key in row.get("evidence", {})}

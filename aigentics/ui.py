@@ -241,7 +241,7 @@ class Window(QMainWindow):
         heading = QHBoxLayout()
         layout.addLayout(heading)
         heading.addWidget(title, 1)
-        button("Diagnose", lambda: self.open_diagnostics(True), heading)
+        button("Diagnose", lambda: self.open_diagnostics(False), heading)
         button("Test APIs", lambda: self.open_records(True), heading)
         button("Test model", self.open_model_probe, heading)
         button("Local data", self.open_records, heading)
@@ -282,11 +282,12 @@ class Window(QMainWindow):
         if startup:
             QTimer.singleShot(250, self.startup_tasks)
 
-    def open_diagnostics(self, autorun=True):
+    def open_diagnostics(self, autorun=False):
         from .diagnostics_ui import DiagnosticsDialog
 
         if self.diagnostics_dialog is None:
             self.diagnostics_dialog = DiagnosticsDialog(self)
+        self.diagnostics_dialog.refresh_agents()
         self.diagnostics_dialog.show()
         self.diagnostics_dialog.raise_()
         if autorun:
@@ -783,6 +784,7 @@ class Window(QMainWindow):
         self.tree.itemDoubleClicked.connect(self.preview_file)
         el.addWidget(self.tree, 1)
         button("Refresh files", self.refresh_tree, el)
+        button("Check Python file", lambda: self.guarded(self.check_python_file), el)
         center, cl = panel()
         cl.addWidget(QLabel("TASK & EXECUTION · Model completion is not proof that tests passed"))
         self.work_output = QPlainTextEdit()
@@ -795,9 +797,14 @@ class Window(QMainWindow):
         self.capture = QCheckBox("Save redacted session content for resume (may include project code)")
         cl.addWidget(self.capture)
         self.detailed_activity = QCheckBox("Show detailed execution records")
+        self.detailed_activity.toggled.connect(self.show_history)
         cl.addWidget(self.detailed_activity)
         row = QHBoxLayout()
         cl.addLayout(row)
+        self.task_mode = QComboBox()
+        self.task_mode.addItem("Build / edit", "build")
+        self.task_mode.addItem("Plan only (read only)", "plan")
+        row.addWidget(self.task_mode)
         self.work_run = button("Run task", lambda: self.start_run(False), row, True)
         self.cancel_button = button("Cancel", self.cancel_run, row)
         button("New conversation", self.new_conversation, row)
@@ -819,6 +826,7 @@ class Window(QMainWindow):
         button("Resume", self.resume_session, row)
         button("Export", self.export_session, row)
         button("Delete", self.delete_session, row)
+        button("Share run report", lambda: self.guarded(self.share_run_report), hl)
         feedback_row = QHBoxLayout()
         hl.addLayout(feedback_row)
         button("Goal met", lambda: self.assess_session("goal_met"), feedback_row)
@@ -1222,12 +1230,50 @@ class Window(QMainWindow):
                 )
             )
 
+    def review_saved_report(self, report, sharing=False):
+        self.open_diagnostics(False)
+        self.diagnostics_dialog.refresh_reports(report["id"])
+        if sharing:
+            self.diagnostics_dialog.review()
+
+    def check_python_file(self):
+        from .evidence import python_report
+
+        if not self.workspace:
+            raise ValueError("Open a project first, then choose a Python file to check")
+        if any(job and job.isRunning() for job in (self.worker, self.diagnostic_worker)):
+            raise ValueError("Finish or cancel the active task before checking its file")
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Choose a project Python file", str(self.workspace), "Python (*.py)"
+        )
+        if not filename:
+            return
+        relative = str(Path(filename).relative_to(self.workspace))
+        report = python_report(self.store, Workspace(self.workspace), relative)
+        self.review_saved_report(report)
+        QApplication.beep()
+
+    def share_run_report(self):
+        from .evidence import run_report
+
+        session = self.selected_session()
+        if not session:
+            raise ValueError("Select a finished run in History first")
+        self.review_saved_report(run_report(self.store, session["id"]), sharing=True)
+
     def start_run(self, lab=False):
         def perform():
             agent_id = (self.lab_agent if lab else self.run_agent).currentData()
             agent = next((a for a in self.store.agents() if a.id == agent_id), None)
             if not agent:
                 raise ValueError("Save and select an agent first")
+            if not lab and self.task_mode.currentData() == "plan":
+                agent = agent.model_copy(
+                    update={
+                        "allow_writes": False,
+                        "allow_commands": False,
+                    }
+                )
             if lab and self.lab_model.text().strip():
                 agent = agent.model_copy(
                     update={
@@ -1308,6 +1354,10 @@ class Window(QMainWindow):
                 text += " · actual exit code " + str(data["exit_code"])
             if "error" in data:
                 text += "\n" + data["error"]
+            if "python_check" in data:
+                from .verification import describe_python
+
+                text += "\n" + describe_python(data["python_check"])
         elif kind == "permission.requested":
             text = "Waiting for your approval of " + data["tool"] + "."
         elif kind == "permission.decided":
@@ -1323,6 +1373,17 @@ class Window(QMainWindow):
                 + str(counts.get("writes_verified", 0))
                 + " file writes verified."
             )
+            text += (
+                "\nPython checks: "
+                + str(counts.get("python_checks_passed", 0))
+                + " passed, "
+                + str(counts.get("python_checks_failed", 0))
+                + " failed; recovered edit errors: "
+                + str(counts.get("recovered_edit_errors", 0))
+                + ". Saving/checking files does not prove the program works."
+            )
+        elif kind == "edit.recovered":
+            text = "Earlier stale-edit errors recovered after a successful reviewed write."
         elif kind.startswith("session."):
             text = "Run status: " + kind.split(".", 1)[1].replace("_", " ") + "\n" + data["outcome"]
         elif kind == "provider.fallback":
@@ -1410,6 +1471,33 @@ class Window(QMainWindow):
     def show_history(self, *_):
         session = self.selected_session()
         if session:
+            if not self.detailed_activity.isChecked():
+                events = self.store.events(session["id"])
+                summary = next((e["data"] for e in reversed(events) if e["kind"] == "run.summary"), {})
+                counts = summary.get("tools", {})
+                assessment = self.store.assessment(session["id"])
+                text = (
+                    "Run: "
+                    + session["state"].replace("_", " ")
+                    + "\nFiles saved and read-back verified: "
+                    + str(counts.get("writes_verified", 0))
+                    + "\nPython checks passed / failed: "
+                    + str(counts.get("python_checks_passed", 0))
+                    + " / "
+                    + str(counts.get("python_checks_failed", 0))
+                    + "\nApproved commands passed: "
+                    + str(counts.get("commands_passed", 0))
+                    + "\nRecovered edit errors: "
+                    + str(counts.get("recovered_edit_errors", 0))
+                    + "\nYour assessment: "
+                    + (assessment["label"].replace("_", " ") if assessment else "not assessed")
+                    + "\n\nNext: check the actual result, then choose Goal met or Needs work."
+                    + "\nShare run report prepares counters for your review; it does not upload automatically."
+                )
+                if not summary:
+                    text += "\nDetailed counters are unavailable for this older run."
+                self.history_details.setPlainText(text)
+                return
             self.history_details.setPlainText(
                 json.dumps(
                     {
@@ -1575,7 +1663,7 @@ def main():
             window.diagnostic_worker = worker
 
             def done(report):
-                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) == 17
+                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) == 19
                 window.close()
 
             worker.succeeded.connect(done)

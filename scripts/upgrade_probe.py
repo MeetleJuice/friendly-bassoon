@@ -13,8 +13,8 @@ def main():
     with sqlite3.connect(folder / "aigentics.sqlite3") as db:
         if action == "seed":
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version != 4:
-                raise RuntimeError("Previous release did not initialize schema v4")
+            if version != 5:
+                raise RuntimeError("Previous release did not initialize schema v5")
             agent = db.execute("SELECT data FROM agents LIMIT 1").fetchone()[0]
             db.execute(
                 "INSERT OR REPLACE INTO settings VALUES(?,?)", ("upgrade_sentinel", '"preserve-settings"')
@@ -58,6 +58,21 @@ def main():
                     "draft_opened",
                 ),
             )
+            db.execute(
+                "INSERT INTO projects VALUES(?,?,?,?,?,?)",
+                (
+                    "upgrade-project",
+                    "synthetic-project-root",
+                    "Upgrade project",
+                    "Preserve this brief",
+                    stamp,
+                    stamp,
+                ),
+            )
+            db.execute(
+                "INSERT INTO assessments VALUES(?,?,?,?)",
+                ("upgrade-fixture", "goal_met", "Synthetic assessment", stamp),
+            )
             (folder / "expected-agent-id.txt").write_text(json.loads(agent)["id"], encoding="utf-8")
         elif action == "verify":
             if db.execute("PRAGMA user_version").fetchone()[0] != 5:
@@ -86,6 +101,16 @@ def main():
             ).fetchone():
                 raise RuntimeError("Saved model catalog was lost")
             db.execute("SELECT COUNT(*) FROM projects").fetchone()
+            if (
+                db.execute("SELECT brief FROM projects WHERE id='upgrade-project'").fetchone()[0]
+                != "Preserve this brief"
+            ):
+                raise RuntimeError("Project brief was lost")
+            if (
+                db.execute("SELECT label FROM assessments WHERE session_id='upgrade-fixture'").fetchone()[0]
+                != "goal_met"
+            ):
+                raise RuntimeError("User assessment was lost")
         else:
             raise ValueError("Use seed or verify")
     print("Upgrade preservation probe:", action, "passed")

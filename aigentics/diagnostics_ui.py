@@ -21,8 +21,10 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QTabWidget,
     QWidget,
+    QProgressBar,
 )
 from .diagnostics import DiagnosticRunner
+from .evidence import report_guidance
 from .reporting import (
     GitHubReporter,
     ISSUES_URL,
@@ -87,6 +89,13 @@ class DiagnosticsDialog(QDialog):
         self.network = QCheckBox("Check GitHub update connectivity (no download)")
         self.network.setChecked(True)
         checks.addWidget(self.network)
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 19)
+        self.progress.setValue(0)
+        checks.addWidget(self.progress)
+        self.technical = QCheckBox("Show technical evidence")
+        self.technical.toggled.connect(lambda: self.load_report(self.history.currentIndex()))
+        checks.addWidget(self.technical)
         row = QHBoxLayout()
         checks.addLayout(row)
         self.run_button = add_button("Run diagnostics", self.start, row)
@@ -173,9 +182,12 @@ class DiagnosticsDialog(QDialog):
         self.history.blockSignals(True)
         self.history.clear()
         for row in self.rows:
-            label = {"api_models": "API checks", "tool_probe": "Tool-call probe"}.get(
-                row["payload"].get("kind"), "Diagnostics"
-            )
+            label = {
+                "api_models": "API checks",
+                "tool_probe": "Tool-call probe",
+                "run_review": "Run review",
+                "python_check": "Python file check",
+            }.get(row["payload"].get("kind"), "Diagnostics")
             self.history.addItem(row["created"][:19] + " · " + label + " · " + row["state"], row["id"])
         self.history.blockSignals(False)
         index = self.history.findData(selected) if selected else 0
@@ -183,15 +195,28 @@ class DiagnosticsDialog(QDialog):
             self.history.setCurrentIndex(index)
             self.load_report(index)
 
+    def refresh_agents(self):
+        if self.busy():
+            return
+        selected = self.window.run_agent.currentData()
+        self.agents.clear()
+        for agent in self.store.agents():
+            self.agents.addItem(agent.name + " · " + agent.primary.model, agent.id)
+        self.agents.setCurrentIndex(max(0, self.agents.findData(selected)))
+
     def load_report(self, index):
         if 0 <= index < len(self.rows):
             self.report = self.rows[index]["payload"]
-            self.output.setPlainText(self.describe(self.report))
+            self.output.setPlainText(self.describe(self.report, self.technical.isChecked()))
             self.output.appendPlainText(self.comparison(self.report))
             self.prepare_preview()
 
     def comparison(self, report):
         def scope(payload):
+            if payload.get("kind") == "python_check":
+                return (payload.get("local_workspace"), payload.get("local_file"))
+            if payload.get("kind") == "run_review":
+                return payload.get("local_session_id")
             if payload.get("kind") == "tool_probe":
                 return (payload.get("model"), payload.get("connection_signature"))
             if payload.get("kind") == "api_models":
@@ -248,12 +273,26 @@ class DiagnosticsDialog(QDialog):
         return "\nNo earlier comparable report with the same suite and model is retained."
 
     @staticmethod
-    def describe(report):
-        lines = ["Report " + report["id"], "Result: " + report["state"].replace("_", " "), ""]
+    def describe(report, technical=False):
+        lines = [
+            report_guidance(report),
+            "",
+            "Report " + report["id"],
+            "Result: " + report["state"].replace("_", " "),
+            "",
+        ]
+        if report.get("kind") == "python_check" and report.get("local_file"):
+            lines.insert(
+                1,
+                "File checked: "
+                + report["local_file"]
+                + " · revision "
+                + report.get("local_sha256", "")[:12],
+            )
         for row in report.get("checks", []):
             lines.append(row["status"].upper() + " · " + row["id"].replace("_", " ") + " · " + row["code"])
             lines.append(row["message"])
-            if row["id"] == "selected_local_model":
+            if technical:
                 lines.append(json.dumps(row.get("evidence", {}), indent=2))
         if "summary" in report:
             lines.append("\nCounts: " + json.dumps(report["summary"]))
@@ -280,6 +319,8 @@ class DiagnosticsDialog(QDialog):
         self.run_button.setEnabled(False)
         self.send.setEnabled(False)
         self.output.clear()
+        self.progress.setRange(0, 19 + int(live) + int(network))
+        self.progress.setValue(0)
         self.status.setText("Running actual checks. Temporary test files will be removed.")
         worker.activity.connect(self.activity)
         worker.succeeded.connect(self.diagnostics_finished)
@@ -292,6 +333,7 @@ class DiagnosticsDialog(QDialog):
         if event["kind"] == "diagnostic.started":
             self.output.appendPlainText("Checking " + data["id"].replace("_", " ") + "…")
         elif event["kind"] == "diagnostic.result":
+            self.progress.setValue(self.progress.value() + 1)
             self.output.appendPlainText(data["status"].upper() + " · " + data["id"].replace("_", " "))
         elif event["kind"] == "protocol.retry_requested":
             self.output.appendPlainText("Model tool protocol recovery attempt " + str(data["attempt"]))

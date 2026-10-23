@@ -84,6 +84,7 @@ def python_report(store, workspace, relative):
     report["local_workspace"] = str(workspace.root)
     report["local_sha256"] = result["sha256"]
     store.save_diagnostic(report)
+    store.prune()
     return report
 
 
@@ -158,6 +159,7 @@ def run_report(store, sid):
     }
     report["local_session_id"] = sid
     store.save_diagnostic(report)
+    store.prune()
     return report
 
 

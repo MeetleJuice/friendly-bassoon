@@ -2,7 +2,7 @@
 
 ## 0.6.0 local verification; Windows publication pending
 
-Linux: **214 passed, 1 skipped** (optional live Ollama), lint/format and dependency checks pass. Added non-executing compile/static checks, literal unpack mismatch, revision-reference CRLF/races/denial/wrong hashes, recovered versus unresolved edits, current versus historical validation, read-only planning, identity, selected-file UI and public report privacy/assessment/counter regressions. Both source smoke modes pass; suite4 has19offline checks. Synthetic Workbench/Python-check dialogs rendered and inspected. Wheel build includes verification/evidence modules. No user key, live model generation or support POST was used. Windows source/tag/actual0.5upgrade and public download verification follow before delivery.
+Linux: **215 passed, 1 skipped** (optional live Ollama), lint/format and dependency checks pass. Added non-executing compile/static checks, literal unpack mismatch, revision-reference CRLF/races/denial/wrong hashes, recovered versus unresolved edits, current versus historical validation, read-only planning, identity, selected-file UI and public report privacy/assessment/counter regressions. Both source smoke modes pass; suite4 has19offline checks. Synthetic Workbench/Python-check dialogs rendered and inspected. Wheel build includes verification/evidence modules. No user key, live model generation or support POST was used. Windows source/tag/actual0.5upgrade and public download verification follow before delivery.
 
 ## 0.5.0 projects, retrieval and native tool probes
 

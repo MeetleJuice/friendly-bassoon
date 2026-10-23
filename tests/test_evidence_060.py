@@ -282,3 +282,11 @@ def test_python_check_report_does_not_expose_secret_via_exception(tmp_path, stor
     payload = json.dumps(public_report(python_report(store, Workspace(tmp_path), "private.py")))
     assert "PRIVATE_SECRET" not in payload and "unterminated" not in payload
     assert "PYTHON_SYNTAX_ERROR" in payload
+
+
+def test_manual_reports_apply_retention_immediately(store, tmp_path):
+    store.set_setting("max_reports", 5)
+    (tmp_path / "game.py").write_text("value = 1\n")
+    for _ in range(8):
+        python_report(store, Workspace(tmp_path), "game.py")
+    assert len(store.diagnostic_reports()) == 5

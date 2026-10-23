@@ -1,0 +1,49 @@
+# Verification
+
+## Executed in this cloud machine
+
+Linux, Python 3.12.14, PySide6 6.8.3. The development dependencies and editable source package were installed with pip using normal TLS verification. Exact Linux dependency versions are recorded in `requirements-linux.lock`. Final executed results:
+
+| Check | Result |
+| --- | --- |
+| `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q` | **36 passed, 1 skipped** (optional real Ollama), 1.94 seconds |
+| `ruff check aigentics tests` | Passed |
+| `ruff format --check aigentics tests` | Passed |
+| `pip check` | No broken requirements |
+| Reapply Linux lock + editable install | Passed |
+| Actual `ui.main()` entry-point smoke | Both native tabs rendered, isolated SQLite initialized, instance lock acquired, clean shutdown with exit 0 |
+| `pip wheel --no-deps . -w dist` | Built `aigentics_desktop-0.1.0-py3-none-any.whl` |
+
+These observations apply to this current cloud instance. Saved configuration is a draft; publication and restoration in a fresh task have not been verified.
+
+Checks include real temporary file creation/read/hash/review, blocked paths/links, approved subprocess execution, failure exit codes, command timeout/cancellation/output limits, sanitized subprocess environment, controlled Ollama/OpenAI HTTP responses, native tool normalization, explicit fallback, unsupported capabilities, redaction including escaped nested JSON, migration preservation, deletion/retention/export, human assessments, contextual follow-up, interruption recovery, native widgets/background execution and an actual desktop approval dialog.
+
+A headless native-window smoke check constructed and showed the real application, rendered both tabs, confirmed the shared saved agent and shut down. This checks Qt/widget wiring, not Windows display integration or user hardware.
+
+The opt-in real Ollama test is skipped unless `AIGENTICS_TEST_OLLAMA_MODEL` is set. No live cloud-provider request was made and no user credential was required. A wheel build verifies package assembly; it is not a signed Windows executable.
+
+## Windows acceptance smoke procedure (not yet executed)
+
+1. Install via README with Python 3.12. Launch the app using the module command and then the `.cmd` shortcut. Verify both tabs and responsive resizing.
+2. Start your local Ollama; discover models and choose an exact installed tool-capable model. Run a laboratory prompt. Confirm real capability/latency/usage records in History, or a useful connection error if Ollama is stopped.
+3. Create/save/duplicate/edit an agent. Export/import it, checking that import gets a new identity. Restart and confirm the saved definitions remain. Delete the duplicate and confirm the original remains.
+4. Create a disposable project containing `input.txt` with `hello aigentics`. Request a tool-based read and creation of uppercase `output.txt`. Deny the first diff; verify no output file. Run again and approve; verify the exact bytes on disk.
+5. Enable command permission and request `python --version` with the full Python path if needed. Confirm explicit approval and an actual exit code. Run a deliberately failing test in the disposable project; confirm a failed command result, regardless of the model's final wording.
+6. While reviewing an edit to an existing file, change that file in VS Code before approving. Confirm the stale hash blocks the proposed overwrite.
+7. Test cancellation during inference, during approval and during a long-running approved command. Confirm the session reaches a recorded stopped state, no later tool executes, and the GUI remains usable. Server-side inference may continue until timeout.
+8. Test `../` and secret-file access through file tools; confirm denial. Command approval is separate and is not an OS sandbox.
+9. Enable session-content capture only for this disposable project. Perform a short exchange, restart and resume it from history. Confirm conversation text returns and prior tools are not replayed. Metadata-only sessions retain evidence, without restart-resumable transcripts.
+10. Stop the process during a run, reopen and verify the session is `interrupted`. Launch a second instance using the same data folder and verify it is rejected.
+11. Load the selected Desktop `.env`; confirm only variable names display. Test a cloud profile if desired. Test OS-vault saving on Windows separately. Inspect exported evidence for secrets before sharing.
+12. Label a run Goal met/Needs work. Inspect summary counts and assessment export. Delete it and verify events, messages and assessment disappear. Test retention with disposable sessions; do not use valuable history for this check.
+
+## Troubleshooting
+
+- **No module named PySide6/aigentics:** use the checkout's `.venv\Scripts\python.exe` and reinstall using README.
+- **Ollama connection failure:** start Ollama locally, check its endpoint and installed model name. A cloud task cannot reach your PC's `127.0.0.1`.
+- **No native tool capability:** choose a tool-capable model/profile. There is no simulated fallback that translates prose into filesystem actions.
+- **HTTP 401/403/404/429:** check credential reference/access, endpoint/model name and quota respectively. Error bodies are deliberately not recorded, to avoid credential/content leaks.
+- **OS keyring unavailable:** keep explicitly loaded .env credentials in memory for the current launch, or configure the OS credential service. The app will not write a plaintext credential fallback.
+- **Context/step/time limit:** use a focused task, inspect the recorded evidence, and adjust agent bounds deliberately. Context is not silently truncated.
+- **Linux Qt display errors:** run tests with `QT_QPA_PLATFORM=offscreen`; interactive use requires a graphical session and normal Qt system libraries.
+- **Source install on Windows fails:** confirm 64-bit Python 3.11–3.13, preferably 3.12. This release has not been verified on Python 3.14 or 32-bit Windows.

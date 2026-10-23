@@ -2,7 +2,7 @@
 
 ## 0.3.0 update
 
-Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 84 passed, 1 optional real-Ollama test skipped. Windows installed-diagnostics and real 0.2.0 upgrade checks are in the release workflow; remote outcomes are recorded in VERIFICATION.md.
+Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 84 passed, 1 optional real-Ollama test skipped. Windows installed diagnostics and the actual 0.2.0 upgrade/data-preservation checks passed, and tag run 39977576531 published 0.3.0. The published installer download/checksum was verified; see VERIFICATION.md.
 
 
 ## 0.2.0 update

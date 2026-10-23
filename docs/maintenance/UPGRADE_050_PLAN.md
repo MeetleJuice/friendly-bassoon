@@ -31,3 +31,7 @@ Vector embeddings, arbitrary MCP/plugin execution, autonomous agent teams, unatt
 - Project retrieval has source citations, excludes secret/ignored/linked paths, stays bounded and refreshes from current files. Context preview itself makes no model call.
 - Same model's live acceptance remains user-side; never claim the Qwen issue fixed without a matching successful native-call/workflow report.
 - After installation, the user selects a project, previews context, and runs one selected-model probe. A cloud probe is optional and explicitly consented. Share the resulting reviewed report and issue URL.
+
+## Delivery status
+
+Implemented and published as [0.5.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.5.0). Final checks: 196 passed / 1 optional live test skipped, 17 installed offline checks, successful Windows upgrade and actual public updater/checksum verification. Exact source/run/hash details are in VERIFICATION.md. The remaining acceptance is a real user-model probe/workflow; Qwen is not claimed fixed.

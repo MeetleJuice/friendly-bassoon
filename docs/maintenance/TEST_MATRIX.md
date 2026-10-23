@@ -17,3 +17,5 @@ Validated 0.4.0 baseline: 107 passed, 1 live-Ollama skipped; Windows source run 
 
 
 0.5 acceptance adds native NDJSON/SSE completion/fragment/limit tests, scoped challenge probes/consent/request counts, fresh ignore-aware context and >250 display-prefix validation, project definitions/briefs/history and schema 4→5 upgrade with model-catalog preservation. Health suite 3 has 17 offline checks. See UPGRADE_050_PLAN.md and RESEARCH_050.md; final validation belongs in VERIFICATION.md.
+
+Validated 0.5.0: 196 passed / 1 optional live test skipped; source Windows run 40003836390 and release run 40004436196 passed. Production updater check/download/SHA verification passed. See VERIFICATION.md for immutable source/hash and the remaining live boundary.

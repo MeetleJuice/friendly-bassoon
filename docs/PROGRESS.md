@@ -2,7 +2,7 @@
 
 ## 0.5.0 projects and native tool certification
 
-Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 196 passed/1 optional live test skipped; 17 packaged offline checks and source startup pass. Windows/release validation pending. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
+Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 196 passed / 1 optional live test skipped; 17 packaged offline checks and source startup pass. Windows source run 40003836390 passed all installer/17-check/actual upgrade checks; tag run 40004436196 published 0.5.0 and the production updater discovered/downloaded/checksum-verified it. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
 
 ## 0.4.0 model catalogs and retention
 
@@ -34,7 +34,7 @@ The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled p
 
 ## Next useful action on the user's machine
 
-After 0.5.0 publication, install via Update, then Test model using the saved Qwen agent. Compare four local routes if desired, review/share the report (including model name) and send its issue URL. Remote probes require separate one-request generation approval. Open an existing project once in PROJECTS and inspect a local context preview. Do not run identical full diagnostics repeatedly before a hypothesis changes.
+Install the published 0.5.0 via Update, then Test model using the saved Qwen agent. Compare four local routes if desired, review/share the report (including model name) and send its issue URL. Remote probes require separate one-request generation approval. Open an existing project once in PROJECTS and inspect a local context preview. Do not run identical full diagnostics repeatedly before a hypothesis changes.
 
 ## Deferred work (not claimed complete)
 

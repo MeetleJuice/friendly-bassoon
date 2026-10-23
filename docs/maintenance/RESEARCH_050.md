@@ -33,3 +33,5 @@ Project definitions and short user briefs persist locally; source snippets are r
 ## Next user acceptance
 
 Open the installed Test model dialog, select the same saved Qwen agent and optionally compare the four local routes. This runs at most four small local requests and no project actions. Share its approved report. A remote/cloud model probe is a separate explicit one-request approval. Apply a tested local route only after a real probe passes, then run the full disposable Diagnose workflow. Until then the Qwen bug remains open.
+
+Additional UI source checked at the pinned OpenCode commit: [project selector](https://github.com/anomalyco/opencode/blob/0471a39a0f24ba8ef89954176513b839b4b56971/packages/app/src/new-session/project/selector.tsx), [session region](https://github.com/anomalyco/opencode/blob/0471a39a0f24ba8ef89954176513b839b4b56971/packages/app/src/session/composer/region.tsx) and [session navigation](https://github.com/anomalyco/opencode/blob/0471a39a0f24ba8ef89954176513b839b4b56971/packages/app/src/home/sessions/view.tsx). Aigentics keeps its native PySide6 presentation while separating project definitions/context from the task and review surface.

@@ -337,7 +337,9 @@ class Runtime:
                             {
                                 "error": "Tool arguments failed schema validation",
                                 "type": "ValidationError",
-                                "validation_errors": exc.errors(include_input=False, include_url=False),
+                                "validation_errors": exc.errors(
+                                    include_input=False, include_url=False, include_context=False
+                                ),
                             },
                             "failed",
                         )

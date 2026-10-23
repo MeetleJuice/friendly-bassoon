@@ -2,7 +2,7 @@
 
 ## 0.3.0 update
 
-Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 83 passed, 1 optional real-Ollama test skipped. Windows installed-diagnostics and real 0.2.0 upgrade checks are in the release workflow; remote outcomes are recorded in VERIFICATION.md.
+Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 84 passed, 1 optional real-Ollama test skipped. Windows installed-diagnostics and real 0.2.0 upgrade checks are in the release workflow; remote outcomes are recorded in VERIFICATION.md.
 
 
 ## 0.2.0 update
@@ -22,7 +22,7 @@ Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDri
 
 ## Validation boundaries
 
-The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Latest automated result: 83 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
+The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Latest automated result: 84 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
 
 ## Next useful action on the user's machine
 

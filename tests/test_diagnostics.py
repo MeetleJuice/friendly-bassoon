@@ -381,3 +381,40 @@ def test_report_edit_revokes_sharing_approval(qtbot, store, credentials):
     assert not dialog.approved.isChecked() and not dialog.send.isEnabled()
     window.lab_dir.cleanup()
     window.store.close = lambda: None
+
+
+def test_validator_failure_omits_private_input_and_stays_serializable(store, credentials, tmp_path):
+    setup_profile(store)
+
+    class InvalidWriter:
+        def __init__(self, *args):
+            pass
+
+        def capabilities(self, model):
+            return {"tools": True, "source": "fixture"}
+
+        def chat(self, model, messages, tools):
+            if not any(m["role"] == "tool" for m in messages):
+                return Reply(
+                    calls=[
+                        ToolCall(
+                            id="invalid",
+                            name="write_file",
+                            arguments={
+                                "path": "bad.txt",
+                                "content": "private-content\x00",
+                                "expected_sha256": "new",
+                            },
+                        )
+                    ]
+                )
+            return Reply(content="The file was not written.")
+
+    sid, state = Runtime(store, credentials, InvalidWriter).run(
+        Agent(), tmp_path, "Write a file", lambda *args: True
+    )
+    assert state == "needs_review"
+    assert not (tmp_path / "bad.txt").exists()
+    events = store.events(sid)
+    assert any(e["kind"] == "tool.result" and e["data"]["error_type"] == "ValidationError" for e in events)
+    assert "private-content" not in json.dumps(events)

@@ -22,11 +22,12 @@ from . import __version__
 from .catalog import CatalogRunner
 from .models import Agent, ModelRef, Profile, Reply, ToolCall
 from .providers import Provider
+from .reporting import RECENT_ERROR_CODES, RECENT_ERROR_TYPES, RECENT_STATES, recent_run_counts
 from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "2"
+SUITE_VERSION = "3"
 
 
 def model_evidence(events):
@@ -40,7 +41,16 @@ def model_evidence(events):
         if event["kind"] == "model.capabilities":
             metadata = {
                 key: data[key]
-                for key in ("tools", "source", "template_sha256", "template_chars", "template_mentions_tools")
+                for key in (
+                    "tools",
+                    "source",
+                    "template_sha256",
+                    "template_chars",
+                    "template_mentions_tools",
+                    "parser",
+                    "renderer",
+                    "template_source",
+                )
                 if key in data
             }
         if event["kind"] == "model.responded":
@@ -137,8 +147,18 @@ class ScriptedProvider:
 def safe_recent_summary(store):
     """Allowlisted counts only. No paths, tasks, agent names, prompts, notes or raw errors."""
     states, errors, protocol, legacy = {}, {}, 0, 0
+    runtime_codes, runtime_types, stages = {}, {}, {}
     for session in store.sessions()[:20]:
-        state = session["state"]
+        state = session["state"] if session["state"] in RECENT_STATES else "unknown"
+        failed = state in (
+            "failed",
+            "protocol_error",
+            "timed_out",
+            "limit_reached",
+            "interrupted",
+            "needs_review",
+        )
+        session_codes, session_types, session_stages = set(), set(), set()
         for message in store.messages(session["id"]):
             if (
                 message.get("role") == "assistant"
@@ -148,20 +168,54 @@ def safe_recent_summary(store):
                 legacy += 1
         states[state] = states.get(state, 0) + 1
         for event in store.events(session["id"]):
+            data = event["data"]
             if event["kind"] == "protocol.invalid_response":
                 protocol += 1
-            if event["kind"] == "tool.result" and event["data"].get("status") == "failed":
-                kind = event["data"].get("error_type", "ToolFailure")
-                # These are runtime class names, not arbitrary provider messages.
-                if not isinstance(kind, str) or not kind.isidentifier() or len(kind) > 80:
-                    kind = "ToolFailure"
+            if event["kind"] == "tool.result" and data.get("status") == "failed":
+                kind = data.get("error_type", "ToolFailure")
+                if not isinstance(kind, str) or kind not in RECENT_ERROR_TYPES:
+                    kind = "OtherError"
                 errors[kind] = errors.get(kind, 0) + 1
+            if failed and event["kind"] in ("runtime.error", "provider.failed"):
+                if "code" in data or event["kind"] == "provider.failed":
+                    code = data.get("code", "PROVIDER_ERROR")
+                    session_codes.add(
+                        code if isinstance(code, str) and code in RECENT_ERROR_CODES else "UNKNOWN_ERROR"
+                    )
+                if event["kind"] == "runtime.error":
+                    kind = data.get("type", "OtherError")
+                    kind = kind if isinstance(kind, str) and kind in RECENT_ERROR_TYPES else "OtherError"
+                    session_types.add(kind)
+                    session_stages.add(
+                        "native_protocol"
+                        if kind == "NativeToolProtocolError"
+                        else "provider"
+                        if kind == "ProviderError"
+                        else "runtime"
+                    )
+                else:
+                    session_stages.add("provider")
+        # Count affected sessions once per classification, even when an adapter retries/falls back.
+        for counter, values in (
+            (runtime_codes, session_codes),
+            (runtime_types, session_types),
+            (stages, session_stages),
+        ):
+            for value in values:
+                counter[value] = counter.get(value, 0) + 1
     return {
         "limit": 20,
-        "states": states,
-        "tool_error_types": errors,
-        "protocol_failures": protocol,
-        "legacy_text_tool_responses": legacy,
+        **recent_run_counts(
+            {
+                "states": states,
+                "tool_error_types": errors,
+                "protocol_failures": protocol,
+                "legacy_text_tool_responses": legacy,
+                "runtime_error_codes": runtime_codes,
+                "runtime_error_types": runtime_types,
+                "failure_stages": stages,
+            }
+        ),
     }
 
 
@@ -414,6 +468,124 @@ class DiagnosticRunner:
                     _require(any(row["id"] == "active" for row in trial.diagnostic_reports()))
                     return {"retention_fixture_verified": True, "active_report_protected": True}
 
+            def registry():
+                from .registry import TOOL_REGISTRY
+                from .tools import SCHEMAS, tool_definitions
+
+                _require(set(TOOL_REGISTRY) == set(SCHEMAS))
+                enabled = Agent(tools=list(TOOL_REGISTRY), allow_writes=True, allow_commands=True)
+                definitions = {row["function"]["name"]: row["function"] for row in tool_definitions(enabled)}
+                _require(set(definitions) == set(TOOL_REGISTRY))
+                readonly = enabled.model_copy(update={"allow_writes": False, "allow_commands": False})
+                _require(
+                    {row["function"]["name"] for row in tool_definitions(readonly)}
+                    == {name for name, spec in TOOL_REGISTRY.items() if spec.permission == "read"}
+                )
+                for name, spec in TOOL_REGISTRY.items():
+                    _require(spec.read_only == (spec.permission == "read"))
+                    _require(definitions[name]["description"] == spec.description)
+                    _require(definitions[name]["parameters"] == SCHEMAS[name].model_json_schema())
+                root = scratch / "registry"
+                root.mkdir()
+                (root / "source.py").write_text("registry_fixture = True\n", encoding="utf-8")
+                approvals = []
+                runner = ToolRunner(
+                    Workspace(root), enabled, lambda kind, details: approvals.append(kind) or False, cancel
+                )
+                arguments = {
+                    "list_files": {"path": "."},
+                    "read_file": {"path": "source.py"},
+                    "search": {"query": "registry_fixture"},
+                    "project_map": {},
+                    "retrieve_context": {"query": "registry_fixture"},
+                }
+                for name, values in arguments.items():
+                    _require(runner.execute(tool_call(name, **values)) is not None)
+                _denied(lambda: runner.execute(tool_call("unregistered_fixture")))
+                _denied(
+                    lambda: runner.execute(
+                        tool_call("write_file", path="denied.txt", content="no", expected_sha256="new")
+                    )
+                )
+                _denied(lambda: runner.execute(tool_call("run_command", argv=["not-executed"])))
+                _require(approvals == ["write_file", "run_command"] and not (root / "denied.txt").exists())
+                return {"registry_fixture_verified": True, "external_requests": 0}
+
+            def retrieval():
+                from .retrieval import project_map, retrieve_context
+
+                root = scratch / "retrieval"
+                (root / "src").mkdir(parents=True)
+                source = "def diagnostic_retrieval_marker():\n    return 'synthetic public value'\n"
+                (root / "src" / "main.py").write_text(source, encoding="utf-8")
+                for name in (".env", "credentials.json", "ignored.txt", "excluded.txt"):
+                    (root / name).write_text("diagnostic_retrieval_marker private fixture", encoding="utf-8")
+                (root / ".gitignore").write_text("ignored.txt\n", encoding="utf-8")
+                (root / ".aigenticsignore").write_text("excluded.txt\n", encoding="utf-8")
+                outside = scratch / "outside-retrieval.txt"
+                outside.write_text("diagnostic_retrieval_marker linked fixture", encoding="utf-8")
+                try:
+                    (root / "linked.txt").symlink_to(outside)
+                except OSError:
+                    pass  # Windows may require a privilege to create the synthetic link.
+                workspace = Workspace(root)
+                mapped = project_map(workspace, cancel)
+                _require([row["path"] for row in mapped["files"]] == ["src/main.py"])
+                result = retrieve_context(workspace, "diagnostic_retrieval_marker", cancel)
+                _require(bool(result["snippets"]))
+                original_hash = workspace.read("src/main.py")["sha256"]
+                lines = source.splitlines()
+                for snippet in result["snippets"]:
+                    _require(snippet["path"] == "src/main.py" and snippet["sha256"] == original_hash)
+                    _require(1 <= snippet["line"] <= snippet["end_line"] <= len(lines))
+                    _require(snippet["text"] == "\n".join(lines[snippet["line"] - 1 : snippet["end_line"]]))
+                updated = source.replace("synthetic public value", "fresh synthetic value")
+                (root / "src" / "main.py").write_text(updated, encoding="utf-8")
+                fresh = retrieve_context(workspace, "fresh synthetic value", cancel)
+                _require(bool(fresh["snippets"]))
+                _require(all(row["sha256"] != original_hash for row in fresh["snippets"]))
+                bounded = retrieve_context(workspace, "diagnostic_retrieval_marker", cancel, max_chars=24)
+                _require(sum(len(row["text"]) for row in bounded["snippets"]) <= 24)
+                stopped = threading.Event()
+                stopped.set()
+                _denied(lambda: project_map(workspace, stopped), InterruptedError)
+                _denied(lambda: retrieve_context(workspace, "fixture", stopped), InterruptedError)
+                return {"project_retrieval_fixture_verified": True, "external_requests": 0}
+
+            def native_probe_fixture():
+                from .probes import ToolProbe
+
+                def respond(request):
+                    body = json.loads(request.content)
+                    _require(request.url.path == "/api/chat" and body["options"]["num_predict"] == 96)
+                    _require([t["function"]["name"] for t in body["tools"]] == ["report_probe"])
+                    challenge = body["messages"][-1]["content"].split("challenge '", 1)[1].split("'", 1)[0]
+                    return httpx.Response(
+                        200,
+                        json={
+                            "message": {
+                                "tool_calls": [
+                                    {
+                                        "function": {
+                                            "name": "report_probe",
+                                            "arguments": {"challenge": challenge},
+                                        }
+                                    }
+                                ]
+                            },
+                            "done_reason": "stop",
+                        },
+                    )
+
+                with closing(Store(scratch / "probe.sqlite3", self.credentials)) as trial:
+                    trial.save_profile(Profile(id="probe", name="Probe fixture"))
+                    agent = trial.save_agent(Agent(primary=ModelRef(profile_id="probe", model="fixture")))
+                    result = ToolProbe(
+                        trial, self.credentials, lambda p, c: Provider(p, c, httpx.MockTransport(respond))
+                    ).run(agent.id, cancel)
+                    _require(result["state"] == "passed" and not trial.sessions())
+                    return {"probe_fixture_verified": True, "external_requests": 0}
+
             cases = [
                 ("database", database),
                 ("definitions", definitions),
@@ -429,6 +601,9 @@ class DiagnosticRunner:
                 ("native_agent_workflow", lambda: runtime_fixture(False)),
                 ("model_catalog_fixture", catalogs),
                 ("report_retention_fixture", retention),
+                ("tool_registry_fixture", registry),
+                ("project_retrieval_fixture", retrieval),
+                ("native_probe_fixture", native_probe_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

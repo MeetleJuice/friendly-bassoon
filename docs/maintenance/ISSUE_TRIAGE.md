@@ -26,3 +26,12 @@ API listing is a separate suite (`api-models-1`): a valid first-page metadata re
 5. Track GitHub account connection, provider forms and model capability certification as future work. Listing a model must never label it a proven coding model.
 
 0.4.0 is published and its installer verified. Awaiting the first user API-check and suite-2 local-model reports; do not infer their outcomes from the release pipeline.
+
+
+## 0.4.0 acceptance received
+
+Report #3 confirms 15 checks passed and the actual Qwen14b workflow failed. All three responses lacked native tool_calls, were detected as text-tool output and ended with stop, not reported truncation. /api/show declared tools and a 1615-character template with tools markers. This still does not identify the active parser.
+
+Report #4 confirms five metadata endpoints passed in 1000 ms: Gemini 60, Groq 11, NVIDIA 85, Ollama 8, OpenRouter 468. One GET per provider, no generation requests; no generation/tool certification is inferred. HTTP-success status/environment were missing, recent counter defaults had wrong types, and four failed sessions lacked useful classifications; 0.5 addresses those report gaps.
+
+The targeted next result is a 0.5 native-call probe (optionally four local routes), plus parser/renderer/template_source in a full suite-3 report. Same model/connection scope is required for retained probe comparisons. No current evidence establishes a repaired live Qwen integration.

@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.5.0 projects and native tool certification
+
+Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 195 passed/1 optional live test skipped;17 packaged offline checks and source startup pass. Windows/release validation pending. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
+
 ## 0.4.0 model catalogs and retention
 
 Implemented explicit Test APIs metadata batches, persistent dated catalogs/dropdowns, Local data inventory and age/count/report-size controls, bounded structural Ollama evidence, same-suite/model comparisons, two more packaged diagnostic checks and a maintenance workspace. Linux: 107 passed, 1 optional live-Ollama skipped; lint/format pass. Windows run 39987348899 passed tests, actual installation/14-check diagnostics and released-0.3.0 upgrade preservation; tag run 39987814325 published 0.4.0 and the actual installer download/checksum passed. The live Qwen protocol failure remains unresolved.
@@ -30,7 +34,7 @@ The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled p
 
 ## Next useful action on the user's machine
 
-Use Update to install the published 0.4.0 release. Let local discovery finish, click Test APIs once and share its approved report, then run Diagnose once with the same Qwen model and include its name in the approved report. Supply both posted issue URLs. No token is needed for browser sharing and no generation prompts are sent by Test APIs. See maintenance/USER_TESTING.md.
+After 0.5.0 publication, install via Update, then Test model using the saved Qwen agent. Compare four local routes if desired, review/share the report (including model name) and send its issue URL. Remote probes require separate one-request generation approval. Open an existing project once in PROJECTS and inspect a local context preview. Do not run identical full diagnostics repeatedly before a hypothesis changes.
 
 ## Deferred work (not claimed complete)
 

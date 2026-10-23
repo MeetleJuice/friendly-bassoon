@@ -121,22 +121,24 @@ class DiagnosticsDialog(QDialog):
             lambda index: self.store.set_setting("github_report_method", self.method.currentData())
         )
         self.method.currentIndexChanged.connect(self.prepare_preview)
+        self.method.currentIndexChanged.connect(self.sharing_method_changed)
         sharing.addWidget(self.method)
         self.include_model = QCheckBox("Include the selected model name in the shared report")
         self.include_model.toggled.connect(self.prepare_preview)
         sharing.addWidget(self.include_model)
         row = QHBoxLayout()
         sharing.addLayout(row)
-        row.addWidget(QLabel("Token reference for direct sharing"))
+        self.token_label = QLabel("Token reference for direct sharing")
+        row.addWidget(self.token_label)
         self.token_ref = QLineEdit(self.store.setting("github_token_ref", "GITHUB_TOKEN"))
         row.addWidget(self.token_ref)
-        hint = QLabel(
+        self.token_hint = QLabel(
             "Direct sharing needs a GitHub token with Issues write access to this repository. "
-            "Load GITHUB_TOKEN from your key file or save that reference through Providers & credentials. "
-            "Browser mode uses your normal GitHub login and requires clicking Submit new issue there."
+            "Load GITHUB_TOKEN from your key file or save that reference through Providers & credentials."
         )
-        hint.setWordWrap(True)
-        sharing.addWidget(hint)
+        self.token_hint.setWordWrap(True)
+        sharing.addWidget(self.token_hint)
+        self.sharing_method_changed()
         self.title = QLineEdit()
         self.title.setMaxLength(200)
         sharing.addWidget(self.title)
@@ -160,12 +162,20 @@ class DiagnosticsDialog(QDialog):
         add_button("Close", self.hide, layout)
         self.refresh_reports()
 
+    def sharing_method_changed(self, *_):
+        direct = self.method.currentData() == "api"
+        for control in (self.token_label, self.token_ref, self.token_hint):
+            control.setVisible(direct)
+            control.setEnabled(direct)
+
     def refresh_reports(self, selected=None):
         self.rows = self.store.diagnostic_reports()
         self.history.blockSignals(True)
         self.history.clear()
         for row in self.rows:
-            label = "API checks" if row["payload"].get("kind") == "api_models" else "Diagnostics"
+            label = {"api_models": "API checks", "tool_probe": "Tool-call probe"}.get(
+                row["payload"].get("kind"), "Diagnostics"
+            )
             self.history.addItem(row["created"][:19] + " · " + label + " · " + row["state"], row["id"])
         self.history.blockSignals(False)
         index = self.history.findData(selected) if selected else 0
@@ -181,6 +191,16 @@ class DiagnosticsDialog(QDialog):
             self.prepare_preview()
 
     def comparison(self, report):
+        def scope(payload):
+            if payload.get("kind") == "tool_probe":
+                return (payload.get("model"), payload.get("connection_signature"))
+            if payload.get("kind") == "api_models":
+                return tuple(
+                    tuple(check.get("evidence", {}).get("profile_ids", []))
+                    for check in payload.get("checks", [])
+                )
+            return None
+
         model = next(
             (
                 r.get("evidence", {}).get("model")
@@ -210,6 +230,8 @@ class DiagnosticsDialog(QDialog):
                 None,
             )
             if model != prior_model:
+                continue
+            if scope(report) != scope(previous):
                 continue
             before = {r["id"]: (r["status"], r["code"]) for r in previous.get("checks", [])}
             changes = [

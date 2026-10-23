@@ -71,3 +71,14 @@ SQLite schema v4 adds `model_catalogs` without replacing existing agents, settin
 **Local data** provides counts, disk usage, the actual data-folder location, catalog clearing and retention controls. Defaults: 30 days, 20 completed diagnostic/API reports, 10 MB combined report-payload/catalog budget, 20,000 session/configuration events. Report count ranges 5–200, payload budget 1–100 MB. Oldest completed records/catalogs are pruned to fit; active sessions/reports are protected and may temporarily exceed limits. The report budget is not a total database/disk cap; definitions, revisions, opt-in messages, installers and backups are separate. Each report remains bounded at 250 KB; catalog API responses at 2 MB and 5,000 IDs.
 
 Pre-update backups now obey the same age setting as well as the newest-three cap. A live deletion does not selectively scrub unexpired backups. Exported files and public issues remain outside local retention. No automatic telemetry server or silent report upload was added. Template hashes and structural synthetic-test traces provide evidence without full template, prompt or model-text retention.
+
+
+## 0.5.0 projects, retrieval and model probes
+
+Schema 5 adds up to 100 remembered project definitions (canonical local path, name, brief capped at 4000 characters, UTC timestamps). These are configuration like agent definitions: they remain until forgotten or displaced by the 100-project cap, not the diagnostic age limit. Forget removes metadata/brief only; source files and retained sessions remain. Original Desktop keys and OS application-data locations are unchanged.
+
+Source maps/excerpts are read on demand with no embedding request or persistent content index. Explicitly adding excerpts to a task rechecks current ignores, path protections and full-file SHA256; that task then follows existing optional transcript retention. Project briefs are user-written task instructions, not automatically harvested source. Model-generated project content remains untrusted data.
+
+Tool-probe reports share the bounded diagnostic lifecycle: 20 completed reports / 30 days / 10 MB report+catalog payload defaults, configurable in Local data. Scoped private fields identify saved profile/model/connection/route; public reports exclude custom endpoints/profile IDs and synthetic challenge text. Model names remain opt-in. Actual dispatched generation-attempt counts are separate from metadata GETs; a request count does not certify billing or generation success. Remote probes require approval per run; no cloud probe runs at startup.
+
+The existing /api/show request now records bounded parser, renderer and template_source strings. Native/compatible route and streaming are retained, with no raw template or model response text in support reports. No server telemetry or automatic upload was added.

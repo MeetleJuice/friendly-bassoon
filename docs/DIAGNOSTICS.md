@@ -4,7 +4,7 @@
 
 Click **Diagnose** at the top of the installed app. It opens the diagnostic laboratory and starts the checks. The selected local Ollama model test is enabled when a local Ollama agent is selected; it may take up to three minutes and creates only a fixed test file in a temporary directory. It can be disabled before a subsequent run. No cloud model is called automatically.
 
-The app runs 14 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, and active-report retention. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
+The app runs 17 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, and active-report retention. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
 
 This is the **installed app's diagnostic suite**, not every possible test in every project. Developer pytest tests, Windows build/installer tests and upgrade tests run in release CI. No arbitrary project command, project file scan, cloud inference charge or GitHub write is authorized merely by running diagnostics.
 
@@ -49,3 +49,16 @@ Health suite 2 keeps at most eight request traces for the disposable local test:
 The local diagnostic view compares status/code changes with a prior completed report of the same suite and selected model. Missing baselines are explicit. Suite-1 and suite-2 reports remain readable but are not silently treated as equivalent benchmarks. API public reports include known provider labels and counts, not custom endpoint URLs, custom profile IDs or entire model lists.
 
 See [maintenance workflow](maintenance/README.md) and [user steps](maintenance/USER_TESTING.md).
+
+
+## 0.5.0 evidence and selected-model probe
+
+Health suite 3 has 17 offline checks, including shared-registry conformance, cited/ignored/source-fresh retrieval and a harmless native-probe HTTP fixture. Source/installed smoke requires all 17. Actual model checks remain separate. A fixture pass is not live certification.
+
+Test model uses one saved agent's exact model/profile and one report_probe function with a random challenge; only a matching structured native function call passes. Printed JSON, mismatched arguments, malformed/truncated streams, local preflight rejection and HTTP errors have distinct outcomes. No ToolRunner, source tool or host command is invoked. Remote generation needs explicit approval; requested output limit is 96 tokens. Metadata Test APIs remains generation-free.
+
+For loopback Ollama only, the optional comparison makes four explicit calls with the same prompt/schema/challenge, temperature 0.2 and requested output limit 96: native nonstream, native stream, compatible nonstream and compatible stream. No route changes automatically. A verified local route can be applied after confirmation; this changes the provider profile and requires full workflow acceptance afterward. Models/profile signatures scope retained results and comparisons.
+
+Ollama's parser/renderer/template_source are now retained from the existing show request because the returned Go template may not be the active GGUF/Jinja path. Switching routes/streaming is not claimed to fix the Qwen problem. The exact source research is in maintenance/RESEARCH_050.md.
+
+API reports now include actual environment/success HTTP codes; recent failed sessions contribute bounded approved code/type/stage counts without raw messages, task text, paths or IDs. Browser sharing hides direct-token inputs; use ordinary GitHub login and final Create. Reports are still reviewed before public sharing.

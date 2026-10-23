@@ -4,7 +4,7 @@ A native Python / PySide6 desktop coding-agent application. Agents and Workbench
 
 ## Windows 10/11: easy installation
 
-Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.4.0.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
+Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.5.0.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
 
 The installer is currently unsigned. Do not confuse the green **Code → Download ZIP** source download with the installer in Release Assets. The Windows build publishes an installer only after its tests and installed-executable/shortcut smoke pass. Check [Actions](https://github.com/MeetleJuice/friendly-bassoon/actions) if the asset is not available yet. See [installer details](docs/INSTALLER.md).
 
@@ -31,7 +31,7 @@ After source installation, `Start-Aigentics.cmd` is an alternative launch shortc
 
 ## Diagnose and share without dragging files
 
-Click **Diagnose** at the top. The installed app runs 14 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
+Click **Diagnose** at the top. The installed app runs 17 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
 
 Review the exact public report preview and approve it before sharing. **Browser draft** needs no token; finish with Create (or Submit new issue) on GitHub. **Direct submission** uses an existing `GITHUB_TOKEN` with Issues write access and records the confirmed issue URL. No report is uploaded by merely running diagnostics. Support reports go to **GitHub Issues**, not permanent source commits. Model names are optional; keys, project text, paths and conversations are excluded from the generated public report. See [diagnostic details](docs/DIAGNOSTICS.md).
 
@@ -44,6 +44,16 @@ Click **Test APIs** after local key discovery finishes. It makes one model-list 
 Catalogs persist across restarts with timestamps; failed refreshes keep the previous successful list until retention removes it. Partial first-page results are labeled without making another request. **Local data** shows storage, reports, model catalogs, age/count/size limits and the data-folder location. Reports can be reviewed and explicitly approved for GitHub sharing. **Copy preview** provides a fallback for browser problems.
 
 The two real Qwen tests in issues #1/#2 still have an unresolved protocol failure. Suite 2 records more precise structural evidence; no live fix is claimed. See the [maintenance workspace](docs/maintenance/README.md) and [short user testing guide](docs/maintenance/USER_TESTING.md).
+
+## Projects, context and model tool tests (0.5.0)
+
+**PROJECTS** remembers opened roots and short project briefs; the app opens this page at normal startup. Open your existing folder once, save its brief, and use **Open selected in Workbench**. Workbench has a recent-project chooser and project-scoped history. Forgetting a project removes its saved definition/brief, not its files or sessions.
+
+**Preview project map** and **Find relevant excerpts** run locally with cited current files, ignore rules and strict scan/output budgets. No embedding or model request runs for a preview, and no source-body index is saved. **Add previewed excerpts to task** rechecks current hashes/ignores and lets you inspect the task before sending it. Builder/Reviewer templates enable the read-only map/retrieval tools; existing saved agents are not silently rewritten. **Tools & permissions** shows the registered schemas and policies.
+
+**Test model** tests one saved agent's model with a single harmless native-function challenge, requesting at most 96 output tokens. It cannot run project tools. Remote generation requires the explicit approval checkbox and may incur provider charges. The optional local Ollama comparison makes four calls (native/compatible, streaming/nonstreaming) with matching parameters; it never interprets printed JSON as executable calls or silently changes routes. A successful tested local route can be applied after confirmation, then verified by the full Diagnose workflow. The original Qwen problem remains open pending live results.
+
+Read the [upgrade plan](docs/maintenance/UPGRADE_050_PLAN.md), [source research](docs/maintenance/RESEARCH_050.md), and [user testing guide](docs/maintenance/USER_TESTING.md).
 
 ## Your Desktop .env
 

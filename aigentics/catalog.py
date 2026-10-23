@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+import platform
 import threading
 import time
 from uuid import uuid4
@@ -46,6 +47,12 @@ class CatalogRunner:
             "created": now(),
             "app_version": __version__,
             "state": "running",
+            "environment": {
+                "os": platform.system(),
+                "os_release": platform.release(),
+                "architecture": platform.machine(),
+                "python": platform.python_version(),
+            },
             "checks": [],
             "recent_runs": {},
             "privacy": "Model-list metadata only. No prompts, generation, credentials or endpoint URLs.",
@@ -63,6 +70,7 @@ class CatalogRunner:
             status, code = "passed", "MODEL_LIST_OK"
             message = "Model list fetched. Generation and tool support were not tested."
             request_count = 0
+            provider = None
             try:
                 if cancel.is_set():
                     raise InterruptedError
@@ -82,6 +90,7 @@ class CatalogRunner:
                         raise InterruptedError
                     request_count = 1
                     models = provider.discover()
+                    status_code = getattr(provider, "last_http_status", None)
                     partial = bool(getattr(provider, "discovery_partial", False))
                     if partial:
                         status, code = "warning", "MODEL_LIST_PARTIAL"
@@ -92,7 +101,12 @@ class CatalogRunner:
             except InterruptedError:
                 status, code, message = "skipped", "CANCELLED", "Cancelled before requesting the model list."
             except ProviderError as exc:
-                status, status_code = "failed", exc.http_status
+                status = "failed"
+                status_code = (
+                    exc.http_status
+                    if exc.http_status is not None
+                    else getattr(provider, "last_http_status", None)
+                )
                 code = {
                     401: "AUTHENTICATION_FAILED",
                     403: "ACCESS_DENIED",

@@ -145,6 +145,7 @@ class RecordsDialog(QDialog):
             + f"Saved sessions: {inventory['sessions']}\nSaved conversation messages: {inventory['messages']}\n"
             f"Execution/configuration records: {inventory['events']}\nTest reports: {inventory['diagnostics']}\n"
             f"Saved provider catalogs: {inventory['model_catalogs']}\n"
+            f"Remembered projects: {inventory['projects']}\n"
             f"Database and working files: {inventory['database_bytes'] / 1048576:.2f} MB\n"
             f"Pre-update backups: {inventory['backups_count']} ({inventory['backups_bytes'] / 1048576:.2f} MB)\n"
             f"Cached installers: {inventory['updates_count']} ({inventory['updates_bytes'] / 1048576:.2f} MB)\n\n"

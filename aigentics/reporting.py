@@ -10,6 +10,92 @@ from .updates import REPOSITORY
 ISSUES_URL = f"https://github.com/{REPOSITORY}/issues"
 MAX_BODY = 45000
 
+# Counter keys come only from application-owned classifications. A valid-looking identifier
+# can still be a secret, so arbitrary exception names/codes are never shared as keys.
+RECENT_STATES = frozenset(
+    (
+        "running",
+        "interrupted",
+        "failed",
+        "completed",
+        "response_only",
+        "needs_review",
+        "protocol_error",
+        "timed_out",
+        "cancelled",
+        "limit_reached",
+        "unknown",
+    )
+)
+RECENT_ERROR_TYPES = frozenset(
+    (
+        "ProviderError",
+        "NativeToolProtocolError",
+        "RunTimeout",
+        "TimeoutError",
+        "InterruptedError",
+        "PermissionError",
+        "ValueError",
+        "ValidationError",
+        "FileNotFoundError",
+        "IsADirectoryError",
+        "NotADirectoryError",
+        "UnicodeDecodeError",
+        "OSError",
+        "RuntimeError",
+        "KeyError",
+        "TypeError",
+        "CommandFailure",
+        "ToolFailure",
+        "OtherError",
+    )
+)
+RECENT_ERROR_CODES = frozenset(
+    (
+        "PROVIDER_ERROR",
+        "HTTP_ERROR",
+        "TIMEOUT",
+        "CONNECTION_ERROR",
+        "MALFORMED_JSON",
+        "INVALID_MODEL_LIST",
+        "INVALID_MODEL_INFO",
+        "INVALID_CHAT_RESPONSE",
+        "MALFORMED_NATIVE_CALL",
+        "STREAM_PROTOCOL_ERROR",
+        "TOOLS_UNSUPPORTED",
+        "NATIVE_TOOL_PROTOCOL",
+        "UNKNOWN_ERROR",
+    )
+)
+RECENT_FAILURE_STAGES = frozenset(("provider", "runtime", "native_protocol"))
+
+
+def recent_run_counts(recent):
+    """Validate old/malformed records too; only bounded typed aggregates leave the app."""
+    recent = recent if isinstance(recent, dict) else {}
+    result = {}
+    for key, allowed in (
+        ("states", RECENT_STATES),
+        ("tool_error_types", RECENT_ERROR_TYPES),
+        ("runtime_error_codes", RECENT_ERROR_CODES),
+        ("runtime_error_types", RECENT_ERROR_TYPES),
+        ("failure_stages", RECENT_FAILURE_STAGES),
+    ):
+        counts = recent.get(key, {})
+        result[key] = (
+            {
+                name: min(count, 20 if key != "tool_error_types" else 32000)
+                for name, count in counts.items()
+                if name in allowed and type(count) is int and count >= 0
+            }
+            if isinstance(counts, dict)
+            else {}
+        )
+    for key in ("protocol_failures", "legacy_text_tool_responses"):
+        count = recent.get(key, 0)
+        result[key] = min(count, 32000) if type(count) is int and count >= 0 else 0
+    return result
+
 
 class ReportingError(RuntimeError):
     pass
@@ -85,6 +171,16 @@ def public_report(report, include_model=False):
         "catalog_fixture_verified",
         "retention_fixture_verified",
         "active_report_protected",
+        "route",
+        "stream",
+        "challenge_verified",
+        "max_output_tokens",
+        "finish_reason",
+        "tool_calls_field_present",
+        "text_tool_response",
+        "probe_fixture_verified",
+        "project_retrieval_fixture_verified",
+        "registry_fixture_verified",
     }
     if include_model:
         allowed.add("model")
@@ -96,7 +192,17 @@ def public_report(report, include_model=False):
             check["evidence"]["model_metadata"] = {
                 key: value
                 for key, value in evidence["model_metadata"].items()
-                if key in ("tools", "source", "template_sha256", "template_chars", "template_mentions_tools")
+                if key
+                in (
+                    "tools",
+                    "source",
+                    "template_sha256",
+                    "template_chars",
+                    "template_mentions_tools",
+                    "parser",
+                    "renderer",
+                    "template_source",
+                )
             }
         if "request_traces" in evidence:
             traces = []
@@ -123,6 +229,7 @@ def public_report(report, include_model=False):
                         "content_field_present",
                         "thinking_chars",
                         "finish_reason",
+                        "stream",
                     )
                 }
                 safe["usage"] = {
@@ -135,17 +242,15 @@ def public_report(report, include_model=False):
         safe_checks.append(check)
     result["checks"] = safe_checks
     # Only bounded aggregate counters are shared; no session IDs, hashes or original messages.
-    recent = report.get("recent_runs", {})
-    result["recent_runs"] = {
-        key: copy.deepcopy(recent.get(key, {}))
-        for key in ("states", "tool_error_types", "protocol_failures", "legacy_text_tool_responses")
-    }
+    result["recent_runs"] = recent_run_counts(report.get("recent_runs", {}))
     return result
 
 
 def issue_body(report, credentials, include_model=False):
     public = public_report(report, include_model)
-    label = "API checks" if report.get("kind") == "api_models" else "diagnostics"
+    label = {"api_models": "API checks", "tool_probe": "tool-call probe"}.get(
+        report.get("kind"), "diagnostics"
+    )
     title = f"Aigentics {label} {report['app_version']}: {report['state']}"
     body = (
         f"<!-- aigentics-report:{report['id']} -->\n"
@@ -200,6 +305,7 @@ def prepare_browser_draft(title, body):
                 "text_tool": t.get("text_tool_response"),
                 "tool_field": t.get("response_shape", {}).get("tool_calls_field_present"),
                 "finish": t.get("response_shape", {}).get("finish_reason"),
+                "stream": t.get("response_shape", {}).get("stream"),
                 "input_tokens": t.get("usage", {}).get("prompt_eval_count"),
                 "output_tokens": t.get("usage", {}).get("eval_count"),
             }
@@ -207,6 +313,33 @@ def prepare_browser_draft(title, body):
         ]
         if traces:
             model_details["last_three_requests"] = traces
+        compact_keys = (
+            "provider",
+            "model",
+            "route",
+            "stream",
+            "http_status",
+            "native_calls_total",
+            "challenge_verified",
+            "generation_requests",
+            "max_output_tokens",
+            "finish_reason",
+            "tool_calls_field_present",
+            "text_tool_response",
+            "provider_error_code",
+            "model_count",
+            "request_count",
+            "partial_catalog",
+            "probe_fixture_verified",
+            "project_retrieval_fixture_verified",
+            "registry_fixture_verified",
+        )
+        compact_checks = {
+            row["id"]: {key: row["evidence"][key] for key in compact_keys if key in row.get("evidence", {})}
+            for row in payload.get("checks", [])
+            if row["id"] != "selected_local_model"
+            and any(key in row.get("evidence", {}) for key in compact_keys)
+        }
         body = (
             "Diagnostic summary shared with user approval. Full report retained locally.\n"
             + (f"Report ID: {match[1]}\n" if match else "")
@@ -214,7 +347,12 @@ def prepare_browser_draft(title, body):
             + "\n"
             + summary
             + "\nRecent run counts: "
-            + str(payload.get("recent_runs", {}))
+            + json.dumps(recent_run_counts(payload.get("recent_runs", {})), separators=(",", ":"))
+            + (
+                "\nCheck evidence: " + json.dumps(compact_checks, separators=(",", ":"))
+                if compact_checks
+                else ""
+            )
             + (
                 "\nLocal model result: " + json.dumps(model_details, separators=(",", ":"))
                 if model_details

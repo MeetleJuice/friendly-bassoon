@@ -29,7 +29,7 @@ def test_validation_and_revision_persistence(store, credentials):
     assert a.revision == 2
     other = Store(store.path, credentials, recover=False)
     assert other.agents()[0].name == "Updated"
-    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 5
     other.close()
 
 
@@ -396,7 +396,7 @@ def test_ollama_tool_result_uses_native_tool_name(credentials):
     )
     sent = requests[0]["messages"][0]
     assert sent["tool_name"] == "read_file"
-    assert "name" not in sent and "tool_call_id" not in sent
+    assert "name" not in sent and sent["tool_call_id"] == "c1"
 
 
 def test_schema_upgrade_preserves_evidence_and_user_assessments(store, credentials, tmp_path):
@@ -407,7 +407,7 @@ def test_schema_upgrade_preserves_evidence_and_user_assessments(store, credentia
         store.db.execute("DROP TABLE assessments")
         store.db.execute("PRAGMA user_version=1")
     reopened = Store(store.path, credentials, recover=False)
-    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 5
     assert reopened.events(sid)
     reopened.assess(sid, "needs_work", "The command passed, but the feature is incomplete.")
     assert reopened.assessment(sid)["label"] == "needs_work"

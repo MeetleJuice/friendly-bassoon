@@ -224,7 +224,7 @@ def test_v3_migration_preserves_approved_reports_and_sessions(store, credentials
         store.db.execute("DROP TABLE model_catalogs")
         store.db.execute("PRAGMA user_version=3")
     with closing(Store(store.path, credentials, recover=False)) as migrated:
-        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 5
         assert migrated.messages(sid)[0]["content"] == "synthetic history"
         assert migrated.diagnostic_reports()[0]["submission_state"] == "draft_opened"
         assert migrated.catalogs() == {}

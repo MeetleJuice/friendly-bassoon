@@ -45,7 +45,7 @@ class Store:
     def _migrate(self):
         with self.lock, self.db:
             version = self.db.execute("PRAGMA user_version").fetchone()[0]
-            if version > 4:
+            if version > 5:
                 raise RuntimeError("Database is newer than this application; upgrade the application")
             if version < 1:
                 self.db.executescript("""
@@ -84,6 +84,12 @@ class Store:
                 CREATE TABLE IF NOT EXISTS model_catalogs(profile_id TEXT PRIMARY KEY,
                     signature TEXT, fetched TEXT, models TEXT, partial INTEGER);
                 PRAGMA user_version=4;
+                """)
+            if version < 5:
+                self.db.executescript("""
+                CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY, path TEXT UNIQUE,
+                    name TEXT, brief TEXT, created TEXT, updated TEXT);
+                PRAGMA user_version=5;
                 """)
 
     @staticmethod
@@ -128,7 +134,7 @@ class Store:
         with self.lock:
             result = {
                 table: self.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                for table in ("sessions", "messages", "events", "diagnostics", "model_catalogs")
+                for table in ("sessions", "messages", "events", "diagnostics", "model_catalogs", "projects")
             }
         result["database_bytes"] = sum(
             p.stat().st_size

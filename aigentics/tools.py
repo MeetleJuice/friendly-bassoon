@@ -5,6 +5,7 @@ import hashlib
 import os
 import queue
 import signal
+import stat
 import subprocess
 import threading
 import time
@@ -12,6 +13,8 @@ from pathlib import Path
 from typing import Annotated
 from pydantic import Field, field_validator
 from .models import Strict
+from .registry import TOOL_REGISTRY
+from .retrieval import project_map, retrieve_context, MAX_CONTEXT_CHARS
 
 BLOCKED = {".git", ".venv", "node_modules", "__pycache__", ".aws", ".ssh", ".gnupg"}
 MAX_FILE = 100_000
@@ -27,6 +30,14 @@ class ListArgs(Strict):
 
 class SearchArgs(Strict):
     query: str = Field(min_length=1, max_length=200)
+
+
+class MapArgs(Strict):
+    pass
+
+
+class RetrieveArgs(SearchArgs):
+    max_chars: int = Field(default=6000, ge=1, le=MAX_CONTEXT_CHARS)
 
 
 class WriteArgs(PathArgs):
@@ -55,29 +66,33 @@ SCHEMAS = {
     "search": SearchArgs,
     "write_file": WriteArgs,
     "run_command": CommandArgs,
+    "project_map": MapArgs,
+    "retrieve_context": RetrieveArgs,
 }
-DESCRIPTIONS = {
-    "list_files": "List immediate children of a project directory; sensitive files and symlinks are hidden.",
-    "read_file": "Read a UTF-8 project file, returning its SHA256 for safe edit review.",
-    "search": "Search literal text in project UTF-8 files (bounded traversal and results).",
-    "write_file": "Propose full UTF-8 file content. Requires prior SHA256 and explicit user approval of its diff.",
-    "run_command": "Propose argv for a host process. Always requires user approval. No implicit shell.",
-}
+DESCRIPTIONS = {name: spec.description for name, spec in TOOL_REGISTRY.items()}
 
 
 def tool_definitions(agent):
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": name,
-                "description": DESCRIPTIONS[name],
-                "parameters": SCHEMAS[name].model_json_schema(),
-            },
-        }
-        for name in agent.tools
-        if (name != "write_file" or agent.allow_writes) and (name != "run_command" or agent.allow_commands)
-    ]
+    definitions = []
+    for name in agent.tools:
+        if name not in TOOL_REGISTRY:
+            raise PermissionError("Unknown tool")
+        spec = TOOL_REGISTRY[name]
+        if (spec.permission == "write" and not agent.allow_writes) or (
+            spec.permission == "command" and not agent.allow_commands
+        ):
+            continue
+        definitions.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": spec.description,
+                    "parameters": SCHEMAS[name].model_json_schema(),
+                },
+            }
+        )
+    return definitions
 
 
 def sensitive(part):
@@ -117,21 +132,51 @@ class Workspace:
         for part in [candidate, *candidate.parents]:
             if part == self.root:
                 break
-            if part.is_symlink() or (hasattr(part, "is_junction") and part.is_junction()):
+            reparse = False
+            if os.name == "nt":
+                try:
+                    reparse = bool(part.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+                except FileNotFoundError:
+                    pass
+            if part.is_symlink() or reparse or (hasattr(part, "is_junction") and part.is_junction()):
                 raise PermissionError("Symlinks and directory junctions are not accessible")
         resolved = candidate.resolve()
         if not resolved.is_relative_to(self.root):
             raise PermissionError("Path escapes the workspace")
         return resolved
 
-    def read(self, relative):
+    def read(self, relative, max_bytes=MAX_FILE):
         path = self.path(relative)
-        if path.stat().st_size > MAX_FILE:
-            raise ValueError("File exceeds 100 KB limit")
-        if path.stat().st_nlink > 1:
+        if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or not 1 <= max_bytes <= MAX_FILE:
+            raise ValueError("Invalid read limit")
+        info = path.stat()
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError("Only regular project files are accessible")
+        if info.st_nlink > 1:
             raise PermissionError("Hard-linked files are not accessible")
-        raw = path.read_bytes()
-        if len(raw) > MAX_FILE or b"\0" in raw:
+        if info.st_size > max_bytes:
+            raise ValueError("File exceeds read limit")
+        # A capped read also bounds files that grow after the metadata check.
+        # O_NONBLOCK avoids hanging on a replaced FIFO; fstat checks the opened
+        # object. Parent-directory races are not an OS security sandbox.
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_BINARY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0)
+        )
+        with os.fdopen(os.open(path, flags), "rb", buffering=0) as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode):
+                raise ValueError("Only regular project files are accessible")
+            if info.st_nlink > 1:
+                raise PermissionError("Hard-linked files are not accessible")
+            if info.st_size > max_bytes:
+                raise ValueError("File exceeds read limit")
+            raw = stream.read(max_bytes)
+            if os.fstat(stream.fileno()).st_size > max_bytes:
+                raise ValueError("File exceeds read limit")
+        if len(raw) > max_bytes or b"\0" in raw:
             raise ValueError("File is too large or binary")
         return {"path": relative, "content": raw.decode("utf-8"), "sha256": hashlib.sha256(raw).hexdigest()}
 
@@ -315,30 +360,43 @@ class ToolRunner:
         self.workspace, self.agent, self.approve, self.cancel = workspace, agent, approve, cancel
 
     def execute(self, call):
-        if call.name not in self.agent.tools or call.name not in SCHEMAS:
+        if call.name not in self.agent.tools or call.name not in EXECUTORS:
             raise PermissionError("Agent does not have this tool")
         args = SCHEMAS[call.name].model_validate(call.arguments)
         if self.cancel.is_set():
             raise InterruptedError("Cancelled")
-        if call.name == "write_file":
-            if not self.agent.allow_writes:
-                raise PermissionError("Writes disabled for this agent")
-            diff = self.workspace.prepare_write(args)
-            if not self.approve("write_file", {"path": args.path, "diff": diff}):
-                raise PermissionError("User denied file change")
-            if self.cancel.is_set():
-                raise InterruptedError("Cancelled")
-            return self.workspace.write(args)
-        if call.name == "run_command":
-            if not self.agent.allow_commands:
-                raise PermissionError("Commands disabled for this agent")
-            if not self.approve("run_command", args.model_dump() | {"cwd": str(self.workspace.root)}):
-                raise PermissionError("User denied command")
-            if self.cancel.is_set():
-                raise InterruptedError("Cancelled")
-            return run_command(self.workspace.root, args, self.cancel)
-        if call.name == "list_files":
-            return self.workspace.listing(args.path)
-        if call.name == "read_file":
-            return self.workspace.read(args.path)
-        return self.workspace.search(args.query, self.cancel)
+        return EXECUTORS[call.name](self, args)
+
+    def _write_file(self, args):
+        if not self.agent.allow_writes:
+            raise PermissionError("Writes disabled for this agent")
+        diff = self.workspace.prepare_write(args)
+        if not self.approve("write_file", {"path": args.path, "diff": diff}):
+            raise PermissionError("User denied file change")
+        if self.cancel.is_set():
+            raise InterruptedError("Cancelled")
+        return self.workspace.write(args)
+
+    def _run_command(self, args):
+        if not self.agent.allow_commands:
+            raise PermissionError("Commands disabled for this agent")
+        if not self.approve("run_command", args.model_dump() | {"cwd": str(self.workspace.root)}):
+            raise PermissionError("User denied command")
+        if self.cancel.is_set():
+            raise InterruptedError("Cancelled")
+        return run_command(self.workspace.root, args, self.cancel)
+
+
+EXECUTORS = {
+    "list_files": lambda runner, args: runner.workspace.listing(args.path),
+    "read_file": lambda runner, args: runner.workspace.read(args.path),
+    "search": lambda runner, args: runner.workspace.search(args.query, runner.cancel),
+    "write_file": ToolRunner._write_file,
+    "run_command": ToolRunner._run_command,
+    "project_map": lambda runner, args: project_map(runner.workspace, runner.cancel),
+    "retrieve_context": lambda runner, args: retrieve_context(
+        runner.workspace, args.query, runner.cancel, args.max_chars
+    ),
+}
+if set(TOOL_REGISTRY) != set(SCHEMAS) or set(SCHEMAS) != set(EXECUTORS):
+    raise RuntimeError("Registered tool metadata, schemas and execution routes must match")

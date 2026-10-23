@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-TOOLS = ("list_files", "read_file", "search", "write_file", "run_command")
+from .registry import TOOLS
 
 
 class Strict(BaseModel):
@@ -50,6 +50,8 @@ class Profile(Strict):
     base_url: str = "http://127.0.0.1:11434"
     credential_ref: str = Field(default="", max_length=100, pattern=r"^[\w.-]*$")
     supports_tools: bool = True
+    ollama_api: Literal["native", "compatible"] = "native"
+    ollama_stream: bool = False
     timeout_seconds: int = Field(default=120, ge=1, le=300)
 
     @field_validator("base_url")

@@ -14,3 +14,6 @@
 Run AGENTS.md's checks and record actual counts/run IDs in ENGINEERING_LOG.md and VERIFICATION.md. Keys stay on the user's PC. Prefer one focused acceptance run per meaningful change over repeated tests of every model.
 
 Validated 0.4.0 baseline: 107 passed, 1 live-Ollama skipped; Windows source run 39987348899 and tag/release run 39987814325 passed. The actual released installer download/checksum passed; see VERIFICATION.md.
+
+
+0.5 acceptance adds native NDJSON/SSE completion/fragment/limit tests, scoped challenge probes/consent/request counts, fresh ignore-aware context and >250 display-prefix validation, project definitions/briefs/history and schema 4→5 upgrade with model-catalog preservation. Health suite 3 has 17 offline checks. See UPGRADE_050_PLAN.md and RESEARCH_050.md; final validation belongs in VERIFICATION.md.

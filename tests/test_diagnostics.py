@@ -133,7 +133,7 @@ def test_packaged_health_suite_runs_without_pytest_or_user_project(store, creden
     (project / "private.txt").write_text("private project data")
     report = DiagnosticRunner(store, credentials).run(threading.Event(), include_network=False)
     assert report["state"] == "passed"
-    assert report["summary"] == {"passed": 14, "failed": 0, "warning": 0, "skipped": 0}
+    assert report["summary"] == {"passed": 17, "failed": 0, "warning": 0, "skipped": 0}
     assert (project / "private.txt").read_text() == "private project data"
     payload = store.diagnostic_reports()[0]["payload"]
     assert payload["id"] == report["id"]
@@ -142,6 +142,12 @@ def test_packaged_health_suite_runs_without_pytest_or_user_project(store, creden
     assert any(
         r["id"] == "text_tool_regression" and r["evidence"]["text_never_executed"] for r in report["checks"]
     )
+    for identity, flag in (
+        ("tool_registry_fixture", "registry_fixture_verified"),
+        ("project_retrieval_fixture", "project_retrieval_fixture_verified"),
+        ("native_probe_fixture", "probe_fixture_verified"),
+    ):
+        assert any(row["id"] == identity and row["evidence"][flag] for row in report["checks"])
 
 
 def test_optional_real_model_check_verifies_files_with_controlled_provider(store, credentials):
@@ -338,7 +344,7 @@ def test_v2_database_migrates_without_losing_existing_history(store, credentials
         assert migrated.agents()[0].id == agent.id
         assert migrated.messages(sid)[0]["content"] == "preserve my history"
         assert migrated.diagnostic_reports() == []
-        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 5
 
 
 def test_legacy_saved_text_tool_response_is_reported_as_count_not_content(store, tmp_path):

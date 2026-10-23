@@ -57,3 +57,8 @@ For 0.3.0 the Windows smoke also runs the installed built-in diagnostic suite an
 ## 0.4.0 upgrade preservation
 
 The release pipeline now upgrades the actual public 0.3.0 installer using its previously recorded SHA-256, preserving synthetic saved agents, settings, session messages and diagnostic sharing state through schema 3→4. Startup uses the existing OS data directory. No Desktop/project/key folders are moved. Use Local data to inspect records and backup/installer sizes. Backups obey the age setting plus newest-three cap; existing exports/public issues are separate. Publication/run IDs and final hashes are in VERIFICATION.md and ENGINEERING_LOG.md.
+
+
+## 0.5.0 release checks
+
+The Windows workflow installs the pinned public 0.4.0 installer, seeds synthetic agents/settings/session content/diagnostic sharing state/model catalogs, installs 0.5.0 and verifies schema 4→5 preservation. Fresh installation also runs all 17 packaged offline checks. Projects/briefs use the existing app data folder; no Desktop/project/key reorganization is performed. Final run IDs and hashes are recorded in VERIFICATION.md.

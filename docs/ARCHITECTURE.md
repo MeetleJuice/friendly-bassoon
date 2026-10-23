@@ -56,3 +56,12 @@ The runtime adds `response_only`, `needs_review` and `protocol_error` states; `c
 `catalog.py` owns explicit, deduplicated metadata GET batches with bounded concurrency and no generation/retry behavior. `records_ui.py` presents API reports, timestamps, cached choices and retention controls; it reuses the diagnostic worker lifecycle and sharing preview rather than inventing a second uploader. Schema v4 persists catalog snapshots separately from versioned diagnostic/API reports. Provider adapters emit low-cardinality HTTP/protocol codes and structural response evidence. Health suite 2 collects a bounded trace from its disposable local run and adds offline catalog/retention checks.
 
 The durable engineering workspace is `docs/maintenance/`; actual user data stays in the existing OS data folder. Cloud artifacts and temporary acceptance data live outside the checkout. Catalog discovery, live tool certification, public support sharing, source changes and release installation retain separate acceptance criteria.
+
+
+## 0.5.0 project and harness organization
+
+registry.py defines frozen built-in metadata; tools.py binds the same names to schemas and executors and checks conformance. retrieval.py performs bounded ignore-aware traversal and fresh lexical/cited retrieval using pathspec. projects.py manages local project definitions; projects_ui.py keeps navigation/brief/context separate from Workbench's session/files/history layout. Context is explicitly added or retrieved by an allowed read-only tool, not silently accumulated in a vector store.
+
+probes.py owns harmless synthetic native-call certification with explicit remote consent; probe_ui.py exposes bounded comparisons and confirmation before route selection. streams.py aggregates native NDJSON/SSE function fields with completion/time/size checks before the normal provider normalizer can return calls. providers.py preserves IDs and captures active parser metadata; runtime still owns approvals and execution. Native/compatible route/stream changes do not expand an agent's tool permissions.
+
+Schema 5 preserves old definitions, sessions, diagnostics and catalogs. The maintenance plan/research records describe implemented scope and deferred embeddings/MCP/teams/OAuth. Public report builders still rebuild allowlisted evidence rather than uploading a database or source tree.

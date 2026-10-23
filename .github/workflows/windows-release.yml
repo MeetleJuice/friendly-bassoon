@@ -15,8 +15,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
           cache: pip
@@ -27,8 +27,11 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m pytest -q
-          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+          python -m pytest -q --junitxml=test-results.xml
+          if ($LASTEXITCODE -ne 0) {
+            python scripts/report_test_failures.py test-results.xml
+            throw 'Tests failed; inspect the individual failure annotations'
+          }
           python -m ruff check aigentics tests scripts
           if ($LASTEXITCODE -ne 0) { throw 'Lint failed' }
       - name: Determine version and validate tag
@@ -50,7 +53,7 @@ jobs:
         run: ./scripts/build_windows.ps1 -Version '${{ steps.version.outputs.version }}'
       - name: Verify actual installer and desktop shortcut
         run: ./scripts/smoke_windows.ps1 -Version '${{ steps.version.outputs.version }}'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: Aigentics-Windows-${{ steps.version.outputs.version }}
           path: |
@@ -60,12 +63,13 @@ jobs:
           retention-days: 14
       - name: Upload setup logs if the build fails
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: Windows-setup-diagnostics
           path: |
             ${{ runner.temp }}/aigentics-setup.log
             build/Aigentics/warn-Aigentics.txt
+            test-results.xml
           if-no-files-found: ignore
 
   publish:
@@ -75,8 +79,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: Aigentics-Windows-*
           path: release

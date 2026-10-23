@@ -388,7 +388,16 @@ class Window(QMainWindow):
             + self.env_status
             + ("\nProvider profiles added: " + ", ".join(added) if added else "")
         )
-        self.setup_banner.setText(self.discovery_status + "  " + self.env_status)
+        self.setup_banner.setText(
+            self.discovery_status
+            + "  "
+            + self.env_status
+            + (
+                " Update " + self.available_release.version + " available in Setup & updates."
+                if self.available_release
+                else ""
+            )
+        )
         self.update_setup_view()
         self.refresh_history()
 
@@ -641,6 +650,7 @@ class Window(QMainWindow):
         labl.addWidget(self.lab_agent)
         labl.addWidget(QLabel("Model override for this test only (blank uses the saved agent model)"))
         self.lab_model = ModelPicker()
+        self.lab_agent.currentIndexChanged.connect(self.refresh_model_choices)
         labl.addWidget(self.lab_model)
         self.lab_prompt = QPlainTextEdit(
             "List this project's files using your tools, then explain what you found."

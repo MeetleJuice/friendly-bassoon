@@ -1,5 +1,6 @@
 """Local evidence store, schema migrations, retention, export, and recovery."""
 
+from contextlib import closing
 import hashlib
 import json
 import sqlite3
@@ -312,7 +313,7 @@ class Store:
         folder.mkdir(exist_ok=True)
         path = folder / ("aigentics-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f") + ".sqlite3")
         with self.lock:
-            with sqlite3.connect(path) as destination:
+            with closing(sqlite3.connect(path)) as destination:
                 self.db.backup(destination)
         for old in sorted(folder.glob("aigentics-*.sqlite3"), reverse=True)[3:]:
             if not old.is_symlink():

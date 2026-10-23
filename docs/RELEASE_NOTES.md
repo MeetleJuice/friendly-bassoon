@@ -1,11 +1,10 @@
-## Aigentics Desktop 0.2.0 — easier Windows setup
+## Aigentics Desktop 0.3.0 — diagnose, verify and share
 
-Download **Aigentics-Setup-0.2.0.exe** from the assets below and run the wizard. It bundles Python and application dependencies and creates a desktop shortcut with a custom Aigentics icon. No Python, VS Code or Git installation is needed to run this packaged app. Ollama remains a separate local service.
+- **Diagnose** runs 12 built-in checks on disposable files, with optional real local Ollama create/read-back and update-connectivity checks. It requests a completion sound, saves results locally, and offers a report review. It does not run arbitrary user-project tests or call paid cloud models automatically.
+- **Review & share** previews a redacted metadata report for public GitHub Issues. Browser mode needs no token but requires submitting the draft on GitHub; optional direct submission uses an existing Issues-write token and records the confirmed issue URL. No upload occurs without explicit preview approval, and reports are not committed into source history.
+- **Native tool reliability:** detects JSON-like tool requests returned as text, requests up to two native-protocol corrections, and fails clearly if recovery cannot work. It never executes prose as a tool call. File/command approval remains enforced.
+- **Truthful results:** conversation-only replies, failed/denied actions, protocol failures and completed execution are distinct. Workbench activity is readable by default, with detailed records available separately.
+- **Update** is now a prominent top button, retaining verified downloads, database backup and explicit installer approval. Windows checks include a real 0.2.0-to-0.3.0 upgrade preserving settings, agents and session history.
+- **Engineering memory:** versioned diagnostic reports, structured low-cardinality failure data, advertised-tool/schema metadata, bounded retention, a sanitized regression case and durable repository research/engineering logs.
 
-On launch, the app discovers installed Ollama models and checks known Desktop locations for **.env** or **.env.txt** (including redirected/OneDrive Desktop). Keys load into memory only. Recognized key variable names add matching provider profiles without calling cloud APIs. Use **Setup & updates** to refresh discovery, choose a model, select a key file manually, or disable automatic discovery.
-
-The app checks public GitHub Releases at startup and offers checksum-verified downloads. Installation requires an explicit click, waits until no task is running, backs up local history, and opens the update wizard. Projects, history and credentials live separately from installed application files.
-
-New local diagnostics record setup outcomes, model/key-file discovery counts, update checks, verified downloads and update version outcomes. Credentials and the contents of the Desktop key file are never logged or uploaded as telemetry.
-
-The installer is not Authenticode-signed. SHA-256 checks verify integrity against this GitHub release; they are not an independent publisher signature. Windows may show an unknown-publisher warning. Human acceptance on Windows 10 and the user's actual Ollama/API services remains separate from automated runner checks. See the README and docs/VERIFICATION.md for verification status.
+Use the existing app's **Setup & updates → Check for updates**, download and install this release. The installer remains unsigned. User-specific Ollama performance, live cloud services and direct GitHub submission permissions still require local acceptance. No autonomous self-modification, independent publisher signing, full checkpoint rollback or hosted telemetry is claimed.

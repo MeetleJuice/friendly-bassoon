@@ -53,3 +53,12 @@ Current summaries are descriptive counts and sums. They are not statistically co
 Update events record startup/manual check outcomes, available/running versions, requested/downloaded byte counts, verification SHA-256, backup occurrence and the version observed after an installer handoff. No provider credentials, transcripts or project files are included in update HTTP. Settings can disable automatic Ollama discovery, automatic Desktop key loading, startup update checks, or the additional setup/update diagnostics. Runtime/session evidence remains a separate feature with existing retention controls.
 
 Three local pre-update SQLite backups are kept. They can contain older retained session content; deleting a session from the live database does not scrub those backups. See INSTALLER.md. Updates are integrity-checked against the trusted GitHub release channel, not independently publisher-signed.
+
+
+## 0.3 diagnostic/evaluation lifecycle
+
+SQLite schema v3 adds a diagnostic report table while retaining existing sessions, definitions, events and assessments. Reports have independent IDs, schema/suite/app versions and per-check acceptance statuses. Local retention uses the configured age limit and a cap of 20 completed reports; interrupted checks are not relabeled successful. Exported files, GitHub issues and older backups have separate retention lifecycles.
+
+Only the report builder's allowlisted metadata is eligible for sharing. No source tree, session transcript, task text, prompt hash, workspace path, agent name or raw exception body is included automatically. Local counts can detect the known text-tool shape in existing opt-in transcripts without sharing that content. Model names are an explicit sharing option. Public issue submission requires approval of the exact preview; edits revoke that approval.
+
+Sharing states are `local`, `draft_opened`, `submitted` and `unknown`. A draft is not proof of upload. Ambiguous issue-creation requests are never retried automatically. Code changes, diagnostic reports and versioned installers remain separate. See DIAGNOSTICS.md and RESEARCH.md for implementation rationale and user controls.

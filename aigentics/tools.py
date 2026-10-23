@@ -212,7 +212,12 @@ class Workspace:
 
 def stop_process(process):
     if os.name == "nt":
-        subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, timeout=5)
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            capture_output=True,
+            timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
         if process.poll() is None:
             process.kill()
     else:
@@ -244,7 +249,7 @@ def run_command(root, args, cancel):
     options = (
         {"start_new_session": True}
         if os.name != "nt"
-        else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW}
     )
     process = subprocess.Popen(
         args.argv,

@@ -26,7 +26,7 @@ This was focused research, not an exhaustive audit of the complete reference-pro
 ## Main tradeoffs
 
 1. **Python + PySide6:** genuine native desktop components and an independently testable Python runtime, fitting the user's existing tools. Larger distribution than a minimal CLI. Windows runtime verification and installer signing remain separate work.
-2. **SQLite + versioned JSON:** low operational burden with queryable events and portable agent definitions. Database schema v2 adds human assessments without losing v1 sessions. Unsupported future database/agent schemas are rejected.
+2. **SQLite + versioned JSON:** low operational burden with queryable events and portable agent definitions. Database schema v2 added human assessments; v3 adds retained diagnostic reports and submission states while preserving existing sessions/agents. Unsupported future database/agent schemas are rejected.
 3. **Metadata by default:** fingerprints and structured results support recurrence analysis without storing every file. Reproducing a failure from full input/output requires opt-in session content and potentially the original project revision.
 4. **Explicit control:** every write and command requires approval; no broad “approve everything” switch. Read/search tools are automatically allowed only when present in the saved agent definition.
 5. **No implicit truncation:** oversized context stops clearly. Prompt token counts vary by model; character budgets are conservative guards, not tokenizer-accurate limits.
@@ -40,3 +40,12 @@ File tools reject absolute/traversal paths, secret-like filenames, `.git`, sensi
 Approved processes run with the user's OS privileges, a reduced environment, the selected working directory, stdin closed, a 1–120 second per-command timeout and 32 KB output limit. POSIX process groups or Windows `taskkill /T` are used for termination. Process-tree containment is best effort, especially for detached processes; a Windows Job Object/OS sandbox would be needed for stronger guarantees. The 32 KB cap terminates a noisy process, rather than merely hiding its output.
 
 No provider failover, project file or model message can expand the agent's saved permissions. A cloud fallback can transmit existing context, so users must configure it deliberately. Model capability declarations are not guarantees of model quality. Unsupported or malformed native calls fail visibly; there is no prose-to-tool-call simulation.
+
+
+## 0.3 runtime and diagnostic extensions
+
+`diagnostics.py` implements a versioned packaged health/evaluation suite independent of pytest. `diagnostics_ui.py` runs it in a worker and owns local history/preview approval. `reporting.py` builds an allowlisted public payload and separates local URL preparation, browser drafts and explicit API issue creation. No GitHub source-write token is needed for reports.
+
+Known text-tool response shapes are detected, never executed. Two maximum protocol-correction attempts share the existing step/time/context budgets. Real native calls still pass schemas, saved capabilities and per-action approvals. Native protocol recovery and tool/goal success are separate recorded outcomes. Schema validation feedback omits argument input values.
+
+The runtime adds `response_only`, `needs_review` and `protocol_error` states; `completed` means actual tool execution ended, with human goal assessment still separate. Default activity is readable; the detailed-record toggle retains inspection of recorded evidence. Diagnostics aggregates the latest 20 sessions without uploading their contents.

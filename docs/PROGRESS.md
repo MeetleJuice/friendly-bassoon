@@ -1,5 +1,10 @@
 # Build progress and next actions
 
+## 0.3.0 update
+
+Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 83 passed, 1 optional real-Ollama test skipped. Windows installed-diagnostics and real 0.2.0 upgrade checks are in the release workflow; remote outcomes are recorded in VERIFICATION.md.
+
+
 ## 0.2.0 update
 
 Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDrive `.env` and `.env.txt` discovery, matching provider-profile setup, startup/manual GitHub update checks, bounded SHA-256-verified installer downloads, pre-install history backups, version-outcome diagnostics, a custom app icon, and a Windows PyInstaller/Inno Setup release pipeline are implemented. The pipeline tests the actual installed app and desktop shortcut before publishing a version-tag release. The Windows build/install/shortcut/packaged-startup checks passed in run 39965837080. The version-tag build/publish run 39966453059 also passed and published Aigentics-Setup-0.2.0.exe in GitHub Releases. The actual published download was fetched and checksum-verified; see VERIFICATION.md.
@@ -17,11 +22,11 @@ Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDri
 
 ## Validation boundaries
 
-The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Final automated result: 61 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
+The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Latest automated result: 83 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
 
 ## Next useful action on the user's machine
 
-Download Aigentics-Setup-0.2.0.exe from GitHub Releases and run the wizard. Let startup discover the Desktop .env/.env.txt and Ollama models, then run the Windows acceptance procedure on a disposable project. Save a session-content capture for a non-sensitive example, label its outcome, and inspect/export the evidence. Use that evidence to choose the next improvement.
+Use the existing app’s Setup & updates to install the published 0.3.0 release (or download Aigentics-Setup-0.3.0.exe from Releases). Let startup discover the Desktop .env/.env.txt and Ollama models, then run the Windows acceptance procedure on a disposable project. Click Diagnose, inspect the actual local-model result, and review/approve a redacted GitHub Issue report if needed. Give the assistant the issue number; manual JSON dragging is no longer required for this support flow.
 
 ## Deferred work (not claimed complete)
 

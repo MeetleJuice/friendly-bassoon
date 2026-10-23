@@ -29,7 +29,7 @@ def test_validation_and_revision_persistence(store, credentials):
     assert a.revision == 2
     other = Store(store.path, credentials, recover=False)
     assert other.agents()[0].name == "Updated"
-    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert other.db.execute("PRAGMA user_version").fetchone()[0] == 3
     other.close()
 
 
@@ -285,7 +285,7 @@ def test_fallback_and_denial_are_recorded(store, credentials, tmp_path):
         agent, tmp_path, "task", lambda *a: False
     )
     events = store.events(sid)
-    assert state == "completed"
+    assert state == "needs_review"
     assert not (tmp_path / "no.txt").exists()
     assert any(e["kind"] == "provider.fallback" for e in events)
     assert any(e["kind"] == "tool.result" and e["data"]["status"] == "failed" for e in events)
@@ -407,7 +407,7 @@ def test_schema_upgrade_preserves_evidence_and_user_assessments(store, credentia
         store.db.execute("DROP TABLE assessments")
         store.db.execute("PRAGMA user_version=1")
     reopened = Store(store.path, credentials, recover=False)
-    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert reopened.db.execute("PRAGMA user_version").fetchone()[0] == 3
     assert reopened.events(sid)
     reopened.assess(sid, "needs_work", "The command passed, but the feature is incomplete.")
     assert reopened.assessment(sid)["label"] == "needs_work"

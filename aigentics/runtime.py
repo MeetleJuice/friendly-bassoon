@@ -1,13 +1,40 @@
 """Bounded agent loop. Models propose; only this runtime can execute tools."""
 
 import json
+import re
 import queue
 import threading
 import time
 import platform
 from uuid import uuid4
+from pydantic import ValidationError
 from .providers import Provider, ProviderError
-from .tools import Workspace, ToolRunner, tool_definitions
+from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS
+
+
+class NativeToolProtocolError(RuntimeError):
+    pass
+
+
+def looks_like_text_tool_call(text):
+    """Detect known request shapes; never convert model prose into an executable call."""
+    candidate = text.strip()
+    if len(candidate) > 20000:
+        return False
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, re.S)
+    tagged = re.fullmatch(r"<tool_call>\s*(.*?)\s*</tool_call>", candidate, re.S)
+    if fenced or tagged:
+        candidate = (fenced or tagged)[1]
+    try:
+        value = json.loads(candidate)
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(value, dict):
+        return False
+    function = value.get("function", value)
+    if not isinstance(function, dict):
+        return False
+    return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
 class RunTimeout(TimeoutError):
@@ -120,6 +147,14 @@ class Runtime:
         tool_runner = ToolRunner(ws, agent, approval, cancel)
         state, outcome = "failed", "Runtime did not complete"
         tools = tool_definitions(agent)
+        protocol_retries = 0
+        tool_counts = {
+            "requested": 0,
+            "succeeded": 0,
+            "failed": 0,
+            "writes_verified": 0,
+            "commands_passed": 0,
+        }
         try:
             self.store.messages(sid, messages)
             for step in range(agent.max_steps):
@@ -158,6 +193,12 @@ class Runtime:
                                 "model": ref.model,
                                 "message_count": len(messages),
                                 "context_chars": len(json.dumps(messages)),
+                                "tools_advertised": [tool["function"]["name"] for tool in tools],
+                                "tool_schema_sha256": self.store.fingerprint(tools),
+                                "message_roles": [message["role"] for message in messages],
+                                "gen_ai.operation.name": "chat",
+                                "gen_ai.request.model": ref.model,
+                                "gen_ai.provider.name": profiles[ref.profile_id].kind,
                             },
                         )
                         before = time.monotonic()
@@ -191,6 +232,14 @@ class Runtime:
                         )
                 assistant = {"role": "assistant", "content": reply.content}
                 if reply.calls:
+                    if protocol_retries and not tool_counts["requested"]:
+                        event(
+                            "protocol.recovered",
+                            {
+                                "recovery_attempts": protocol_retries,
+                                "native_calls_returned": len(reply.calls),
+                            },
+                        )
                     assistant["tool_calls"] = [
                         {
                             "id": c.id,
@@ -200,6 +249,35 @@ class Runtime:
                         for c in reply.calls
                     ]
                 messages.append(assistant)
+                if not reply.calls and (
+                    looks_like_text_tool_call(reply.content)
+                    or (protocol_retries and not tool_counts["requested"])
+                ):
+                    self.store.messages(sid, messages)
+                    event(
+                        "protocol.invalid_response",
+                        {
+                            "code": "TEXT_TOOL_CALL",
+                            "request_id": request_id,
+                            "content_sha256": self.store.fingerprint(reply.content),
+                            "attempt": protocol_retries + 1,
+                        },
+                    )
+                    if protocol_retries >= 2:
+                        raise NativeToolProtocolError(
+                            "The model did not return a valid native tool call after two recovery attempts. No text request was executed."
+                        )
+                    protocol_retries += 1
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": "Runtime feedback: your previous response was text, not a native tool call. Nothing in it was executed. "
+                            "Use the advertised native tool-calling mechanism. Do not print JSON, XML or Markdown as a substitute. "
+                            "Continue the original task using real tools, or explain that native tool calling is unavailable.",
+                        }
+                    )
+                    event("protocol.retry_requested", {"attempt": protocol_retries, "limit": 2})
+                    continue
                 if reply.content:
                     emit(
                         {
@@ -211,16 +289,28 @@ class Runtime:
                 if not reply.calls:
                     if not reply.content.strip():
                         raise ProviderError("Model returned an empty response")
-                    state, outcome = (
-                        "completed",
-                        "Model finished; consult recorded tool results to verify any execution claims",
-                    )
+                    if not tool_counts["requested"]:
+                        state, outcome = (
+                            "response_only",
+                            "The model replied without executing tools. No filesystem operation was recorded.",
+                        )
+                    elif tool_counts["failed"]:
+                        state, outcome = (
+                            "needs_review",
+                            "Execution ended with failed or denied tools. Review the actual results before accepting the task.",
+                        )
+                    else:
+                        state, outcome = (
+                            "completed",
+                            "Tool execution finished. Review verified file/command results; model completion alone does not prove the goal was met.",
+                        )
                     self.store.messages(sid, messages)
                     break
                 for call in reply.calls:
                     if cancel.is_set():
                         raise InterruptedError("Cancelled")
                     before = time.monotonic()
+                    tool_counts["requested"] += 1
                     execution_id = str(uuid4())
                     event(
                         "tool.requested",
@@ -242,11 +332,25 @@ class Runtime:
                         status = "succeeded" if ok else "failed"
                     except InterruptedError:
                         raise
+                    except ValidationError as exc:
+                        result, status = (
+                            {
+                                "error": "Tool arguments failed schema validation",
+                                "type": "ValidationError",
+                                "validation_errors": exc.errors(include_input=False, include_url=False),
+                            },
+                            "failed",
+                        )
                     except Exception as exc:
                         result, status = (
                             {"error": self.credentials.redact(str(exc)), "type": type(exc).__name__},
                             "failed",
                         )
+                    tool_counts[status] += 1
+                    if result.get("verified") is True:
+                        tool_counts["writes_verified"] += 1
+                    if call.name == "run_command" and status == "succeeded":
+                        tool_counts["commands_passed"] += 1
                     summary = {
                         "call_id": call.id,
                         "execution_id": execution_id,
@@ -281,6 +385,12 @@ class Runtime:
                     self.store.messages(sid, messages)
             else:
                 state, outcome = "limit_reached", "Maximum model steps reached"
+        except NativeToolProtocolError as exc:
+            state, outcome = "protocol_error", str(exc)
+            event(
+                "runtime.error",
+                {"type": type(exc).__name__, "code": "NATIVE_TOOL_PROTOCOL", "message": outcome},
+            )
         except RunTimeout as exc:
             state, outcome = "timed_out", str(exc)
         except InterruptedError as exc:
@@ -294,7 +404,16 @@ class Runtime:
             self._conversations[sid] = list(messages)
             while len(self._conversations) > 8:
                 del self._conversations[next(iter(self._conversations))]
-            event("run.summary", {"duration_ms": round((time.monotonic() - started) * 1000), "state": state})
+            event(
+                "run.summary",
+                {
+                    "duration_ms": round((time.monotonic() - started) * 1000),
+                    "state": state,
+                    "tools": tool_counts,
+                    "protocol_retries": protocol_retries,
+                    "goal_verification": "not_evaluated",
+                },
+            )
             self.store.finish(sid, state, outcome)
             emit({"kind": "session." + state, "data": {"outcome": outcome}, "session_id": sid})
             self.store.prune()

@@ -206,6 +206,8 @@ class Window(QMainWindow):
         self.store, self.credentials = store, credentials
         self.runtime = Runtime(store, credentials)
         self.worker = None
+        self.diagnostic_worker = None
+        self.diagnostics_dialog = None
         self.discovery_worker = None
         self.update_worker = None
         self.setup_dialog = None
@@ -234,6 +236,8 @@ class Window(QMainWindow):
         heading = QHBoxLayout()
         layout.addLayout(heading)
         heading.addWidget(title, 1)
+        button("Diagnose", lambda: self.open_diagnostics(True), heading)
+        self.update_button = button("Update", self.update_action, heading)
         button("Setup & updates", self.open_setup, heading)
         self.setup_banner = QLabel("Local setup is available from Setup & updates.")
         self.setup_banner.setWordWrap(True)
@@ -262,6 +266,25 @@ class Window(QMainWindow):
         if startup:
             QTimer.singleShot(250, self.startup_tasks)
 
+    def open_diagnostics(self, autorun=True):
+        from .diagnostics_ui import DiagnosticsDialog
+
+        if self.diagnostics_dialog is None:
+            self.diagnostics_dialog = DiagnosticsDialog(self)
+        self.diagnostics_dialog.show()
+        self.diagnostics_dialog.raise_()
+        if autorun:
+            QTimer.singleShot(0, self.diagnostics_dialog.start)
+
+    def update_action(self):
+        self.open_setup()
+        if self.downloaded_update:
+            self.install_update()
+        elif self.available_release:
+            self.download_update()
+        else:
+            self.check_updates()
+
     def setup_event(self, kind, data):
         if self.store.setting("setup_diagnostics", True):
             self.store.event(None, kind, data)
@@ -275,6 +298,14 @@ class Window(QMainWindow):
         self.setup_dialog.activateWindow()
 
     def update_setup_view(self):
+        self.update_button.setText(
+            "Install update"
+            if self.downloaded_update
+            else "Update available"
+            if self.available_release
+            else "Update"
+        )
+        self.update_button.setEnabled(not self.background_updates_running())
         if self.setup_dialog:
             self.setup_dialog.ollama.setText(self.discovery_status)
             self.setup_dialog.env.setText(self.env_status)
@@ -500,7 +531,10 @@ class Window(QMainWindow):
     def install_update(self):
         if not self.downloaded_update:
             return
-        if any(job and job.isRunning() for job in (self.worker, self.discovery_worker, self.update_worker)):
+        if any(
+            job and job.isRunning()
+            for job in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)
+        ):
             self.error("Finish or cancel the current operation before installing an update.")
             return
         if (
@@ -701,6 +735,8 @@ class Window(QMainWindow):
         cl.addWidget(self.task)
         self.capture = QCheckBox("Save redacted session content for resume (may include project code)")
         cl.addWidget(self.capture)
+        self.detailed_activity = QCheckBox("Show detailed execution records")
+        cl.addWidget(self.detailed_activity)
         row = QHBoxLayout()
         cl.addLayout(row)
         self.work_run = button("Run task", lambda: self.start_run(False), row, True)
@@ -928,6 +964,9 @@ class Window(QMainWindow):
         self.credential_ref.setText("GROQ_API_KEY")
 
     def start_worker(self, function, completed):
+        if self.diagnostic_worker and self.diagnostic_worker.isRunning():
+            self.error("Finish or cancel diagnostics before running an agent task.")
+            return False
         if self.worker and self.worker.isRunning():
             self.error("An operation is already running. Cancel it or wait for completion.")
             return False
@@ -1107,12 +1146,69 @@ class Window(QMainWindow):
 
     def on_activity(self, event):
         output = getattr(self, "active_output", self.work_output)
-        if event["kind"] == "assistant.text":
-            text = "AGENT\n" + event["data"]["text"]
+        kind, data = event["kind"], event["data"]
+        if self.detailed_activity.isChecked():
+            text = kind + "  " + json.dumps(data, ensure_ascii=False)
+        elif kind == "assistant.text":
+            text = "AGENT\n" + data["text"]
+        elif kind == "model.requested":
+            text = "Asking " + data["model"] + " (step " + str(data["step"] + 1) + ")…"
+        elif kind == "model.responded":
+            text = (
+                "Model responded in "
+                + str(round(data["duration_ms"] / 1000, 1))
+                + " seconds; real tool calls: "
+                + str(data["tool_calls"])
+            )
+        elif kind == "protocol.retry_requested":
+            text = (
+                "The model printed a tool request instead of calling a tool. Nothing was executed. Recovery attempt "
+                + str(data["attempt"])
+                + "/"
+                + str(data["limit"])
+                + "."
+            )
+        elif kind == "tool.requested":
+            text = "Tool requested: " + data["tool"]
+        elif kind == "tool.result":
+            text = (
+                "Tool succeeded: " if data["status"] == "succeeded" else "Tool failed or was denied: "
+            ) + data["tool"]
+            if "verified" in data:
+                text += " · file contents verified" if data["verified"] else " · verification failed"
+            if "exit_code" in data:
+                text += " · actual exit code " + str(data["exit_code"])
+            if "error" in data:
+                text += "\n" + data["error"]
+        elif kind == "permission.requested":
+            text = "Waiting for your approval of " + data["tool"] + "."
+        elif kind == "permission.decided":
+            text = "You approved the action." if data["approved"] else "Action denied; it will not run."
+        elif kind == "run.summary":
+            counts = data.get("tools", {})
+            text = (
+                "Execution summary: "
+                + str(counts.get("succeeded", 0))
+                + " tools succeeded, "
+                + str(counts.get("failed", 0))
+                + " failed/denied, "
+                + str(counts.get("writes_verified", 0))
+                + " file writes verified."
+            )
+        elif kind.startswith("session."):
+            text = "Run status: " + kind.split(".", 1)[1].replace("_", " ") + "\n" + data["outcome"]
+        elif kind == "provider.fallback":
+            text = "Trying your configured fallback provider: " + data["to_profile"]
+        elif kind == "tool.output" and data.get("tool") == "run_command":
+            try:
+                text = json.loads(data["result"]).get("output", "")
+            except (ValueError, TypeError):
+                text = str(data["result"])
+        elif kind == "runtime.error":
+            text = "Execution stopped: " + data["message"]
         else:
-            text = event["kind"] + "  " + json.dumps(event["data"], ensure_ascii=False)
+            return
         output.appendPlainText(text)
-        # Bound live widgets as well as the persistent store.
         output.document().setMaximumBlockCount(3000)
 
     def on_approval(self, request):
@@ -1169,7 +1265,13 @@ class Window(QMainWindow):
         self.history.clear()
         for row in self.history_rows:
             agent = Agent.model_validate_json(row["agent"])
-            self.history.addItem(f"{row['created'][:19]} · {agent.name} · {row['state']}")
+            label = {
+                "completed": "Execution finished — review results",
+                "response_only": "Response only — no tools ran",
+                "protocol_error": "Tool protocol failed",
+                "needs_review": "Failed/denied actions — review needed",
+            }.get(row["state"], row["state"].replace("_", " "))
+            self.history.addItem(f"{row['created'][:19]} · {agent.name} · {label}")
 
     def selected_session(self):
         i = self.history.currentRow()
@@ -1278,7 +1380,7 @@ class Window(QMainWindow):
     def closeEvent(self, event):
         active = [
             worker
-            for worker in (self.worker, self.discovery_worker, self.update_worker)
+            for worker in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)
             if worker and worker.isRunning()
         ]
         if active:
@@ -1298,14 +1400,15 @@ class Window(QMainWindow):
     def finish_close(self):
         if not any(
             worker and worker.isRunning()
-            for worker in (self.worker, self.discovery_worker, self.update_worker)
+            for worker in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)
         ):
             self.close_timer.stop()
             self.close()
 
 
 def main():
-    smoke = "--smoke-test" in sys.argv
+    diagnostic_smoke = "--diagnostic-smoke-test" in sys.argv
+    smoke = "--smoke-test" in sys.argv or diagnostic_smoke
     if smoke:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication(sys.argv)
@@ -1329,7 +1432,29 @@ def main():
     window = Window(Store(data / "aigentics.sqlite3", credentials), credentials, startup=not smoke)
     window.show()
     smoke_state = {"ok": False}
-    if smoke:
+    if diagnostic_smoke:
+        from .diagnostics import DiagnosticRunner
+
+        def run_diagnostic_smoke():
+            runner = DiagnosticRunner(window.store, credentials)
+            worker = Worker(
+                lambda job: runner.run(job.cancel, include_network=False, include_model=False),
+                credentials,
+                window,
+            )
+            window.diagnostic_worker = worker
+
+            def done(report):
+                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) >= 12
+                window.close()
+
+            worker.succeeded.connect(done)
+            worker.failed.connect(lambda message: app.exit(3))
+            worker.finished.connect(lambda: window.close() if smoke_state["ok"] else app.exit(3))
+            worker.start()
+
+        QTimer.singleShot(150, run_diagnostic_smoke)
+    elif smoke:
 
         def smoke_finish():
             if window.tabs.count() != 2 or window.run_agent.count() == 0:

@@ -52,7 +52,7 @@ def test_desktop_worker_runs_real_tools_and_populates_history(qtbot, store, cred
     qtbot.waitUntil(lambda: not window.worker.isRunning(), timeout=5000)
     qtbot.waitUntil(lambda: window.work_run.isEnabled(), timeout=5000)
     assert "Actual project listing completed" in window.work_output.toPlainText()
-    assert "tool.result" in window.work_output.toPlainText()
+    assert "Tool succeeded" in window.work_output.toPlainText()
     assert window.history.count() == 1
     window.lab_dir.cleanup()
     window.store.close = lambda: None

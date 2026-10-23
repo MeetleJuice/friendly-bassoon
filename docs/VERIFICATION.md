@@ -1,5 +1,12 @@
 # Verification
 
+## 0.3.0 diagnostics/reliability verification
+
+Current Linux result: **83 passed, 1 skipped** (optional live Ollama); lint/format pass. New tests cover the observed text-tool response, bounded non-executing recovery, native-call permission preservation, truthful response-only/denied outcomes, 12 real built-in checks, optional model fixture acceptance, cloud-model skipping, allowlisted reports, credential/approval protections, direct API issue protocol, no automatic retry after an ambiguous POST, bounded exact browser previews, report retention/recovery, v2→v3 history preservation, legacy response counts and preview edits revoking approval. No real support issue was created during development.
+
+The actual source entry point passed both --smoke-test and --diagnostic-smoke-test in disposable data directories. The diagnostic UI completed and rendered successfully offscreen. Windows CI now installs the actual new wizard, checks its shortcut/startup, runs the installed 12-check suite, and tests the pinned public 0.2.0 installer upgrading to this version with synthetic agents/settings/history preserved. Remote build/release results will be recorded after they complete. User-specific Ollama/API and real GitHub posting remain unverified until exercised with the user’s own authorized setup.
+
+
 ## 0.2.0 setup/update verification
 
 Linux automated validation: **61 passed, 1 skipped** (optional real Ollama), with lint passing. New tests cover `.env` and `.env.txt`/UTF-8 BOM, bounded Desktop and OneDrive lookup, disabled discovery, unavailable Ollama, malformed/oversized key files, no environment interpolation, profile preservation, installed-model selection, persistent preferences, database backup retention, stable version ordering, downgrade rejection, trusted release URLs, asset validation, verified/cache downloads, checksum/digest mismatch, corrupt/oversized downloads, cancellation cleanup, credential-free updater HTTP, re-verification before launch, argv boundaries and background desktop update status/events.

@@ -96,4 +96,9 @@ class Credentials:
         text = re.sub(r"(?i)(bearer\s+)[\w.\-]+", r"\1[REDACTED]", text)
         text = re.sub(r"\b(?:sk-|gsk_)[A-Za-z0-9_\-]{8,}", "[REDACTED]", text)
         text = re.sub(r"(?i)((?:api[_-]?key|password|token|secret)\s*[=:]\s*)[^\s,;]+", r"\1[REDACTED]", text)
+        text = re.sub(
+            r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AIza[A-Za-z0-9_-]{20,})",
+            "[REDACTED]",
+            text,
+        )
         return text

@@ -19,7 +19,7 @@ Quotes are supported; values are not executed or expanded from the process envir
 
 ## Update behavior
 
-- Startup checks `api.github.com` for the latest stable public release. You can disable it or check manually.
+- The prominent Update button opens the same flow directly. Startup checks `api.github.com` for the latest stable public release. You can disable it or check manually.
 - A newer release must have the expected installer asset and `SHA256SUMS.txt` for this exact repository and tag. Downgrades, drafts and prereleases are not installed automatically.
 - Downloads allow only HTTPS and known GitHub release hosts, use response/size limits and a temporary file, and compare byte size and SHA-256. When present, the GitHub API asset digest must also agree. Verification failure prevents installation. A checksum from the same release channel is not protection against a compromised repository/release account.
 - **Install & restart** is available on Windows after verification. It is blocked during active runtime/setup/update jobs. The app backs up the SQLite database, re-verifies the installer immediately before launching, and closes. Finish the wizard to reopen the updated app. Nothing is installed silently at startup.
@@ -50,3 +50,5 @@ python -m pip install -e ".[dev]" "pyinstaller==6.16.0"
 ```
 
 The manual smoke script creates/removes an Aigentics Desktop shortcut and uses a temporary installation directory; use a disposable test account/machine. Keep release signing credentials outside source control. The current workflow does not have an Authenticode certificate, independent update-signing key, or Windows 10 hardware acceptance result.
+
+For 0.3.0 the Windows smoke also runs the installed built-in diagnostic suite and a checksum-pinned 0.2.0-to-current upgrade, verifying saved agents, settings, session messages and schema migration. See DIAGNOSTICS.md for approved support reporting, which is separate from software installation and source-code releases.

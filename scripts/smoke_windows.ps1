@@ -24,3 +24,36 @@ if (-not (Test-Path (Join-Path $env:AIGENTICS_DATA_DIR 'aigentics.sqlite3'))) { 
 # The smoke created this shortcut in the runner's disposable desktop; remove it.
 Remove-Item $shortcutPath
 Write-Output "Windows installer, desktop shortcut, packaged GUI, SQLite and shutdown smoke passed."
+
+# Exercise the shipped diagnostic runner without pytest, Ollama, secrets or GitHub submission.
+$diagnostics = Start-Process -FilePath $executablePath -ArgumentList '--diagnostic-smoke-test' -PassThru
+if (-not $diagnostics.WaitForExit(60000)) { $diagnostics.Kill(); throw "Packaged diagnostic suite timed out" }
+if ($diagnostics.ExitCode -ne 0) { throw "Packaged diagnostic suite failed: exit $($diagnostics.ExitCode)" }
+Write-Output "All 12 built-in packaged diagnostic checks passed. No support report was submitted."
+
+# Verify migration from the public 0.2.0 installer, using its previously verified immutable checksum.
+$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.2.0.exe'
+Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.2.0/Aigentics-Setup-0.2.0.exe' -OutFile $previousInstaller
+$expectedPreviousHash = 'f7f1ab999f9df45e0bf2a6d5e0c7d4839c477a1f82732ade95de59f07602874e'
+if ((Get-FileHash $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedPreviousHash) {
+    throw 'Previous release failed its pinned checksum; refusing upgrade test'
+}
+$upgradeRoot = Join-Path $temporaryRoot 'aigentics-upgrade-install'
+$env:AIGENTICS_DATA_DIR = Join-Path $temporaryRoot 'aigentics-upgrade-data'
+$oldSetup = Start-Process -FilePath $previousInstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$upgradeRoot`"") -Wait -PassThru
+if ($oldSetup.ExitCode -ne 0) { throw 'Previous installer failed' }
+$upgradeExe = Join-Path $upgradeRoot 'Aigentics.exe'
+$oldApp = Start-Process -FilePath $upgradeExe -ArgumentList '--smoke-test' -PassThru
+if (-not $oldApp.WaitForExit(60000)) { $oldApp.Kill(); throw 'Previous app startup timed out' }
+if ($oldApp.ExitCode -ne 0) { throw 'Previous app startup failed' }
+python scripts/upgrade_probe.py seed $env:AIGENTICS_DATA_DIR
+if ($LASTEXITCODE -ne 0) { throw 'Could not seed previous-release fixture' }
+$newSetup = Start-Process -FilePath $installerPath -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$upgradeRoot`"") -Wait -PassThru
+if ($newSetup.ExitCode -ne 0) { throw 'Upgrade installer failed' }
+$newApp = Start-Process -FilePath $upgradeExe -ArgumentList '--smoke-test' -PassThru
+if (-not $newApp.WaitForExit(60000)) { $newApp.Kill(); throw 'Upgraded app startup timed out' }
+if ($newApp.ExitCode -ne 0) { throw 'Upgraded app startup failed' }
+python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
+if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not preserve data' }
+if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }
+Write-Output 'Real 0.2.0-to-current upgrade preserved agents, settings and session history; schema migration passed.'

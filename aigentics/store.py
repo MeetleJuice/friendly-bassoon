@@ -31,12 +31,16 @@ class Store:
         if recover:
             for row in self.db.execute("SELECT id FROM sessions WHERE state='running'").fetchall():
                 self.finish(row["id"], "interrupted", "Previous process stopped before session completion")
+            for row in self.db.execute("SELECT id,payload FROM diagnostics WHERE state='running'").fetchall():
+                payload = json.loads(row["payload"])
+                payload["state"] = "interrupted"
+                self.save_diagnostic(payload)
         self.prune()
 
     def _migrate(self):
         with self.lock, self.db:
             version = self.db.execute("PRAGMA user_version").fetchone()[0]
-            if version > 2:
+            if version > 3:
                 raise RuntimeError("Database is newer than this application; upgrade the application")
             if version < 1:
                 self.db.executescript("""
@@ -62,6 +66,44 @@ class Store:
                     label TEXT NOT NULL, note TEXT NOT NULL, updated TEXT NOT NULL);
                 PRAGMA user_version=2;
                 """)
+
+            if version < 3:
+                self.db.executescript("""
+                CREATE TABLE IF NOT EXISTS diagnostics(id TEXT PRIMARY KEY, created TEXT, state TEXT,
+                    payload TEXT, submission_state TEXT NOT NULL DEFAULT 'local', submission_url TEXT);
+                PRAGMA user_version=3;
+                """)
+
+    def save_diagnostic(self, report):
+        raw = self.credentials.json(report)
+        if len(raw.encode("utf-8")) > 250000:
+            raise ValueError("Diagnostic report exceeds the storage limit")
+        with self.lock, self.db:
+            self.db.execute(
+                "INSERT INTO diagnostics(id,created,state,payload) VALUES(?,?,?,?) "
+                "ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload",
+                (report["id"], report["created"], report["state"], raw),
+            )
+
+    def diagnostic_reports(self):
+        with self.lock:
+            return [
+                dict(row) | {"payload": json.loads(row["payload"])}
+                for row in self.db.execute("SELECT * FROM diagnostics ORDER BY created DESC LIMIT 50")
+            ]
+
+    def diagnostic_submission(self, report_id, state, url=""):
+        with self.lock, self.db:
+            self.db.execute(
+                "UPDATE diagnostics SET submission_state=?,submission_url=? WHERE id=?",
+                (state, url, report_id),
+            )
+        self.event(None, "diagnostic.sharing_state", {"report_id": report_id, "state": state})
+
+    def delete_diagnostic(self, report_id):
+        with self.lock, self.db:
+            self.db.execute("DELETE FROM diagnostics WHERE id=? AND state != 'running'", (report_id,))
+        self.compact()
 
     def assess(self, sid, label, note=""):
         if label not in ("goal_met", "needs_work"):
@@ -283,6 +325,11 @@ class Store:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         with self.lock, self.db:
             self.db.execute("DELETE FROM sessions WHERE updated < ? AND state != 'running'", (cutoff,))
+            self.db.execute("DELETE FROM diagnostics WHERE created < ? AND state != 'running'", (cutoff,))
+            self.db.execute(
+                "DELETE FROM diagnostics WHERE state != 'running' AND id NOT IN "
+                "(SELECT id FROM diagnostics ORDER BY created DESC LIMIT 20)"
+            )
             self.db.execute("DELETE FROM events WHERE session_id IS NULL AND timestamp < ?", (cutoff,))
             self.db.execute(
                 "DELETE FROM events WHERE session_id IS NULL AND sequence NOT IN (SELECT sequence FROM events WHERE session_id IS NULL ORDER BY sequence DESC LIMIT ?)",

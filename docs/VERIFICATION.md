@@ -2,7 +2,7 @@
 
 ## 0.5.0 projects, retrieval and native tool probes
 
-Linux: **195 passed, 1 skipped** (optional live Ollama), lint/format pass. New checks cover structured native NDJSON/SSE framing, UTF8 fragments/limits/incomplete streams, explicit remote consent, four matched local route variants, real request counts, HTTP200 protocol failures, argument mismatch and text non-execution; project migration/briefs/scope, ignore/link/secret/cancellation bounds, freshness and citations beyond map display limits, registry/schema/handler alignment, report privacy/types and hidden browser-token controls. Both source smoke modes exited0; suite 3 runs 17 offline checks. Synthetic GUI renders were inspected. Windows installation/upgrade/release download results are pending. No live user keys/model requests or real report POSTs were used in development.
+Linux: **196 passed, 1 skipped** (optional live Ollama), lint/format pass. New checks cover structured native NDJSON/SSE framing, UTF8 fragments/limits/incomplete streams, explicit remote consent, four matched local route variants, real request counts, HTTP200 protocol failures, argument mismatch and text non-execution; project migration/briefs/scope, ignore/link/secret/cancellation bounds, freshness and citations beyond map display limits, registry/schema/handler alignment, report privacy/types and hidden browser-token controls. Both source smoke modes exited0; suite 3 runs 17 offline checks. Synthetic GUI renders were inspected. Windows installation/upgrade/release download results are pending. No live user keys/model requests or real report POSTs were used in development.
 
 ## 0.4.0 model catalogs, evidence and retention
 

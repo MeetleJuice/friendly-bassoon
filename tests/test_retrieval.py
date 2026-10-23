@@ -38,7 +38,7 @@ def test_map_symbols_and_lexical_ranking_with_source_citations(tmp_path):
     snippet = result["snippets"][0]
     assert snippet["path"] == "src/invoice.py"
     assert snippet["line"] == 1 and snippet["end_line"] == 3
-    assert snippet["sha256"] == hashlib.sha256(source.encode()).hexdigest()
+    assert snippet["sha256"] == hashlib.sha256((tmp_path / "src/invoice.py").read_bytes()).hexdigest()
     assert "class Invoice" in snippet["text"]
     assert result["scanned"]["files"] == 3
     assert result["scanned"]["bytes"] == sum(
@@ -332,3 +332,11 @@ def test_registry_schema_and_all_execution_routes_agree(tmp_path, monkeypatch):
 def test_retrieval_validates_bounds(tmp_path, query, max_chars):
     with pytest.raises(ValueError):
         retrieval.retrieve_context(Workspace(tmp_path), query, threading.Event(), max_chars)
+
+
+def test_source_citations_hash_exact_crlf_bytes(tmp_path):
+    raw = b"def windows_source():\r\n    return 42\r\n"
+    (tmp_path / "windows.py").write_bytes(raw)
+    result = retrieval.retrieve_context(Workspace(tmp_path), "windows_source", threading.Event())
+    assert result["snippets"][0]["sha256"] == hashlib.sha256(raw).hexdigest()
+    assert result["snippets"][0]["line"] == 1

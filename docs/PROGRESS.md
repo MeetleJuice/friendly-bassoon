@@ -2,7 +2,7 @@
 
 ## 0.5.0 projects and native tool certification
 
-Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 195 passed/1 optional live test skipped;17 packaged offline checks and source startup pass. Windows/release validation pending. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
+Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 196 passed/1 optional live test skipped; 17 packaged offline checks and source startup pass. Windows/release validation pending. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
 
 ## 0.4.0 model catalogs and retention
 

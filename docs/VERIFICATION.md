@@ -156,3 +156,6 @@ The workspace disconnected during finalintegration, before anycommit/push/releas
 ### Final retention audit
 
 A real cancel/continue test with a five-report cap exposed an important lifecycle bug: a resumed campaign could finish successfully and then be pruned because its original record timestamp was older than intervening reports. The final campaign save now explicitly refreshes its retention clock while preserving the report ID, original payload creation timestamp, and every prior result. Other report saves retain their existing age semantics. A database-close/reopen regression verifies the completed campaign remains available. Source candidate 5afbc43 was superseded before tagging; no published artifact was changed.
+
+
+Windows source run40115798980 failed with only a generic exit-code annotation; available job metadata omitted steps and signed log download was blocked by the execution network. Candidate c976e3b includes the independently verified retention correction. Added explicit PowerShell package/installer exception annotations so a future failure provides an actionable cause through the accessible checks API, without relying on log downloads. No failed source is eligible for tagging.

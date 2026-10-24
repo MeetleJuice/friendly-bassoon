@@ -50,9 +50,21 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
           }
       - name: Build standalone executable and installer
-        run: ./scripts/build_windows.ps1 -Version '${{ steps.version.outputs.version }}'
+        run: |
+          try { ./scripts/build_windows.ps1 -Version '${{ steps.version.outputs.version }}' }
+          catch {
+            $detail = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows package build::$detail"
+            throw
+          }
       - name: Verify actual installer and desktop shortcut
-        run: ./scripts/smoke_windows.ps1 -Version '${{ steps.version.outputs.version }}'
+        run: |
+          try { ./scripts/smoke_windows.ps1 -Version '${{ steps.version.outputs.version }}' }
+          catch {
+            $detail = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows installer verification::$detail"
+            throw
+          }
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: Aigentics-Windows-${{ steps.version.outputs.version }}

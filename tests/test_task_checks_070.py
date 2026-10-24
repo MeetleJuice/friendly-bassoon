@@ -369,7 +369,7 @@ def test_workbench_dispatches_fresh_by_default_and_continues_only_when_selected(
 def test_noop_static_check_cannot_certify_a_different_revision(tmp_path, monkeypatch):
     import aigentics.tools as tools
 
-    (tmp_path / "same.py").write_text("value = 1\n")
+    (tmp_path / "same.py").write_bytes(b"value = 1\n")
     ws = Workspace(tmp_path)
     runner = ToolRunner(ws, Agent(), lambda *args: False, threading.Event())
     runner.execute(call("read_file", path="same.py"))

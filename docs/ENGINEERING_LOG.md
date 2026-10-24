@@ -186,3 +186,8 @@ The previous successful source run40096724399 exposes14executedsteps. Recent sta
 ### Recoverable release handoff
 
 Final local run:714passed/1optional liveOllamaskipped. Exact release candidate849b42b5c61316b7fccedf4f7e2629f7c4ccef7e is being validated by Windows2022 run40117966348. Product code is frozen while the external gate runs. Source startup/24offline diagnostics/dependencies/wheel/lint/format and full42attempt GUI rehearsal pass. No release tag or new public installer exists yet. Read PROGRESS.md for exact remaining steps and prior cancelled/generic-failure evidence.
+
+
+### Windows installer-check timeout diagnosis
+
+Pinned run40117966348 completed all tests/lint and built the executable/installer successfully. Actual installer verification timed out after its6minute phase limit. The new automatic-relaunch check used PowerShell Start-Process -Wait, which waits for the entire descendant process tree, including the intentionally persistent relaunched GUI. MicrosoftDocs PowerShell7.5 Start-Process documents this explicitly (https://github.com/MicrosoftDocs/PowerShell-Docs/blob/main/reference/7.5/Microsoft.PowerShell.Management/Start-Process.md). The check now starts setup without -Wait, bounds only its own Process.WaitForExit to120seconds, and independently polls/asserts the GUI remains alive. This corrects the test harness; it does not remove the relaunch requirement or change application behavior. The earlier generic first-source failure remains unproven and is not retroactively attributed to this cause. FinalWindows/release validation follows.

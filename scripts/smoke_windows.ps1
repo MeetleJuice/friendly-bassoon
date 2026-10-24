@@ -72,7 +72,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not configure offline restart fixture' }
 $ownedApps = @(Get-Process -Name Aigentics -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $upgradeExe })
 if ($ownedApps.Count -ne 0) { throw 'Upgrade fixture unexpectedly has a running app' }
 try {
-    $updateSetup = Start-Process -FilePath $installerPath -ArgumentList @('/UPDATE=1', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$upgradeRoot`"") -Wait -PassThru
+    # Start-Process -Wait includes descendants and would wait forever for the relaunched GUI.
+    # Wait only for the installer process; the GUI is intentionally verified separately below.
+    $updateSetup = Start-Process -FilePath $installerPath -ArgumentList @('/UPDATE=1', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$upgradeRoot`"") -PassThru
+    if (-not $updateSetup.WaitForExit(120000)) { $updateSetup.Kill(); throw 'Silent installer itself timed out' }
     if ($updateSetup.ExitCode -ne 0) { throw 'Silent update-mode installer failed' }
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {

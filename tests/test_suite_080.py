@@ -206,3 +206,36 @@ def test_guided_flow_waits_for_worker_completion_before_downloading(qtbot, store
     window.update_worker = None
     window.lab_dir.cleanup()
     window.store.close = lambda: None
+
+
+def test_bundle_merges_metadata_without_generation_or_extra_share_report(store, credentials, monkeypatch):
+    import aigentics.test_suite as suite
+    import aigentics.catalog as catalog
+    from aigentics.evidence import base_report
+
+    store.save_profile(Profile(id="ollama", name="Local"))
+    store.save_profile(Profile(id="duplicate", name="Same connection"))
+    calls = []
+
+    class Metadata:
+        def __init__(self, profile, credentials):
+            self.last_http_status = 200
+            calls.append(profile.id)
+
+        def discover(self):
+            return ["fixture-model"]
+
+        def chat(self, *args):
+            raise AssertionError("Metadata runner must never generate")
+
+    real = catalog.CatalogRunner
+    monkeypatch.setattr(catalog, "CatalogRunner", lambda s, c: real(s, c, Metadata))
+    monkeypatch.setattr(
+        suite, "run_suite", lambda *args: base_report("agent_suite", "agent-suite-1", "Synthetic")
+    )
+    reports = suite.run_bundle(store, credentials, Agent(), threading.Event(), lambda e: None)
+    assert len(reports) == 2
+    assert len(calls) == 1
+    rows = [r for r in reports[0]["checks"] if r["id"].startswith("api_")]
+    assert len(rows) == 1 and rows[0]["evidence"]["generation_requests"] == 0
+    assert store.catalogs()

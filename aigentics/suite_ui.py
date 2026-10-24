@@ -66,6 +66,12 @@ class SuiteDialog(QDialog):
             self.results.setItem(index, 0, QTableWidgetItem(title))
             self.results.setItem(index, 1, QTableWidgetItem("Ready"))
         layout.addWidget(self.results)
+        self.catalog = QCheckBox("Refresh API model lists • metadata only, no generation tokens")
+        self.catalog.setChecked(window.store.setting("suite_catalogs", True))
+        self.catalog.setToolTip(
+            "At most one metadata request per configured connection. Existing keys remain private. No cloud generation."
+        )
+        layout.addWidget(self.catalog)
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
         self.output.setPlainText(
@@ -99,6 +105,8 @@ class SuiteDialog(QDialog):
         if not agent:
             w.error("Save a local Ollama agent first.")
             return
+        include_catalog = self.catalog.isChecked()
+        w.store.set_setting("suite_catalogs", include_catalog)
         w.store.set_setting("suite_agent", agent.id)
         self.go.setEnabled(False)
         self.agents.setEnabled(False)
@@ -106,12 +114,18 @@ class SuiteDialog(QDialog):
         self.approval.setEnabled(False)
         self.urls = []
         self.output.clear()
+        from .store import Store
+
+        groups = len({Store.catalog_signature(p) for p in w.store.profiles()}) if include_catalog else 0
+        self.progress.setRange(0, 31 + min(groups, 32))
         self.progress.setValue(0)
         for index in range(10):
             for column in range(1, 4):
                 self.results.setItem(index, column, QTableWidgetItem("Ready" if column == 1 else ""))
         worker = Worker(
-            lambda job: run_bundle(w.store, w.credentials, agent, job.cancel, job.activity.emit),
+            lambda job: run_bundle(
+                w.store, w.credentials, agent, job.cancel, job.activity.emit, include_catalog
+            ),
             w.credentials,
             w,
         )
@@ -156,6 +170,7 @@ class SuiteDialog(QDialog):
                     + "\nCurrent suite: "
                     + str(suite.get("summary", {}))
                 )
+        self.window.load_catalog_choices()
         self.urls = [prepare_browser_draft(*issue_body(r, self.window.credentials)) for r in reports]
         for index, url in enumerate(self.urls):
             fields = parse_qs(urlsplit(url).query)

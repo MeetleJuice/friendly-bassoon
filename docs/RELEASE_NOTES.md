@@ -4,6 +4,7 @@
 - Update queues one post-install test run; existing installer verification, backup and installation approval remain. First upgrade from0.7: open Test suite once after installing0.8.
 - Two exact allowlisted previews share one approval control, then open two GitHub drafts. Click Create on both pages; no token is required.
 - Local-only configuration-scoped comparison, timings/available usage/protocol/task evidence. Existing retention controls apply. No commands or cloud generation in automatic suites.
+- Optional remembered API model-list refresh joins the health report: one metadata request per connection, no generation tokens.
 - Rounded controls, visible keyboard focus and native hover help. Disabled agent capabilities are skipped instead of being granted.
 
 ## Aigentics Desktop 0.7.0 — task checks and trustworthy outcomes

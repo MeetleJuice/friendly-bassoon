@@ -246,9 +246,39 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
     return report
 
 
-def run_bundle(store, credentials, agent, cancel, emit):
+def run_bundle(store, credentials, agent, cancel, emit, include_catalog=True):
     local_profile(store, agent)
     health = DiagnosticRunner(store, credentials).run(cancel, emit, include_network=False)
+    if not cancel.is_set() and include_catalog:
+        from .catalog import CatalogRunner
+
+        try:
+            catalogs = CatalogRunner(store, credentials).run(cancel, emit)
+            health["checks"].extend(catalogs["checks"])
+            health["duration_ms"] += catalogs.get("duration_ms", 0)
+        except Exception:
+            row = {
+                "id": "api_catalogs",
+                "status": "warning",
+                "code": "CATALOG_CHECK_UNAVAILABLE",
+                "message": "Metadata checks unavailable; agent tests can still run.",
+                "duration_ms": 0,
+                "evidence": {"generation_requests": 0},
+            }
+            health["checks"].append(row)
+            emit({"kind": "diagnostic.result", "data": row})
+        health["summary"] = {
+            key: sum(r["status"] == key for r in health["checks"])
+            for key in ("passed", "failed", "warning", "skipped")
+        }
+        health["state"] = (
+            "cancelled"
+            if cancel.is_set()
+            else "needs_attention"
+            if any(health["summary"][k] for k in ("failed", "warning", "skipped"))
+            else "passed"
+        )
+        store.save_diagnostic(health)
     if cancel.is_set():
         return [health]
     return [health, run_suite(store, credentials, agent, cancel, emit)]

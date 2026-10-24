@@ -2,7 +2,7 @@
 
 ## 0.7.0 task checks and trustworthy outcomes
 
-Implemented maintenance/UPGRADE_070_PLAN.md using approved issues9–12 and the supplied evaluation/log evidence. Adds visible output-file restrictions, required native tools/current post-write read-back checks, fresh context by default, preserved incomplete-response work, separate runtime facts, skipped no-op writes, permission preflight and safe evidence/coverage counters. Existing schema5/agents/locations/retention remain. Local 242 tests pass / 1 optional live Ollama skipped;21 packaged offline checks and both source smokes pass. Final Windows install/actual 0.6 upgrade and publication evidence follows in VERIFICATION.md.
+Implemented maintenance/UPGRADE_070_PLAN.md using approved issues9–12 and the supplied evaluation/log evidence. Adds visible output-file restrictions, required native tools/current post-write read-back checks, fresh context by default, preserved incomplete-response work, separate runtime facts, skipped no-op writes, permission preflight and safe evidence/coverage counters. Existing schema5/agents/locations/retention remain. Local 243 tests pass / 1 optional live Ollama skipped;21 packaged offline checks and both source smokes pass. Final Windows install/actual 0.6 upgrade and publication evidence follows in VERIFICATION.md.
 
 ## Delivered baselines
 

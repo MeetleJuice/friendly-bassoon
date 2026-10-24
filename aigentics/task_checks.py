@@ -37,7 +37,11 @@ def suggested_targets(task):
     This is a convenience suggestion, not a general natural-language intent parser.
     The UI displays it before Run; callers never scan briefs/history/source for targets.
     """
-    if re.search(r"\b(?:do not|don't|read.only|plan only|change nothing)\b", task, re.I):
+    if re.search(
+        r"\b(?:read.only|plan only|change nothing|no changes)\b|\b(?:do not|don't)\s+(?:create|write|edit|modify|change|touch|alter)\b",
+        task,
+        re.I,
+    ):
         return []
     filename = r"[A-Za-z0-9_][A-Za-z0-9_./\\-]*\.[A-Za-z][A-Za-z0-9_]{0,12}"
     found = re.match(

@@ -2,7 +2,7 @@
 
 ## 0.7.0 local verification; Windows publication pending
 
-Linux: **242 passed, 1 skipped** (optional live Ollama), lint/format/dependencies pass. New regressions cover narrow editable target suggestions, wrong-file rejection before approval, exact writes and read-back ordering/current revisions, absent required tools despite success prose, disabled-tool preflight, preserved missing-final work without replay/thinking substitution, unchanged-write CRLF/approval/revision safety, explicit UI fresh/continued dispatch, HTTP-success evidence and private-target public filtering. Both source smoke modes pass; health suite 5 has 21 offline checks. Synthetic task-check controls rendered/inspected. No live user key/model request or actual report POST was used. Actual Windows installation/0.6 upgrade and immutable release/download results follow.
+Linux: **243 passed, 1 skipped** (optional live Ollama), lint/format/dependencies pass. New regressions cover narrow editable target suggestions, wrong-file rejection before approval, exact writes and read-back ordering/current revisions, absent required tools despite success prose, disabled-tool preflight, preserved missing-final work without replay/thinking substitution, unchanged-write CRLF/approval/revision safety, explicit UI fresh/continued dispatch, HTTP-success evidence and private-target public filtering. Both source smoke modes pass; health suite 5 has 21 offline checks. Synthetic task-check controls rendered/inspected. No live user key/model request or actual report POST was used. Actual Windows installation/0.6 upgrade and immutable release/download results follow.
 
 ## 0.6.0 verification, recovery and run reports
 

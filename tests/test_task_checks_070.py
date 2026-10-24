@@ -43,6 +43,7 @@ def exercise(store, credentials, tmp_path, replies, checks=None):
     "task,expected",
     [
         ("Create output.py containing a square function.", ["output.py"]),
+        ("Create output.py containing a square function. Read it back. Do not run commands.", ["output.py"]),
         ("Create a new file named `new_file.py` containing valid code.", ["new_file.py"]),
         ("Please update src/main.py.", ["src/main.py"]),
         ("Create output.py using input.py", []),

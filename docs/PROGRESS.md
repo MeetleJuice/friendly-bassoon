@@ -1,8 +1,14 @@
 # Build progress and next actions
 
-## 0.13 implementation — release validation pending
+## 0.13.0 verified delivery
 
-Completion feedback is opt-in, bounded to one turn within existing budgets and blocked after unresolved denied/failed actions. Campaign2 enables it and explicit source-read checks; campaign1 results remain preserved. Local727passed/1optional live skip plus focused report-counter privacy coverage; lint/format/dependencies/startup/24offline checks pass. Windows0.12upgrade/install/silent-restart validation and public delivery follow. Inline portrait/icon originals are unavailable as downloadable files; see design/MIDNIGHT_CREW.md and maintenance/UPGRADE_0130_PLAN.md. No model performance improvement is inferred from fixtures.
+Published [0.13.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.13.0) from immutable `f532ebfea494271e98382df063e9a6fba3c46a3f`. Source Windows run 40141003967 and release run 40141645149 passed all tests, packaging, actual installation/shortcut/startup,24offline diagnostics, pinned0.12upgrade and silent restart. Local727tests passed/1optional live model skipped plus the new report privacy regression; Windows validates the full728test set. Production Updater(current_version=0.12.0) discovered/downloaded/reverified the public installer: **42396457bytes**, SHA256 `7d823956862338bd5ce07bc585e76bc52c533c118f7852fdd18c2767c51fbb00`. No live user model/key/supportPOST used.
+
+Campaign2 keeps42model attempts/24offline checks and unchanged generation budgets. One feedback cycle may use remaining model steps, never additional step/time/context limits. Initial missing checks and feedback request counts remain separate from final outcomes. Source reads are explicit for specialists. Ordinary TaskChecks preserve the prior default unless opted in; personal agents/settings remain. Real improvements require user Ollama acceptance. Output-limit failures are not claimed fixed. No orchestration/MCP/model retraining added.
+
+Seven new inline artworks are inventoried in design/MIDNIGHT_CREW.md and reference/README.md. Their original files remain inaccessible; no raster originals or generated substitutes were committed. Exact-file archival requires original attachments, preferably one ZIP.
+
+Next: Update/restart, keep Ollama running and let queued Deep campaign2 finish once (66results, up to2hours). Review/approve both previews and Create both GitHub issues; compare feedback-needed/final outcomes and source grounding with issues22/23. Do not rerun merely for green.
 
 ## 0.12.0 verified delivery
 

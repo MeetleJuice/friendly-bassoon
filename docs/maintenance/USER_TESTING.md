@@ -1,3 +1,11 @@
+# 0.13 acceptance — bounded completion feedback
+
+Click Update and keep Ollama running. After restart, allow the queued Deep campaign2 to run once:24app checks+42model attempts, up to2hours. Existing personal agents remain unchanged; the controlled test definitions share the selected local model.
+
+Agents receive at most one feedback request when explicit checks remain unmet, using remaining steps/time and existing permissions. Reports show feedback count and initial missing-write/read/source counts separately from final results. Source reads are enforced in specialist cases. No output-limit fix or universal reliability is claimed; ordinary manual TaskChecks retain their previous default unless opted in.
+
+Review both exact previews, approve opening, click Create on both GitHub pages and send the links. Failures are useful evidence. API/key checks remain separate and manual.
+
 # 0.12 acceptance — one campaign, six agents
 
 The verified 0.12 installer is published. Follow these steps for the first live-model acceptance campaign.

@@ -384,14 +384,29 @@ class Window(QMainWindow):
         if autorun:
             QTimer.singleShot(0, self.suite_dialog.start)
 
+    def guided_next(self):
+        if not getattr(self, "guided_update", False):
+            return
+        if any(
+            j and j.isRunning()
+            for j in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)
+        ):
+            QTimer.singleShot(100, self.guided_next)
+            return
+        if self.downloaded_update and sys.platform == "win32":
+            self.install_update()
+        elif self.available_release and not self.downloaded_update:
+            self.download_update()
+        else:
+            self.guided_update = False
+            self.resume_guided_tests()
+
     def update_action(self):
         self.guided_update = True
         self.store.set_setting("suite_agent", self.run_agent.currentData())
         self.open_setup()
-        if self.downloaded_update:
-            self.install_update()
-        elif self.available_release:
-            self.download_update()
+        if self.downloaded_update or self.available_release:
+            self.guided_next()
         else:
             self.check_updates()
 
@@ -610,11 +625,7 @@ class Window(QMainWindow):
         )
         self.update_setup_view()
         if getattr(self, "guided_update", False):
-            if release:
-                self.download_update()
-            else:
-                self.guided_update = False
-                self.resume_guided_tests()
+            self.guided_next()
 
     def download_update(self):
         if not self.available_release or self.background_updates_running():
@@ -653,8 +664,8 @@ class Window(QMainWindow):
             {"version": update.release.version, "bytes": update.release.size, "sha256": update.sha256},
         )
         self.update_setup_view()
-        if getattr(self, "guided_update", False) and sys.platform == "win32":
-            self.install_update()
+        if getattr(self, "guided_update", False):
+            self.guided_next()
 
     def install_update(self):
         if not self.downloaded_update:
@@ -674,6 +685,7 @@ class Window(QMainWindow):
             )
             != QMessageBox.Yes
         ):
+            self.guided_update = False
             return
 
         def perform():

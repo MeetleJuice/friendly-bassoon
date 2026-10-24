@@ -177,3 +177,32 @@ def test_post_update_queue_consumed_only_by_target_version(qtbot, store, credent
     assert len(queued) == 1
     window.lab_dir.cleanup()
     window.store.close = lambda: None
+
+
+def test_guided_flow_waits_for_worker_completion_before_downloading(qtbot, store, credentials, monkeypatch):
+    from aigentics.ui import Window
+
+    window = Window(store, credentials)
+    qtbot.addWidget(window)
+
+    class Busy:
+        running = True
+
+        def isRunning(self):
+            return self.running
+
+    busy = Busy()
+    window.update_worker = busy
+    window.guided_update = True
+    window.available_release = object()
+    deferred, calls = [], []
+    monkeypatch.setattr("aigentics.ui.QTimer.singleShot", lambda delay, fn: deferred.append(fn))
+    monkeypatch.setattr(window, "download_update", lambda: calls.append("download"))
+    window.guided_next()
+    assert deferred and not calls
+    busy.running = False
+    deferred.pop()()
+    assert calls == ["download"]
+    window.update_worker = None
+    window.lab_dir.cleanup()
+    window.store.close = lambda: None

@@ -1,6 +1,6 @@
 # 0.12 acceptance — one campaign, six agents
 
-Release validation is in progress; use these steps after the verified 0.12 installer is published.
+The verified 0.12 installer is published. Follow these steps for the first live-model acceptance campaign.
 
 1. Keep Ollama running and your working local-model agent saved. Click **Update**. The first upgrade launched by 0.11 may still ask you to confirm installation and finish its wizard; let it reopen Aigentics.
 2. After restart, the queued **Midnight Crew** campaign should open and start once. If local setup is missing, select a saved local Ollama agent and start from **Test suite**. The selector supplies the model connection for all six controlled agent configurations.

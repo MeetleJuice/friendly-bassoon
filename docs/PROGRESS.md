@@ -1,5 +1,11 @@
 # Build progress and next actions
 
+## 0.8.0 delivered: guided tests and reviewed reports
+
+Ten isolated native agent exercises,21offline app checks, optional metadata-only API refresh, readable progress/results, completion sound, bounded saved evidence/configuration-scoped comparisons, hover hints and two jointly approved browser drafts are implemented and released. Update queues one suite after the target version restarts and preserves the chosen suite agent. See maintenance/UPGRADE_080_PLAN.md, RESEARCH_080.md and VERIFICATION.md for evidence and boundaries.
+
+First upgrade from0.7: Update/install/restart, then click Test suite, choose the working local Ollama agent, Go. Review both previews after completion, approve once, then click Create on both GitHub browser pages and send both issue URLs. Older0.7 cannot queue the new workflow retroactively. Later0.8 Update clicks queue it. File exercises stay in fresh temporary folders, host commands/cloud fallback remain disabled, disabled tools skip and interrupted/cancelled cases cannot pass. API model listing uses at most one metadata GET per unique connection and does not certify generation.
+
 ## 0.7.0 task checks and trustworthy outcomes
 
 Implemented maintenance/UPGRADE_070_PLAN.md using approved issues9–12 and the supplied evaluation/log evidence. Adds visible output-file restrictions, required native tools/current post-write read-back checks, fresh context by default, preserved incomplete-response work, separate runtime facts, skipped no-op writes, permission preflight and safe evidence/coverage counters. Existing schema5/agents/locations/retention remain. Local 243 tests pass / 1 optional live Ollama skipped;21 packaged offline checks and both source smokes pass. Windows source 40043557907 and tag/release 40044023333 passed actual installation, 21 packaged checks and the released 0.6 upgrade. Published 0.7.0 was downloaded/checksum-verified by the production updater; see VERIFICATION.md.
@@ -12,7 +18,7 @@ Implemented maintenance/UPGRADE_070_PLAN.md using approved issues9–12 and the 
 
 ## Next useful user acceptance
 
-Install published 0.7.0 using Update and restart. Keep a saved working Qwen3-family agent. In Workbench enter a simple single-file create request, review the visible expected filename and keep fresh context/read-back enabled. Approve only its intended diff. Inspect actual task-check/operation facts, label Goal met/Needs work and share one reviewed run report. A missing final answer must preserve successful writes without replay; do not blindly repeat the whole task. Do not rerun unchanged Qwen14b route matrices.
+Run the released0.8 guided suite once using a known working local agent. A failed case is useful evidence; avoid repeat runs merely to obtain green results. Share the two reviewed reports via the generated browser drafts and send their submitted issue URLs. Full bounded traces remain local; only the exact allowlisted summaries are public. No token is needed for browser sharing.
 
 ## Validation boundaries and deferred work
 
@@ -21,6 +27,6 @@ Cloud fixtures and Windows CI do not certify the user's GPU, live cloud models, 
 Deferred: independent installer signing/Authenticode, atomic multi-file transactions and rollback, Windows Job Objects/OS sandboxing, full provider certification/credential UX, richer review UI, measured tokenizer/context compression, controlled live benchmarks and embedding/MCP/team features with separate permission/cost policies. No automatic uploads, cloud generation, source self-modification or trained improvement is claimed.
 
 
-## 0.8 guided suite (implementation validation in progress)
+## 0.8 implementation history
 
 See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.

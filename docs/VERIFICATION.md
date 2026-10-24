@@ -1,5 +1,9 @@
 # Verification
 
+## 0.8.0 guided tests and update workflow
+
+Published [0.8.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.8.0) from immutable source `496eafd32f8d3585cdf5d9f7a164f9a671eec8c5`. Windows source [40047789947](https://github.com/MeetleJuice/friendly-bassoon/actions/runs/40047789947) and release [40048328486](https://github.com/MeetleJuice/friendly-bassoon/actions/runs/40048328486) passed tests/lint/build, actual installation/desktop shortcut/startup, 21 packaged offline checks and the pinned released0.7 upgrade preserving seeded agents/settings/history/messages/report sharing/catalogs/project briefs/assessments. Local253 passed/1 optional live Ollama skipped; source smokes/lint/format/dependencies/wheel and full synthetic GUI workflow passed. Production Updater(current_version=0.7.0) discovered0.8.0, downloaded and reverified the actual installer: **42301574 bytes**, SHA-256 `4587ca6dce5c7f0fda052566fd469e743527e61a543d8539e2b67edcac469a31`. No real model/key or support POST was used in development. User-specific live-model acceptance remains to run; installer signing is unchanged.
+
 ## 0.7.0 task checks and trustworthy outcomes
 
 Linux: **243 passed, 1 skipped** (optional live Ollama), lint/format/dependencies pass. New regressions cover narrow editable target suggestions, wrong-file rejection before approval, exact writes and read-back ordering/current revisions, absent required tools despite success prose, disabled-tool preflight, preserved missing-final work without replay/thinking substitution, unchanged-write CRLF/approval/revision safety, explicit UI fresh/continued dispatch, HTTP-success evidence and private-target public filtering. Both source smoke modes pass; health suite 5 has 21 offline checks. Synthetic task-check controls rendered/inspected. No live user key/model request or actual report POST was used. Windows source run [40043557907](https://github.com/MeetleJuice/friendly-bassoon/actions/runs/40043557907) passed at `56dd94a79f133170a012ed157f5740eb764139df`. Tag/release run [40044023333](https://github.com/MeetleJuice/friendly-bassoon/actions/runs/40044023333) repeated tests/lint/build, actual wizard/shortcut/startup, 21 packaged checks and the pinned released-0.6.0 upgrade preserving agents/settings/history/messages/report sharing state/catalogs/project briefs/assessments. Published [0.7.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.7.0). The production updater with current_version=0.6.0 discovered 0.7.0 and downloaded/reverified the actual installer: **42278420 bytes**, SHA-256 `169c3350d7bd375b30af68c20421915f57158b9355207e4af5894a64dfd4b8d4`. Wheel contains task_checks/verification/icon; synthetic UI was inspected with the exact command-free acceptance wording. Live model behavior, arbitrary goal completion and independent publisher signing remain outside these checks.
@@ -91,7 +95,7 @@ The opt-in real Ollama test is skipped unless `AIGENTICS_TEST_OLLAMA_MODEL` is s
 Source --smoke-test and --diagnostic-smoke-test both exited 0 in disposable directories; dependency check passed and the 0.4.0 wheel built with new modules/icon included.
 
 
-## 0.8 guided suite (implementation validation in progress)
+## 0.8 implementation history
 
 See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.
 

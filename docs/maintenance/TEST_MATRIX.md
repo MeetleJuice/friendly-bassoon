@@ -31,6 +31,8 @@ Validated 0.6.0:215 passed/1 optional-live skipped; Windows source 40039113039 a
 Validated 0.7.0:243 passed/1 optional-live skip; Windows source 40043557907 and release 40044023333 passed. Production updater current 0.6 discovered/downloaded/checksum-verified 0.7.0. Immutable source/hash and limitations are in VERIFICATION.md.
 
 
-## 0.8 guided suite (implementation validation in progress)
+## 0.8 guided suite
 
 See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.
+
+Final0.8:253 local regressions pass/1 optional live skip; Windows source40047789947 and tag40048328486 pass real installation/shortcut/packaged21checks/released0.7 preservation. Production public updater download/checksum accepted. See ../VERIFICATION.md.

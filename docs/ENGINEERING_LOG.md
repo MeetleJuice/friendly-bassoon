@@ -170,3 +170,6 @@ A real cancel/continue test with a five-report cap exposed an important lifecycl
 
 
 Windows source run40115798980 failed with only a generic exit-code annotation; available job metadata omitted steps and signed log download was blocked by the execution network. Candidate c976e3b includes the independently verified retention correction. Added explicit PowerShell package/installer exception annotations so a future failure provides an actionable cause through the accessible checks API, without relying on log downloads. No failed source is eligible for tagging.
+
+
+CI test observability now preserves the last-started test and exact interpreter exit code when a process stops before JUnit output exists. The full campaign GUI fixture has a finite90second completion allowance for Windows I/O and always cancels/joins child workers before Qt parent teardown, including assertion-failure paths. Five focused GUI tests pass. This addresses a plausible lifecycle failure, not a confirmed cause of the earlier generic Windows failure.

@@ -9,3 +9,5 @@ dist/
 .env
 .env.*
 *.sqlite*
+
+.ci-active-test.txt

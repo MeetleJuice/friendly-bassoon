@@ -1,5 +1,10 @@
 """Actual Qt worker campaigns, preserved personal definitions and reviewed sharing."""
 
+import threading
+
+from PySide6.QtCore import QThread
+import pytest
+
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
@@ -15,7 +20,7 @@ def setup_dialog(qtbot, store, credentials, monkeypatch, stop_after_first=False)
     store.save_profile(Profile(id="ollama", name="Local fixture"))
     personal = store.save_agent(Agent(name="George", instructions="My personal instructions stay intact."))
     window = Window(store, credentials)
-    qtbot.addWidget(window)
+    qtbot.addWidget(window, before_close_func=cleanup)
     errors = []
     monkeypatch.setattr(window, "error", errors.append)
     dialog = campaign_ui.CampaignDialog(window)
@@ -40,13 +45,24 @@ def setup_dialog(qtbot, store, credentials, monkeypatch, stop_after_first=False)
 
 
 def finish(qtbot, dialog):
-    qtbot.waitUntil(lambda: dialog.worker is not None and not dialog.worker.isRunning(), timeout=20000)
+    qtbot.waitUntil(lambda: dialog.worker is not None and not dialog.worker.isRunning(), timeout=90000)
     qtbot.waitUntil(lambda: dialog.go.isEnabled() and len(dialog.urls) == 2, timeout=5000)
 
 
 def cleanup(window):
+    """Run even after assertions/timeouts, before Qt can destroy worker parents.
+
+    Forty-two real SQLite-backed cases can exceed 20 seconds on Windows CI.
+    The completion deadline remains finite; teardown cancellation must not turn a
+    normal assertion failure into a fatal QThread-destroyed-while-running abort.
+    """
+    workers = window.findChildren(QThread)
+    for worker in workers:
+        if worker.isRunning():
+            worker.cancel.set()
+    for worker in workers:
+        assert worker.wait(30000), "Synthetic campaign did not stop after cancellation"
     window.lab_dir.cleanup()
-    window.store.close = lambda: None
 
 
 def test_full_gui_real_42_attempt_worker_and_two_approved_previews(qtbot, store, credentials, monkeypatch):
@@ -152,3 +168,25 @@ def test_obsolete_worker_signals_cannot_replace_new_campaign_state(qtbot, store,
     assert not dialog.urls and not dialog.go.isEnabled() and not errors
     dialog.worker = obsolete
     cleanup(window)
+
+
+def test_test_cleanup_stops_active_worker_after_assertion_failure(qtbot, store, credentials, monkeypatch):
+    window, dialog, personal, errors = setup_dialog(qtbot, store, credentials, monkeypatch)
+    entered = threading.Event()
+
+    def waiting_campaign(*args, **kwargs):
+        entered.set()
+        assert args[3].wait(10), "Test cleanup never cancelled the worker"
+        return run_campaign(*args, **kwargs, provider_factory=CrewScripted)
+
+    monkeypatch.setattr(campaign_ui, "run_campaign", waiting_campaign)
+    dialog.start()
+    qtbot.waitUntil(entered.is_set, timeout=5000)
+    assert dialog.worker.isRunning()
+    with pytest.raises(AssertionError, match="simulated test assertion"):
+        try:
+            raise AssertionError("simulated test assertion")
+        finally:
+            cleanup(window)
+    assert not dialog.worker.isRunning()
+    assert dialog.worker.cancel.is_set()

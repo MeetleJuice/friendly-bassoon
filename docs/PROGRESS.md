@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.13 implementation — release validation pending
+
+Completion feedback is opt-in, bounded to one turn within existing budgets and blocked after unresolved denied/failed actions. Campaign2 enables it and explicit source-read checks; campaign1 results remain preserved. Local727passed/1optional live skip plus focused report-counter privacy coverage; lint/format/dependencies/startup/24offline checks pass. Windows0.12upgrade/install/silent-restart validation and public delivery follow. Inline portrait/icon originals are unavailable as downloadable files; see design/MIDNIGHT_CREW.md and maintenance/UPGRADE_0130_PLAN.md. No model performance improvement is inferred from fixtures.
+
 ## 0.12.0 verified delivery
 
 Published [0.12.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.12.0) from immutable `56d3770c28d9a9b97be3cec8317c9b4f670d53ac`. Windows source run 40119061155 and release run 40136502403 passed tests, lint, packaging, actual installation/desktop shortcut/startup, 24 packaged diagnostics, pinned released 0.11 upgrade preservation, and silent update automatic GUI restart. Local final suite: 714 passed, one optional live Ollama test skipped. Full scripted Qt campaign exercises 42 native-runtime attempts and 24 app checks with two consent-gated report previews. Production Updater(current_version=0.11.0) discovered, downloaded and reverified the public installer: **42397914 bytes**, SHA256 `372f293756a21de084894642c7b2965339379af697cd41a0f161425c0bb29dd0`. No user model/key or real issue POST was used in development.

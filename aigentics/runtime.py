@@ -93,6 +93,9 @@ class Runtime:
         ws = Workspace(workspace)
         checks = TaskChecks.model_validate(task_checks or {})
         task_evidence = TaskEvidence(ws, checks)
+        completion_feedback_count = 0
+        if checks.required_reads and "read_file" not in agent.tools:
+            raise ValueError("Required source reads need the read_file tool.")
         advertised_names = {tool["function"]["name"] for tool in tool_definitions(agent)}
         if set(checks.required_tools) - advertised_names:
             raise ValueError(
@@ -388,6 +391,39 @@ class Runtime:
                         self.store.messages(sid, messages)
                         break
                     final_response_status = "present"
+                    pending, details = task_evidence.evaluate()
+                    unresolved = (
+                        tool_counts["failed"]
+                        - tool_counts["recovered_edit_errors"]
+                        - tool_counts["recovered_validation_errors"]
+                    )
+                    if (
+                        checks.completion_feedback
+                        and checks.configured
+                        and pending["status"] != "passed"
+                        and completion_feedback_count == 0
+                        and unresolved == 0
+                        and all(value == "passed" for value in python_checks.values())
+                        and step + 1 < agent.max_steps
+                        and not cancel.is_set()
+                        and time.monotonic() < deadline
+                    ):
+                        completion_feedback_count += 1
+                        event("completion.feedback_requested", {"attempt": 1, "limit": 1, "checks": pending})
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": self.credentials.redact(
+                                    "Application verification: the original task is unfinished. "
+                                    "Use native tools to satisfy these checks within the original permissions. "
+                                    "Read saved outputs back; inspect required sources. Do not repeat an already successful write, "
+                                    "bypass a denial, change unrelated files, or claim success without evidence. "
+                                    + json.dumps({"checks": pending, "remaining": details})
+                                ),
+                            }
+                        )
+                        self.store.messages(sid, messages)
+                        continue
                     if not tool_counts["requested"]:
                         state, outcome = (
                             "response_only",
@@ -582,6 +618,7 @@ class Runtime:
                     "protocol_retries": protocol_retries,
                     "goal_verification": "not_evaluated",
                     "task_checks": task_result,
+                    "completion_feedback_count": completion_feedback_count,
                     "final_response_status": final_response_status,
                     "unresolved_tool_errors": max(
                         0,

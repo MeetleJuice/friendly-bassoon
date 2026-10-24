@@ -290,6 +290,14 @@ def public_report(report, include_model=False):
                 if evidence["final_response_status"] in ("present", "missing", "not_reached", "not_recorded")
                 else "not_recorded"
             )
+        if type(evidence.get("completion_feedback_count")) is int:
+            check["evidence"]["completion_feedback_count"] = min(
+                1, max(0, evidence["completion_feedback_count"])
+            )
+        if "initial_task_checks" in evidence:
+            from .task_checks import public_task_checks
+
+            check["evidence"]["initial_task_checks"] = public_task_checks(evidence["initial_task_checks"])
         if "task_checks" in evidence:
             from .task_checks import public_task_checks
 
@@ -799,6 +807,8 @@ def safe_campaign_row(check, original):
         safe["provider_error_code"] = provider
     for key in (
         "requirement_checks",
+        "completion_feedback_count",
+        "initial_task_checks",
         "task_checks",
         "execution_counts",
         "failure_usage",
@@ -913,6 +923,13 @@ def compact_campaign_body(payload):
             number(e.get("native_calls_total")),
             number(counts.get("writes_verified")) + "/" + number(counts.get("failed")),
             number(task.get("missing_readbacks")),
+            number(e.get("completion_feedback_count", 0)),
+            "/".join(
+                number(e.get("initial_task_checks", {}).get(key))
+                for key in ("missing_writes", "missing_readbacks", "missing_sources")
+            )
+            if e.get("completion_feedback_count")
+            else "-",
             usage(e, "prompt_eval_count") + "/" + usage(e, "eval_count"),
             bid,
             pid,
@@ -947,7 +964,7 @@ def compact_campaign_body(payload):
         + ", ".join(role_scores)
         + "\n"
         + "P=passed F=failed S=skipped W=warning ?=unknown. Tokens include known rejected-response usage; not billing totals.\n"
-        + "case|result|code|ms|native|writes/errors|missing-readbacks|tokens-in/out|budget|provider|unmet\n"
+        + "case|result|code|ms|native|writes/errors|missing-readbacks|feedback-turns|initial-missing-write/read/source|tokens-in/out|budget|provider|unmet\n"
         + "\n".join(lines)
         + "\nBudgets(output/request-s/session-s): "
         + legend(budgets)

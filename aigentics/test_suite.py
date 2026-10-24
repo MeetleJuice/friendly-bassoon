@@ -236,6 +236,7 @@ def run_suite(
     case_ids=None,
     *,
     persist=True,
+    completion_feedback=False,
 ):
     from .providers import Provider
 
@@ -363,6 +364,7 @@ def run_suite(
                             cancel,
                             capture=False,
                             task_checks=TaskChecks(
+                                completion_feedback=completion_feedback,
                                 write_targets=targets if identity != "denial" else ["output.txt"],
                                 require_readback=writing and identity not in ("denial", "noop"),
                                 required_tools=["read_file", "write_file"] if identity == "noop" else [],

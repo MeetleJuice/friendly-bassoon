@@ -77,6 +77,10 @@ def model_evidence(events):
                 }
             )
     return {
+        "completion_feedback_count": sum(e["kind"] == "completion.feedback_requested" for e in events),
+        "initial_task_checks": next(
+            (e["data"]["checks"] for e in events if e["kind"] == "completion.feedback_requested"), {}
+        ),
         "model_metadata": metadata,
         "request_traces": traces[:8],
         "failure_usage": failures[-1].get("usage", {}) if failures else {},

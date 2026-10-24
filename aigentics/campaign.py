@@ -27,7 +27,7 @@ from .test_suite import (
 )
 from .tools import Workspace
 
-CAMPAIGN_VERSION = "crew-campaign-1"
+CAMPAIGN_VERSION = "crew-campaign-2"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -144,7 +144,11 @@ def role_case(store, credentials, primary, case, cancel, provider_factory=None):
                 cancel,
                 capture=False,
                 task_checks=TaskChecks(
-                    write_targets=sorted(outputs), require_tools=True, require_readback=True
+                    write_targets=sorted(outputs),
+                    require_tools=True,
+                    require_readback=True,
+                    required_reads=list(case.required_reads),
+                    completion_feedback=True,
                 ),
             )
             events = trial.events(sid)
@@ -305,6 +309,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     provider_factory=provider_factory,
                     case_ids=[name],
                     persist=False,
+                    completion_feedback=True,
                 )
                 if not baseline["checks"]:
                     break

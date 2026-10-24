@@ -12,6 +12,10 @@ class TaskChecks(Strict):
         default_factory=list, max_length=16
     )
     required_tools: list[str] = Field(default_factory=list, max_length=16)
+    required_reads: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
+        default_factory=list, max_length=16
+    )
+    completion_feedback: bool = False
     require_tools: bool = False
     require_readback: bool = True
 
@@ -24,7 +28,7 @@ class TaskChecks(Strict):
 
     @property
     def configured(self):
-        return bool(self.write_targets or self.required_tools or self.require_tools)
+        return bool(self.write_targets or self.required_tools or self.require_tools or self.required_reads)
 
 
 def path_key(workspace, path):
@@ -62,6 +66,8 @@ class TaskEvidence:
         self.workspace, self.checks = workspace, checks
         self.targets = {path_key(workspace, path): path for path in checks.write_targets}
         self.writes, self.readbacks, self.tools = {}, {}, set()
+        self.sources = {path_key(workspace, path): path for path in checks.required_reads}
+        self.read_sources = set()
 
     def record(self, call, result, status):
         if status != "succeeded":
@@ -70,6 +76,8 @@ class TaskEvidence:
         if call.name not in ("read_file", "write_file"):
             return
         key = path_key(self.workspace, call.arguments["path"])
+        if call.name == "read_file":
+            self.read_sources.add(key)
         if call.name == "write_file" and result.get("verified") is True and not result.get("unchanged"):
             self.writes[key] = result["sha256"]
             self.readbacks.pop(key, None)
@@ -94,10 +102,12 @@ class TaskEvidence:
                     readback += 1
             if not valid or (self.checks.require_readback and key not in self.readbacks):
                 missing.append(relative)
+        missing_sources = set(self.sources) - self.read_sources
         missing_tools = set(self.checks.required_tools) - self.tools
         passed = (
             written == len(self.targets)
             and (not self.checks.require_readback or readback == len(self.targets))
+            and not missing_sources
             and not missing_tools
             and (not self.checks.require_tools or bool(self.tools))
         )
@@ -115,11 +125,16 @@ class TaskEvidence:
             "missing_writes": len(self.targets) - written,
             "missing_readbacks": len(self.targets) - readback if self.checks.require_readback else 0,
             "missing_tools": len(missing_tools),
+            "missing_sources": len(missing_sources),
             "revision_mismatches": stale,
             "require_tools": self.checks.require_tools,
             "any_tool_succeeded": bool(self.tools),
             "require_readback": self.checks.require_readback,
-        }, {"unmet_targets": missing, "unmet_tools": sorted(missing_tools)}
+        }, {
+            "unmet_targets": missing,
+            "unmet_tools": sorted(missing_tools),
+            "unread_sources": [self.sources[key] for key in sorted(missing_sources)],
+        }
 
 
 TASK_COUNT_KEYS = frozenset(
@@ -132,6 +147,7 @@ TASK_COUNT_KEYS = frozenset(
         "missing_writes",
         "missing_readbacks",
         "missing_tools",
+        "missing_sources",
         "revision_mismatches",
     )
 )

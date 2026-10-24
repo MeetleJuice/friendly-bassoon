@@ -141,6 +141,15 @@ class SuiteDialog(QDialog):
         if event["kind"] in ("suite.result", "diagnostic.result"):
             row = event["data"]
             self.progress.setValue(self.progress.value() + 1)
+            if event["kind"] == "suite.result":
+                index = next(i for i, case in enumerate(CASES) if case[0] == row["id"])
+                values = [
+                    row["status"].replace("_", " ").title(),
+                    f"{row['duration_ms'] / 1000:.2f} s",
+                    str(row.get("evidence", {}).get("native_calls_total", 0)),
+                ]
+                for column, text in enumerate(values, 1):
+                    self.results.setItem(index, column, QTableWidgetItem(text))
             self.output.appendPlainText(row["id"] + ": " + row["status"] + " (" + row["code"] + ")")
         elif event["kind"] == "suite.started":
             self.results.setItem(event["data"]["index"] - 1, 1, QTableWidgetItem("Running…"))

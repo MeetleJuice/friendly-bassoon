@@ -244,3 +244,39 @@ def test_bundle_merges_metadata_without_generation_or_extra_share_report(store, 
     rows = [r for r in reports[0]["checks"] if r["id"].startswith("api_")]
     assert len(rows) == 1 and rows[0]["evidence"]["generation_requests"] == 0
     assert store.catalogs()
+
+
+def test_full_gui_worker_health_catalog_ten_cases_and_two_drafts(qtbot, store, credentials, monkeypatch):
+    import aigentics.test_suite as suite
+    import aigentics.catalog as catalog
+    from aigentics.ui import Window
+    from aigentics.suite_ui import SuiteDialog
+
+    real_suite, real_catalog = suite.run_suite, catalog.CatalogRunner
+    monkeypatch.setattr(suite, "run_suite", lambda *args: real_suite(*args, provider_factory=Scripted))
+
+    class Metadata:
+        def __init__(self, *args):
+            self.last_http_status = 200
+
+        def discover(self):
+            return ["synthetic-model"]
+
+    monkeypatch.setattr(catalog, "CatalogRunner", lambda s, c: real_catalog(s, c, Metadata))
+    window = Window(store, credentials)
+    qtbot.addWidget(window)
+    dialog = SuiteDialog(window)
+    qtbot.addWidget(dialog)
+    dialog.start()
+    qtbot.waitUntil(lambda: not dialog.worker.isRunning(), timeout=10000)
+    qtbot.waitUntil(lambda: len(dialog.urls) == 2, timeout=3000)
+    assert dialog.progress.value() == dialog.progress.maximum() == 32
+    assert all(dialog.results.item(i, 1).text() == "Passed" for i in range(10))
+    assert not dialog.share.isEnabled()
+    assert len(store.diagnostic_reports()) == 3  # Catalog cached locally; exactly two sharing drafts.
+    for url in dialog.urls:
+        body = parse_qs(urlsplit(url).query)["body"][0]
+        assert len(url) <= 7500
+        assert "lighthouse" not in body and "qwen2.5-coder:7b" not in body
+    window.lab_dir.cleanup()
+    window.store.close = lambda: None

@@ -79,7 +79,11 @@ class TaskPlans:
 
     def _session(self, sid):
         session = next((s for s in self.store.sessions() if s["id"] == sid), None)
-        if not session or os.path.normcase(session["workspace"]) != os.path.normcase(str(self.ws.root)):
+        try:
+            same_project = bool(session) and os.path.samefile(session["workspace"], self.ws.root)
+        except (OSError, ValueError, TypeError):
+            same_project = False
+        if not same_project:
             raise ValueError("The linked run is missing or belongs to another project")
         return session
 

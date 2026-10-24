@@ -222,3 +222,21 @@ def test_native_two_step_plan_uses_fresh_context_and_accepts_a_later_edit(
     assert w.active_plan_step is None
     w.lab_dir.cleanup()
     w.store.close = lambda: None
+
+
+def test_checkpoint_session_binding_uses_directory_identity_not_spelling(store, tmp_path):
+    from aigentics.task_plans import TaskPlans, Step
+
+    root = tmp_path / "project"
+    root.mkdir()
+    plans = TaskPlans(store, root)
+    plans.save([Step(task="Equivalent path")])
+    plans.begin(0)
+    sid = store.start(Agent(), str(root / ".." / "project"))
+    plans.bind(0, sid)
+    assert plans.steps()[0].session == sid
+    plans.reset(0)
+    plans.begin(0)
+    sid = store.start(Agent(), tmp_path / "missing")
+    with pytest.raises(ValueError):
+        plans.bind(0, sid)

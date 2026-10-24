@@ -27,6 +27,7 @@ class TaskPlanDialog(QDialog):
         )
         label.setWordWrap(True)
         layout.addWidget(label)
+        self.snapshot = []
         self.rows = QListWidget()
         layout.addWidget(self.rows)
         self.details = QPlainTextEdit()
@@ -36,6 +37,7 @@ class TaskPlanDialog(QDialog):
         for title, slot in [
             ("Add step", self.add),
             ("Run selected step", self.launch),
+            ("Refresh status / reconcile interrupted attempt", self.reconcile),
             ("Verify selected checkpoint", self.verify),
             ("Review and reset this step onward", self.reset),
             ("Remove selected and later steps", self.remove),
@@ -46,18 +48,21 @@ class TaskPlanDialog(QDialog):
 
     def refresh(self):
         index = self.rows.currentRow()
+        steps = self.plans.steps()
+        self.snapshot = [s.model_dump() for s in steps]
         self.rows.clear()
-        for i, s in enumerate(self.plans.steps()):
+        for i, s in enumerate(steps):
             self.rows.addItem(
                 f"{i + 1}. {s.state.upper()} · {s.task[:120]}\nOutputs: {', '.join(s.outputs) or 'Manual acceptance; no file hashes'}"
             )
         if self.rows.count():
-            self.rows.setCurrentRow(max(0, index))
+            self.rows.setCurrentRow(min(max(0, index), self.rows.count() - 1))
 
     def describe(self, index):
         steps = self.plans.steps()
         if 0 <= index < len(steps):
             step = steps[index]
+            status = self.plans.inspect(index)
             self.details.setPlainText(
                 step.task
                 + "\n\nExpected outputs: "
@@ -66,11 +71,36 @@ class TaskPlanDialog(QDialog):
                 + step.state
                 + "\nSession: "
                 + (step.session or "none")
+                + "\nLinked runtime status: "
+                + status["session_state"]
+                + "\nCheckpoint status: "
+                + status["checkpoint"]
+                + "\nHistorical outputs superseded by later verified steps: "
+                + str(status.get("superseded_outputs", 0))
+                + "\nNext: "
+                + self.guidance(step.state, status)
                 + "\nCheckpoint revisions: "
                 + str(step.hashes)
             )
         else:
             self.details.clear()
+
+    @staticmethod
+    def guidance(state, status):
+        if state == "started":
+            return "Inspect files and linked history. Reconcile only a finished linked run; no action will be replayed."
+        if state == "review":
+            return "Inspect outcome and files before acceptance. Failed/interrupted runs require explicit review/reset."
+        if state == "verified":
+            return "Continue only while the accepted chain matches disk; changed or missing files require review/reset."
+        return "Run this step explicitly after preceding checkpoints are verified."
+
+    def reconcile(self):
+        self.idle()
+        index = self.selected()
+        if self.plans.steps()[index].state == "started":
+            self.plans.reconcile(index)
+        self.refresh()
 
     def remove(self):
         self.idle()
@@ -83,6 +113,7 @@ class TaskPlanDialog(QDialog):
             )
             == QMessageBox.Yes
         ):
+            self.selected()  # Recheck after the modal confirmation.
             self.plans.save(self.plans.steps()[:index])
             self.refresh()
 
@@ -90,9 +121,17 @@ class TaskPlanDialog(QDialog):
         i = self.rows.currentRow()
         if i < 0:
             raise ValueError("Select a step")
+        steps = self.plans.steps()
+        if i >= len(steps) or i >= len(self.snapshot) or steps[i].model_dump() != self.snapshot[i]:
+            self.refresh()
+            raise ValueError("Plan changed since it was displayed. Review the refreshed plan and try again.")
         return i
 
     def idle(self):
+        from .tools import Workspace
+
+        if not self.window.workspace or Workspace(self.window.workspace).root != self.plans.ws.root:
+            raise ValueError("The open project changed. Reopen its task plan.")
         if any(j and j.isRunning() for j in (self.window.worker, self.window.diagnostic_worker)):
             raise ValueError("Finish or cancel the active operation before modifying a plan")
 
@@ -112,6 +151,7 @@ class TaskPlanDialog(QDialog):
         self.refresh()
 
     def launch(self):
+        self.idle()
         w = self.window
         if any(j and j.isRunning() for j in (w.worker, w.diagnostic_worker)):
             raise ValueError("Finish the active operation first")
@@ -132,6 +172,8 @@ class TaskPlanDialog(QDialog):
 
     def verify(self):
         self.idle()
+        index = self.selected()
+        revisions = self.plans.review_revisions(index)
         if (
             QMessageBox.question(
                 self,
@@ -140,7 +182,8 @@ class TaskPlanDialog(QDialog):
             )
             == QMessageBox.Yes
         ):
-            self.plans.checkpoint(self.selected())
+            self.selected()  # Recheck after the modal confirmation.
+            self.plans.checkpoint(index, expected_hashes=revisions)
             self.refresh()
 
     def reset(self):

@@ -27,7 +27,8 @@ from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "5"
+SUITE_VERSION = "6"
+OFFLINE_CHECK_COUNT = 23
 
 
 def model_evidence(events):
@@ -738,6 +739,8 @@ class DiagnosticRunner:
                     _require(sum(e["kind"] == "tool.result" for e in trial.events(sid)) == 1)
                 return {"empty_final_fixture_verified": True, "external_requests": 0}
 
+            from .regression_checks import validation_recovery_check, checkpoint_recovery_check
+
             cases = [
                 ("database", database),
                 ("definitions", definitions),
@@ -760,6 +763,8 @@ class DiagnosticRunner:
                 ("revision_fixture", revision_fixture),
                 ("task_checks_fixture", task_checks_fixture),
                 ("empty_final_fixture", empty_final_fixture),
+                ("validation_recovery_fixture", lambda: validation_recovery_check(self.credentials)),
+                ("checkpoint_recovery_fixture", lambda: checkpoint_recovery_check(self.credentials)),
             ]
             for identity, function in cases:
                 if cancel.is_set():

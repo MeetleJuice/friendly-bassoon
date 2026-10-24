@@ -93,7 +93,7 @@ def test_suite_balanced_and_legacy_are_separate_scopes(store, credentials):
     store.save_profile(Profile(id="ollama", name="Local"))
     a = run_suite(store, credentials, Agent(), threading.Event(), lambda e: None, fixture, "balanced")
     b = run_suite(store, credentials, Agent(), threading.Event(), lambda e: None, fixture, "legacy")
-    assert a["suite_version"] == b["suite_version"] == "agent-suite-3"
+    assert a["suite_version"] == b["suite_version"] == "agent-suite-4"
     assert a["local_scope"] != b["local_scope"]
     edit = next(c for c in a["checks"] if c["id"] == "edit")
     assert edit["evidence"]["request_timeout_seconds"] > 45

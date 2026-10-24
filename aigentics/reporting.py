@@ -58,6 +58,7 @@ RECENT_ERROR_TYPES = frozenset(
 RECENT_ERROR_CODES = frozenset(
     (
         "NO_PROGRESS",
+        "TOOL_ARGUMENT_VALIDATION",
         "PROVIDER_ERROR",
         "HTTP_ERROR",
         "TIMEOUT",
@@ -163,6 +164,9 @@ def public_report(report, include_model=False):
         )
         if key in report
     }
+    planned = report.get("planned_cases")
+    if type(planned) is int and 1 <= planned <= 32:
+        result["planned_cases"] = planned
     result["environment"] = {
         key: report.get("environment", {}).get(key) for key in ("os", "os_release", "architecture", "python")
     }
@@ -170,6 +174,8 @@ def public_report(report, include_model=False):
     allowed = {
         "request_timeout_seconds",
         "session_budget_seconds",
+        "validation_recovery_verified",
+        "checkpoint_recovery_verified",
         "blocked_paths",
         "denied_writes",
         "denied_commands",
@@ -266,6 +272,19 @@ def public_report(report, include_model=False):
                 if isinstance(values, dict)
                 else {}
             )
+        if "validation_issue_counts" in evidence:
+            from .tools import VALIDATION_ISSUE_CODES
+
+            counts = evidence["validation_issue_counts"]
+            check["evidence"]["validation_issue_counts"] = (
+                {
+                    k: min(v, 32000)
+                    for k, v in counts.items()
+                    if k in VALIDATION_ISSUE_CODES and type(v) is int and 0 <= v
+                }
+                if isinstance(counts, dict)
+                else {}
+            )
         if "execution_counts" in evidence:
             from .evidence import bounded_counts
 
@@ -343,7 +362,8 @@ def public_report(report, include_model=False):
         safe_checks.append(check)
     result["checks"] = safe_checks
     # Only bounded aggregate counters are shared; no session IDs, hashes or original messages.
-    result["recent_runs"] = recent_run_counts(report.get("recent_runs", {}))
+    if "recent_runs" in report:
+        result["recent_runs"] = recent_run_counts(report.get("recent_runs", {}))
     return result
 
 
@@ -362,9 +382,121 @@ def issue_body(report, credentials, include_model=False):
         "Diagnostic report shared with the user's approval. Allowlisted diagnostic and execution metadata only.\n\n"
         "```json\n" + credentials.json(public, indent=2, ensure_ascii=False) + "\n```\n"
     )
+    if len(body.encode("utf-8")) > MAX_BODY and report.get("kind") == "agent_suite":
+        body = compact_suite_body(public)
     if len(body.encode("utf-8")) > MAX_BODY:
         raise ReportingError("Report is too large to submit. Save it locally instead.")
     return title, body
+
+
+def compact_suite_body(payload):
+    """Complete bounded per-case evidence, without repeated schemas/traces in URLs."""
+    rows = payload.get("checks", [])
+    if len(rows) > 32:
+        raise ReportingError("Too many suite cases for browser sharing")
+
+    def number(value, limit=10**15):
+        return str(min(value, limit)) if type(value) is int and value >= 0 else "?"
+
+    def usage(traces, key):
+        values = [t.get("usage", {}).get(key) for t in traces]
+        known = [v for v in values if type(v) is int and v >= 0]
+        return number(sum(known)) if known else "?"
+
+    budgets, errors, issues, codes = {}, {}, {}, {}
+    lines = []
+
+    def alias(mapping, value, prefix):
+        if value not in mapping:
+            mapping[value] = prefix + str(len(mapping) + 1)
+        return mapping[value]
+
+    for row in rows:
+        e = row.get("evidence", {})
+        budget = "/".join(
+            number(e.get(k))
+            for k in ("max_output_tokens", "request_timeout_seconds", "session_budget_seconds")
+        )
+        bid = alias(budgets, budget, "B")
+        err = (
+            ",".join(
+                alias(errors, k, "E") + ":" + number(v)
+                for k, v in sorted(e.get("tool_error_types", {}).items())
+            )
+            or "-"
+        )
+        validation = (
+            ",".join(
+                alias(issues, k, "V") + ":" + number(v)
+                for k, v in sorted(e.get("validation_issue_counts", {}).items())
+            )
+            or "-"
+        )
+        code = row.get("code", "UNKNOWN")
+        code = code if isinstance(code, str) and re.fullmatch(r"[A-Z_]{1,60}", code) else "UNKNOWN"
+        cid = "OK" if code == "OK" else alias(codes, code, "C")
+        counts = e.get("execution_counts", {})
+        traces = e.get("request_traces", [])
+        rejected = e.get("failure_usage", {})
+        reject = (
+            "/".join(number(rejected.get(k)) for k in ("prompt_eval_count", "eval_count", "total_duration"))
+            if rejected
+            else "-"
+        )
+        fields = [
+            row["id"],
+            {"passed": "P", "failed": "F", "skipped": "S", "warning": "W"}.get(row["status"], "?"),
+            cid,
+            number(row.get("duration_ms")),
+            number(e.get("native_calls_total")),
+            e.get("runtime_state", "?"),
+            str(int(e["file_matches"])) if type(e.get("file_matches")) is bool else "?",
+            number(counts.get("writes_verified")) + "/" + number(counts.get("failed")),
+            e.get("task_checks", {}).get("status", "not_recorded")
+            + "/"
+            + e.get("final_response_status", "not_recorded"),
+            usage(traces, "prompt_eval_count") + "/" + usage(traces, "eval_count"),
+            reject,
+            bid,
+            e.get("provider_error_code", "NONE"),
+            err,
+            validation,
+            number(counts.get("recovered_validation_errors")),
+            number(counts.get("unchanged_writes")) + "/" + number(counts.get("recovered_edit_errors")),
+        ]
+        lines.append("|".join(fields))
+
+    def legend(mapping):
+        return "; ".join(f"{v}={k}" for k, v in mapping.items()) or "none"
+
+    env = payload.get("environment", {})
+    first = next((r.get("evidence", {}) for r in rows if r.get("evidence", {}).get("model_metadata")), {})
+    metadata = {k: first[k] for k in ("model_metadata", "model") if k in first}
+    return (
+        "Reviewed agent-suite summary. Detailed bounded evidence retained locally.\n"
+        + "Report ID: "
+        + str(payload.get("id"))
+        + "\nApp/suite/result: "
+        + str(payload.get("app_version"))
+        + "/"
+        + str(payload.get("suite_version"))
+        + "/"
+        + str(payload.get("state"))
+        + "\nEnvironment: "
+        + ", ".join(str(env.get(k, "?")) for k in ("os", "os_release", "architecture", "python"))
+        + "\nP=passed; F=failed; S=skipped; W=warning; ?=unavailable. Usage is known-only, not a complete billing total.\n"
+        + "case|result|code|ms|native|runtime|matched|writes/errors=|checks/final|tokens in/out=|rejected_usage(in/out/raw-duration)|budget|provider|errors|validation|recovered-validation|noop/stale-recovered\n"
+        + "\n".join(lines)
+        + "\nBudgets(output/request-s/session-s): "
+        + legend(budgets)
+        + "\nError types: "
+        + legend(errors)
+        + "\nValidation: "
+        + legend(issues)
+        + "\nCodes: "
+        + legend(codes)
+        + ("\nModel evidence: " + json.dumps(metadata, separators=(",", ":")) if metadata else "")
+    )
 
 
 def prepare_browser_draft(title, body):
@@ -376,56 +508,16 @@ def prepare_browser_draft(title, body):
         match = re.search(r"<!-- aigentics-report:([^>]+) -->", body)
         try:
             payload = json.loads(body.split("```json\n", 1)[1].split("\n```", 1)[0])
+            if payload.get("kind") == "agent_suite":
+                compact = compact_suite_body(payload)
+                url = ISSUES_URL + "/new?" + urlencode({"title": title, "body": compact})
+                if len(url) > 7500:
+                    raise ReportingError("Browser suite summary exceeds its limit; full report remains local")
+                return url
             rows = [
                 f"- {r['id']}"
                 + (" [" + r["evidence"]["provider"] + "]" if r.get("evidence", {}).get("provider") else "")
                 + f": {r['status']} ({r['code']})"
-                + (
-                    "; errors="
-                    + json.dumps(r.get("evidence", {}).get("tool_error_types", {}), separators=(",", ":"))
-                    + "; budget="
-                    + str(r.get("evidence", {}).get("max_output_tokens", "unknown"))
-                    + "; deadlines request/session="
-                    + str(r.get("evidence", {}).get("request_timeout_seconds", "unknown"))
-                    + "/"
-                    + str(r.get("evidence", {}).get("session_budget_seconds", "unknown"))
-                    + "; rejected_usage="
-                    + json.dumps(r.get("evidence", {}).get("failure_usage", {}), separators=(",", ":"))
-                    + "; native="
-                    + str(r.get("evidence", {}).get("native_calls_total", 0))
-                    + "; state="
-                    + str(r.get("evidence", {}).get("runtime_state", "unknown"))
-                    + "; matched="
-                    + str(r.get("evidence", {}).get("file_matches", False))
-                    + "; ms="
-                    + str(r.get("duration_ms", 0))
-                    + "; writes/errors="
-                    + str(r.get("evidence", {}).get("execution_counts", {}).get("writes_verified", 0))
-                    + "/"
-                    + str(r.get("evidence", {}).get("execution_counts", {}).get("failed", 0))
-                    + "; checks/final="
-                    + str(r.get("evidence", {}).get("task_checks", {}).get("status", "not_recorded"))
-                    + "/"
-                    + str(r.get("evidence", {}).get("final_response_status", "not_recorded"))
-                    + "; provider="
-                    + str(r.get("evidence", {}).get("provider_error_code", "NONE"))
-                    + "; tokens in/out="
-                    + "/".join(
-                        str(
-                            sum(
-                                t.get("usage", {}).get(key, 0)
-                                for t in r.get("evidence", {}).get("request_traces", [])
-                            )
-                        )
-                        if any(
-                            key in t.get("usage", {}) for t in r.get("evidence", {}).get("request_traces", [])
-                        )
-                        else "unknown"
-                        for key in ("prompt_eval_count", "eval_count")
-                    )
-                    if payload.get("kind") == "agent_suite"
-                    else ""
-                )
                 for r in payload.get("checks", [])
             ]
             summary = "\n".join(rows)
@@ -506,27 +598,18 @@ def prepare_browser_draft(title, body):
             if row["id"] != "selected_local_model"
             and any(key in row.get("evidence", {}) for key in compact_keys)
         }
-        if payload.get("kind") == "agent_suite":
-            # Per-case summaries above retain useful counts without repeating large nested
-            # task-check objects and protocol traces ten times in a browser URL.
-            compact_checks = {}
-            first = next(
-                (
-                    r.get("evidence", {})
-                    for r in payload.get("checks", [])
-                    if r.get("evidence", {}).get("model_metadata")
-                ),
-                {},
-            )
-            model_details = {key: first[key] for key in ("model_metadata", "model") if key in first}
         body = (
             "Diagnostic summary shared with user approval. Full report retained locally.\n"
             + (f"Report ID: {match[1]}\n" if match else "")
             + metadata
             + "\n"
             + summary
-            + "\nRecent run counts: "
-            + json.dumps(recent_run_counts(payload.get("recent_runs", {})), separators=(",", ":"))
+            + (
+                "\nRecent run counts: "
+                + json.dumps(recent_run_counts(payload["recent_runs"]), separators=(",", ":"))
+                if "recent_runs" in payload
+                else ""
+            )
             + (
                 "\nCheck evidence: " + json.dumps(compact_checks, separators=(",", ":"))
                 if compact_checks

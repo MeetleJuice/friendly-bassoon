@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QProgressBar,
 )
-from .diagnostics import DiagnosticRunner
+from .diagnostics import DiagnosticRunner, OFFLINE_CHECK_COUNT
 from .evidence import report_guidance
 from .reporting import (
     GitHubReporter,
@@ -315,7 +315,7 @@ class DiagnosticsDialog(QDialog):
         self.run_button.setEnabled(False)
         self.send.setEnabled(False)
         self.output.clear()
-        self.progress.setRange(0, 21 + int(live) + int(network))
+        self.progress.setRange(0, OFFLINE_CHECK_COUNT + int(live) + int(network))
         self.progress.setValue(0)
         self.status.setText("Running actual checks. Temporary test files will be removed.")
         worker.activity.connect(self.activity)

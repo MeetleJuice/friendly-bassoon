@@ -44,6 +44,8 @@ class SearchArgs(Strict):
 
 
 class MapArgs(Strict):
+    """Takes no arguments. Call project_map with exactly {}."""
+
     pass
 
 
@@ -104,6 +106,78 @@ def tool_definitions(agent):
             }
         )
     return definitions
+
+
+VALIDATION_ISSUE_CODES = frozenset(
+    (
+        "UNEXPECTED_ARGUMENT",
+        "MISSING_ARGUMENT",
+        "ARGUMENT_TYPE",
+        "ARGUMENT_BOUNDS",
+        "ARGUMENT_PATTERN",
+        "ARGUMENT_INVALID",
+    )
+)
+
+
+def validation_feedback(name, error):
+    """Application-owned repair guidance; never echo arguments or unknown property names."""
+    schema = SCHEMAS[name]
+    fields = schema.model_fields
+    issues = []
+    for problem in error.errors(include_input=False, include_url=False, include_context=False)[:8]:
+        raw_location = problem.get("loc", ())
+        location = []
+        for index, item in enumerate(raw_location[:3]):
+            if index == 0 and item in fields:
+                location.append(item)
+            elif location and isinstance(item, int) and not isinstance(item, bool):
+                location.append(min(max(item, 0), 40))
+            else:
+                location.append("<unexpected>")
+                break
+        kind = problem.get("type", "")
+        if kind == "extra_forbidden":
+            code = "UNEXPECTED_ARGUMENT"
+        elif kind == "missing":
+            code = "MISSING_ARGUMENT"
+        elif kind.endswith(("_type", "_parsing")):
+            code = "ARGUMENT_TYPE"
+        elif kind in (
+            "string_too_short",
+            "string_too_long",
+            "too_short",
+            "too_long",
+            "greater_than_equal",
+            "less_than_equal",
+        ):
+            code = "ARGUMENT_BOUNDS"
+        elif kind == "string_pattern_mismatch":
+            code = "ARGUMENT_PATTERN"
+        else:
+            code = "ARGUMENT_INVALID"
+        issues.append({"location": location or ["<arguments>"], "code": code})
+    return {
+        "error": "Tool arguments failed schema validation; nothing was executed for this call",
+        "type": "ValidationError",
+        "code": "TOOL_ARGUMENT_VALIDATION",
+        "validation_issues": issues,
+        "allowed_fields": sorted(fields),
+        "required_fields": sorted(key for key, field in fields.items() if field.is_required()),
+        "hint": "project_map takes no arguments; call it with exactly {}."
+        if name == "project_map"
+        else "Correct the listed fields using the advertised schema. Do not add unlisted fields.",
+        "next_action": "A corrected native call may be proposed within the existing step/time budget. No automatic retry occurred; existing permissions still apply.",
+    }
+
+
+def validation_recovery_arguments(call):
+    """Only read-only calls can resolve matching schema failures; writes never auto-clear."""
+    spec = TOOL_REGISTRY.get(call.name)
+    if not spec or not spec.read_only:
+        return None
+    fields = SCHEMAS[call.name].model_fields
+    return {key: value for key, value in call.arguments.items() if key in fields}
 
 
 def sensitive(part):

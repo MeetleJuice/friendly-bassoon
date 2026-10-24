@@ -29,12 +29,12 @@ Write-Output "Windows installer, desktop shortcut, packaged GUI, SQLite and shut
 $diagnostics = Start-Process -FilePath $executablePath -ArgumentList '--diagnostic-smoke-test' -PassThru
 if (-not $diagnostics.WaitForExit(60000)) { $diagnostics.Kill(); throw "Packaged diagnostic suite timed out" }
 if ($diagnostics.ExitCode -ne 0) { throw "Packaged diagnostic suite failed: exit $($diagnostics.ExitCode)" }
-Write-Output "All 21 built-in packaged diagnostic checks passed. No support report was submitted."
+Write-Output "All 23 built-in packaged diagnostic checks passed. No support report was submitted."
 
-# Verify migration from the public 0.9.0 installer, using its previously verified immutable checksum.
-$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.9.0.exe'
-Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.9.0/Aigentics-Setup-0.9.0.exe' -OutFile $previousInstaller
-$expectedPreviousHash = 'cebcca98a7fb39fb6b371e9039ff40a1b784ecfca8953283f1fe640822708ab5'
+# Verify migration from the public 0.10.0 installer, using its previously verified immutable checksum.
+$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.10.0.exe'
+Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.10.0/Aigentics-Setup-0.10.0.exe' -OutFile $previousInstaller
+$expectedPreviousHash = '81681a21b42e3623a19cff80e4e54410d26f48fb7603b6b450c8c3a4f69788ba'
 if ((Get-FileHash $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedPreviousHash) {
     throw 'Previous release failed its pinned checksum; refusing upgrade test'
 }
@@ -56,4 +56,4 @@ if ($newApp.ExitCode -ne 0) { throw 'Upgraded app startup failed' }
 python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
 if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not preserve data' }
 if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }
-Write-Output 'Real 0.9.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
+Write-Output 'Real 0.10.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'

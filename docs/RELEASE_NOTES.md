@@ -1,3 +1,12 @@
+# 0.11.0 • deeper evaluations and verified recovery
+
+- Suite4 expands10to18live native-agent cases: empty/Unicode/multiline/nested outputs, multiple files, ordered two-input transformation, proven no-op and stale-hash recovery. Criteria correlate actual ordered operations and exact current bytes; invented prose cannot pass. Dynamic progress23offline+18live, cancellation and bounded Balanced/Legacy modes remain. More live cases use local-model time (up to45minutes at allowed bounds).
+- Removed real API model-list checks from automatic suite and its checkbox. Test APIs remains a separate manual action. Automatic health reports focus on current checks rather than copying legacy session-history counters; manual Diagnose/History remain.
+- Validation feedback supplies fixed issue codes and known schema fields, without arbitrary invalid keys/values. project_map explicitly takes {}. A matching corrected read-only call may operationally recover a schema failure; original failed counters remain. Denials, changed targets and mutating operations are not silently forgiven. No prose-to-tool execution or hidden retry.
+- Plan checkpoints now use latest verified file ownership, allowing a later declared step to edit an earlier output while preserving earlier hashes. Early explicit session binding and manual reconciliation expose interrupted evidence without replay. All dialog actions guard changed projects/stale records; acceptance rechecks the confirmed revision.
+- Health suite6adds actual offline validation-recovery and SQLite-reopen/checkpoint regressions (23total). Expanded tests cover fault handling, correlated ordered acceptance, full GUI plan execution, stale Qt worker signals and browser-sized18case evidence.
+- Compact reports keep every case, timing, available usage, budgets, typed validation and recovered/remaining failures, while full bounded traces stay local. Both previews still require approval and GitHub Create clicks; no public upload or model-training claim.
+
 # 0.10.0 • coordinated test budgets and explicit task checkpoints
 
 - Suite3 offers Balanced vs Legacy budget modes. Each Go is one deliberate run. Balanced allows larger retrieval/edit outputs and coordinated request/session deadlines, respecting stricter saved-agent limits. No hidden retry or cloud generation. Compare within matching mode; changes are experiments, not proof of model repair.

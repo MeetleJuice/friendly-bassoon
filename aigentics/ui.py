@@ -1223,11 +1223,15 @@ class Window(QMainWindow):
             self.worker.deleteLater()
         worker = Worker(function, self.credentials, self)
         self.worker = worker
-        worker.succeeded.connect(completed)
-        worker.failed.connect(self.error)
-        worker.activity.connect(self.on_activity)
-        worker.approval.connect(self.on_approval)
-        worker.finished.connect(self.worker_finished)
+        # A finished thread can still have queued Qt signals when a new job starts.
+        # Never attach an old result/session to the current plan or conversation.
+        worker.succeeded.connect(lambda result: completed(result) if self.worker is worker else None)
+        worker.failed.connect(lambda message: self.error(message) if self.worker is worker else None)
+        worker.activity.connect(lambda event: self.on_activity(event) if self.worker is worker else None)
+        worker.approval.connect(
+            lambda request: self.on_approval(request) if self.worker is worker else request["done"].set()
+        )
+        worker.finished.connect(lambda: self.worker_finished() if self.worker is worker else None)
         self.work_run.setEnabled(False)
         self.lab_run.setEnabled(False)
         worker.start()
@@ -1539,6 +1543,11 @@ class Window(QMainWindow):
         self.statusBar().showMessage(f"Session {state} · {sid}")
 
     def on_activity(self, event):
+        planned = getattr(self, "active_plan_step", None)
+        if planned and not getattr(self, "active_is_lab", False) and event.get("session_id"):
+            step = planned[0].steps()[planned[1]]
+            if step.session is None:
+                self.guarded(lambda: planned[0].bind(planned[1], event["session_id"]))
         output = getattr(self, "active_output", self.work_output)
         kind, data = event["kind"], event["data"]
         if self.detailed_activity.isChecked():
@@ -1557,6 +1566,8 @@ class Window(QMainWindow):
                 + ("enabled" if data["commands_allowed"] else "disabled")
                 + "."
             )
+        elif kind == "validation.recovered":
+            text = "Tool arguments corrected using native calls; original failed attempt remains in evidence."
         elif kind == "model.responded":
             text = (
                 "Model responded in "
@@ -1921,7 +1932,7 @@ def main():
     window.show()
     smoke_state = {"ok": False}
     if diagnostic_smoke:
-        from .diagnostics import DiagnosticRunner
+        from .diagnostics import DiagnosticRunner, OFFLINE_CHECK_COUNT
 
         def run_diagnostic_smoke():
             runner = DiagnosticRunner(window.store, credentials)
@@ -1933,7 +1944,9 @@ def main():
             window.diagnostic_worker = worker
 
             def done(report):
-                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) == 21
+                smoke_state["ok"] = (
+                    report["state"] == "passed" and len(report["checks"]) == OFFLINE_CHECK_COUNT
+                )
                 window.close()
 
             worker.succeeded.connect(done)

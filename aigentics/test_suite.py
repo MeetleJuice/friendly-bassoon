@@ -10,6 +10,7 @@ from .runtime import Runtime
 from .store import Store
 from .harness import exercise_tools, suite_budget
 from .task_checks import TaskChecks
+from .tools import VALIDATION_ISSUE_CODES
 
 
 def local_profile(store, agent):
@@ -54,7 +55,117 @@ CASES = (
         "Try to create output.txt containing lighthouse using write_file. If approval is denied, stop and report the denial. Do not try another path.",
         "write_file",
     ),
+    (
+        "empty",
+        "Empty-file exercise: create empty.txt with exactly zero bytes, then read it back using read_file. Use native tools.",
+        "write_file",
+    ),
+    (
+        "unicode",
+        "Unicode exercise: create unicode.txt with exactly café 🌊 followed by a real newline. Then read it back using tools.",
+        "write_file",
+    ),
+    (
+        "multiline",
+        "Multiline Python exercise: create square.py containing exactly two lines: def square(number): followed by a newline, then four spaces followed by return number * number and a final newline. Read it back. Do not run commands.",
+        "write_file",
+    ),
+    (
+        "nested",
+        "Nested-path exercise: create src/report.txt containing exactly harbor followed by a newline, then read it back using tools.",
+        "write_file",
+    ),
+    (
+        "multi_file",
+        "Two-file exercise: create first.txt containing exactly alpha followed by a newline and second.txt containing exactly beta followed by a newline. Read both newly written files back using native tools.",
+        "write_file",
+    ),
+    (
+        "transform",
+        "Two-input exercise: read input.txt and second_input.txt using native read_file, then create combined.txt with their exact contents concatenated in that order. Read combined.txt back. Do not use commands.",
+        "write_file",
+    ),
+    (
+        "noop",
+        "No-op exercise: read output.txt, then propose write_file with exactly the same contents using expected_sha256='last_read'. Read it again. This tests that an unchanged file is not rewritten; do not change any content.",
+        "write_file",
+    ),
+    (
+        "stale",
+        "Stale-revision exercise in disposable files: read output.txt. Deliberately attempt to write exactly lighthouse followed by a newline using expected_sha256='0000000000000000000000000000000000000000000000000000000000000000'. This one attempt must be rejected as stale. Then read output.txt again, retry the intended write using expected_sha256='last_read', and read the saved result back. Stop after recovery; no commands.",
+        "write_file",
+    ),
 )
+
+# Explicit fixtures and byte contracts, not prose-based goal grading. Fresh inputs per case.
+CASE_OUTPUTS = {
+    "create": {"output.txt": b"lighthouse\n"},
+    "edit": {"output.txt": b"lighthouse\n"},
+    "python": {"output.py": b"value = 7\n"},
+    "empty": {"empty.txt": b""},
+    "unicode": {"unicode.txt": "café 🌊\n".encode("utf-8")},
+    "multiline": {"square.py": b"def square(number):\n    return number * number\n"},
+    "nested": {"src/report.txt": b"harbor\n"},
+    "multi_file": {"first.txt": b"alpha\n", "second.txt": b"beta\n"},
+    "transform": {"combined.txt": b"lighthouse\nharbor\n"},
+    "noop": {"output.txt": b"lighthouse\n"},
+    "stale": {"output.txt": b"lighthouse\n"},
+}
+CASE_TITLES = (
+    "Discover project files",
+    "Read exact input",
+    "Search project text",
+    "Map the project",
+    "Retrieve relevant context",
+    "Create exact output",
+    "Edit safely and read back",
+    "Write valid Python",
+    "Respect read-only mode",
+    "Respect denied approval",
+    "Create an empty file",
+    "Preserve Unicode text",
+    "Write real multiline Python",
+    "Create a nested path",
+    "Create and verify two files",
+    "Transform two inputs",
+    "Skip unchanged writes",
+    "Recover a deliberately stale revision",
+)
+COMPLEX_CASES = frozenset(("multiline", "multi_file", "transform", "stale"))
+
+
+def matching_results(events, observed, trial, name, predicate, status="succeeded"):
+    """Correlate known arguments to actual result events without keeping raw arguments."""
+    hashes = {trial.fingerprint(c.arguments) for c in observed if c.name == name and predicate(c.arguments)}
+    executions = {
+        e["data"]["execution_id"]
+        for e in events
+        if e["kind"] == "tool.requested"
+        and e["data"].get("tool") == name
+        and e["data"].get("arguments_sha256") in hashes
+    }
+    return [
+        (i, e["data"])
+        for i, e in enumerate(events)
+        if e["kind"] == "tool.result"
+        and e["data"].get("execution_id") in executions
+        and e["data"].get("status") == status
+    ]
+
+
+def ordered_results(*groups):
+    """An ordered acceptance chain; greedy selection is bounded by total event count."""
+    previous = -1
+    for group in groups:
+        following = next((index for index, _ in group if index > previous), None)
+        if following is None:
+            return False
+        previous = following
+    return True
+
+
+def succeeded_call(events, observed, trial, name, predicate):
+    return bool(matching_results(events, observed, trial, name, predicate))
 
 
 def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, budget_mode="balanced"):
@@ -82,12 +193,13 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
 
     report = base_report(
         "agent_suite",
-        "agent-suite-3",
+        "agent-suite-4",
         "Synthetic acceptance counters only; no source, paths, prompts or credentials.",
     )
     report["local_scope"] = store.fingerprint(
         {"agent": agent.model_dump(), "profile": profile.model_dump(), "budget_mode": budget_mode}
     )
+    report["planned_cases"] = len(CASES)
     report["state"] = "running"
     store.save_diagnostic(report)
     started = time.monotonic()
@@ -97,7 +209,12 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
             for index, (identity, prompt, required) in enumerate(CASES):
                 if cancel.is_set():
                     break
-                budget = suite_budget(identity, budget_mode, agent.max_seconds, profile.timeout_seconds)
+                budget = suite_budget(
+                    "edit" if identity in COMPLEX_CASES else identity,
+                    budget_mode,
+                    agent.max_seconds,
+                    profile.timeout_seconds,
+                )
                 trial.save_profile(
                     profile.model_copy(update={"timeout_seconds": budget["request_timeout_seconds"]})
                 )
@@ -107,10 +224,16 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                 root = scratch / str(index)
                 root.mkdir()
                 (root / "input.txt").write_bytes(b"lighthouse\n")
-                if identity == "edit":
+                if identity in ("edit", "stale"):
                     (root / "output.txt").write_bytes(b"old\n")
-                target = "output.py" if identity == "python" else "output.txt"
-                writing = identity in ("create", "edit", "python", "denial")
+                if identity == "noop":
+                    (root / "output.txt").write_bytes(b"lighthouse\n")
+                if identity == "transform":
+                    (root / "second_input.txt").write_bytes(b"harbor\n")
+                outputs = CASE_OUTPUTS.get(identity, {})
+                targets = list(outputs) if identity != "noop" else []
+                allowed_targets = set(outputs) if outputs else {"output.txt"}
+                writing = bool(outputs) or identity == "denial"
                 status, code, evidence = "skipped", "TOOL_DISABLED", {}
                 if (
                     required in agent.tools
@@ -123,7 +246,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                             "allow_commands": False,
                             "fallbacks": [],
                             "allow_writes": agent.allow_writes and writing,
-                            "max_steps": min(agent.max_steps, 5),
+                            "max_steps": min(agent.max_steps, 8 if identity in COMPLEX_CASES else 5),
                             "max_seconds": budget["session_budget_seconds"],
                             "context_chars": min(agent.context_chars, 16000),
                         }
@@ -132,7 +255,9 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
 
                     def approve(kind, details):
                         allowed = (
-                            identity != "denial" and kind == "write_file" and details.get("path") == target
+                            identity != "denial"
+                            and kind == "write_file"
+                            and details.get("path") in allowed_targets
                         )
                         decisions.append((kind, details.get("path"), allowed))
                         return allowed
@@ -146,8 +271,9 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                             cancel,
                             capture=False,
                             task_checks=TaskChecks(
-                                write_targets=[target] if writing else [],
-                                require_readback=writing and identity != "denial",
+                                write_targets=targets if identity != "denial" else ["output.txt"],
+                                require_readback=writing and identity not in ("denial", "noop"),
+                                required_tools=["read_file", "write_file"] if identity == "noop" else [],
                             ),
                         )
                         events = trial.events(sid)
@@ -184,12 +310,105 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                             (e["data"] for e in reversed(events) if e["kind"] == "run.summary"), {}
                         )
                         matched = True
-                        if identity in ("create", "edit", "python"):
-                            expected = b"value = 7\n" if identity == "python" else b"lighthouse\n"
-                            matched = (root / target).is_file() and (root / target).read_bytes() == expected
+                        if outputs:
+                            matched = all(
+                                (root / name).is_file() and (root / name).read_bytes() == data
+                                for name, data in outputs.items()
+                            )
+                            matched = matched and (root / "input.txt").read_bytes() == b"lighthouse\n"
                             used = used and summary.get("task_checks", {}).get("status") == "passed"
+                        if identity == "noop":
+                            reads = matching_results(
+                                events,
+                                observed,
+                                trial,
+                                "read_file",
+                                lambda args: args.get("path") == "output.txt",
+                            )
+                            writes = [
+                                (i, row)
+                                for i, row in matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "write_file",
+                                    lambda args: args.get("path") == "output.txt",
+                                )
+                                if row.get("unchanged") is True
+                            ]
+                            used = used and ordered_results(reads, writes, reads)
+                            used = (
+                                used
+                                and summary.get("tools", {}).get("unchanged_writes", 0) == 1
+                                and summary.get("tools", {}).get("writes_verified", 0) == 0
+                                and not decisions
+                            )
+                        if identity == "stale":
+                            reads = matching_results(
+                                events,
+                                observed,
+                                trial,
+                                "read_file",
+                                lambda args: args.get("path") == "output.txt",
+                            )
+                            rejected = [
+                                (i, row)
+                                for i, row in matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "write_file",
+                                    lambda args: args.get("path") == "output.txt"
+                                    and args.get("expected_sha256") == "0" * 64,
+                                    "failed",
+                                )
+                                if row.get("error_type") == "StaleFileError"
+                            ]
+                            saved = [
+                                (i, row)
+                                for i, row in matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "write_file",
+                                    lambda args: args.get("path") == "output.txt",
+                                )
+                                if row.get("verified") is True and not row.get("unchanged")
+                            ]
+                            used = (
+                                used
+                                and len(rejected) == 1
+                                and summary.get("tools", {}).get("recovered_edit_errors", 0) == 1
+                                and ordered_results(reads, rejected, reads, saved, reads)
+                            )
+                        if identity == "transform":
+                            reads = [
+                                matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "read_file",
+                                    lambda args, name=name: args.get("path") == name,
+                                )
+                                for name in ("input.txt", "second_input.txt")
+                            ]
+                            saved = [
+                                (i, row)
+                                for i, row in matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "write_file",
+                                    lambda args: args.get("path") == "combined.txt",
+                                )
+                                if row.get("verified") is True and not row.get("unchanged")
+                            ]
+                            used = used and any(
+                                all(any(r < w for r, _ in group) for group in reads) for w, _ in saved
+                            )
+                            matched = matched and (root / "second_input.txt").read_bytes() == b"harbor\n"
                         if identity == "denial":
-                            used = ("write_file", target, False) in decisions
+                            used = ("write_file", "output.txt", False) in decisions
                             matched = (
                                 sorted(p.name for p in root.iterdir()) == ["input.txt"]
                                 and (root / "input.txt").read_bytes() == b"lighthouse\n"
@@ -207,10 +426,38 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 or (identity == "denial" and state == "needs_review" and len(decisions) == 1)
                             )
                         )
-                        status, code = ("passed", "OK") if passed else ("failed", "ACCEPTANCE_NOT_MET")
+                        status = "passed" if passed else "failed"
+                        code = (
+                            "OK"
+                            if passed
+                            else "MODEL_OR_RUNTIME_FAILED"
+                            if state == "failed"
+                            else "SESSION_BUDGET_EXHAUSTED"
+                            if state == "timed_out"
+                            else "NATIVE_PROTOCOL_FAILED"
+                            if state == "protocol_error"
+                            else "OUTPUT_BYTES_MISMATCH"
+                            if not matched
+                            else "REQUIRED_OPERATIONS_NOT_VERIFIED"
+                            if not used
+                            else "RUN_NOT_COMPLETED"
+                        )
                         evidence = {
                             **model_evidence(events),
                             "model": agent.primary.model,
+                            "validation_issue_counts": {
+                                code: sum(
+                                    issue.get("code") == code
+                                    for row in results
+                                    for issue in row.get("validation_issues", [])
+                                )
+                                for code in VALIDATION_ISSUE_CODES
+                                if any(
+                                    issue.get("code") == code
+                                    for row in results
+                                    for issue in row.get("validation_issues", [])
+                                )
+                            },
                             "execution_counts": summary.get("tools", {}),
                             "tool_error_types": {
                                 key: sum(
@@ -269,7 +516,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
         "cancelled"
         if cancel.is_set()
         else "passed"
-        if report["summary"]["passed"] == 10
+        if report["summary"]["passed"] == len(CASES)
         else "needs_attention"
     )
     report["duration_ms"] = round((time.monotonic() - started) * 1000)
@@ -278,39 +525,14 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
     return report
 
 
-def run_bundle(store, credentials, agent, cancel, emit, include_catalog=True, budget_mode="balanced"):
+def run_bundle(store, credentials, agent, cancel, emit, budget_mode="balanced"):
+    """Automatic agent acceptance never checks API catalogs or refreshes keys."""
     local_profile(store, agent)
     health = DiagnosticRunner(store, credentials).run(cancel, emit, include_network=False)
-    if not cancel.is_set() and include_catalog:
-        from .catalog import CatalogRunner
-
-        try:
-            catalogs = CatalogRunner(store, credentials).run(cancel, emit)
-            health["checks"].extend(catalogs["checks"])
-            health["duration_ms"] += catalogs.get("duration_ms", 0)
-        except Exception:
-            row = {
-                "id": "api_catalogs",
-                "status": "warning",
-                "code": "CATALOG_CHECK_UNAVAILABLE",
-                "message": "Metadata checks unavailable; agent tests can still run.",
-                "duration_ms": 0,
-                "evidence": {"generation_requests": 0},
-            }
-            health["checks"].append(row)
-            emit({"kind": "diagnostic.result", "data": row})
-        health["summary"] = {
-            key: sum(r["status"] == key for r in health["checks"])
-            for key in ("passed", "failed", "warning", "skipped")
-        }
-        health["state"] = (
-            "cancelled"
-            if cancel.is_set()
-            else "needs_attention"
-            if any(health["summary"][k] for k in ("failed", "warning", "skipped"))
-            else "passed"
-        )
-        store.save_diagnostic(health)
+    # Automatic acceptance reports describe this run, not an unchanged legacy-history sample.
+    # Manual Diagnose and History remain available for broader troubleshooting.
+    health.pop("recent_runs", None)
+    store.save_diagnostic(health)
     if cancel.is_set():
         return [health]
     return [health, run_suite(store, credentials, agent, cancel, emit, budget_mode=budget_mode)]

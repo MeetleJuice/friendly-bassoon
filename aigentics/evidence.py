@@ -14,6 +14,7 @@ EXECUTION_KEYS = frozenset(
         "writes_verified",
         "commands_passed",
         "recovered_edit_errors",
+        "recovered_validation_errors",
         "python_checks_passed",
         "python_checks_failed",
         "unresolved_tool_errors",
@@ -143,6 +144,16 @@ def run_report(store, sid):
         ):
             codes[code] = min(codes.get(code, 0) + 1, 32000)
     evidence["tool_error_codes"] = codes
+    from .tools import VALIDATION_ISSUE_CODES
+
+    validation_counts = {}
+    for event in events:
+        if event["kind"] == "tool.result":
+            for issue in event["data"].get("validation_issues", []):
+                code = issue.get("code")
+                if code in VALIDATION_ISSUE_CODES:
+                    validation_counts[code] = min(32000, validation_counts.get(code, 0) + 1)
+    evidence["validation_issue_counts"] = validation_counts
     from .verification import PYTHON_CHECK_CODES
 
     check_codes = {}
@@ -179,8 +190,11 @@ def report_guidance(report):
     kind = report.get("kind", "health")
     if kind == "agent_suite":
         passed = sum(row.get("status") == "passed" for row in checks)
+        planned = report.get("planned_cases", 18 if report.get("suite_version") == "agent-suite-4" else 10)
+        if type(planned) is not int or not 1 <= planned <= 32:
+            planned = len(checks)
         return (
-            f"Agent suite: {passed}/10 acceptance tests passed. "
+            f"Agent suite: {passed}/{planned} acceptance tests passed. "
             + "These exercised a real local model in disposable folders, not your project.\n"
             + "Skipped, failed or interrupted tests do not certify success. Review the case results and share the approved suite report."
         )
@@ -205,7 +219,7 @@ def report_guidance(report):
         counts = evidence.get("execution_counts", {})
         return (
             f"Files saved: {counts.get('writes_verified', 0)}; approved commands passed: {counts.get('commands_passed', 0)}.\n"
-            f"Recovered edit errors: {counts.get('recovered_edit_errors', 0)}; unresolved tool errors: "
+            f"Recovered edit errors: {counts.get('recovered_edit_errors', 0)}; corrected read-only argument errors: {counts.get('recovered_validation_errors', 0)}; unresolved tool errors: "
             f"{counts.get('unresolved_tool_errors', 'unknown')}.\n"
             "Task checks: "
             + evidence.get("task_checks", {}).get("status", "not_recorded").replace("_", " ")

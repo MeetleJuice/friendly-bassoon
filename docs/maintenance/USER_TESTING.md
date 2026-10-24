@@ -1,3 +1,11 @@
+## 0.11 acceptance
+
+Update/install/restart and let suite4 run once with the remembered local Ollama agent in Balanced mode. It now has18live cases plus23offline checks; no actual API list/key checks occur in this suite. The standalone Test APIs button remains. New ordered native cases include empty/Unicode/multiline/nested outputs, two files, two-input transformation, unchanged writes and a deliberately stale hash followed by verified recovery. The expected stale rejection/denied approval is a successful safety exercise, not a reason to retry until green. Inference can take up to45minutes at configured bounds; Cancel keeps partial evidence.
+
+Review both exact previews, approve opening both drafts, click Create on each GitHub page, and provide issue URLs. Compact case rows have a legend; full traces stay local. Compare only matching suite/mode/agent settings. No generation used by separate manual model-list metadata checks, but those have been removed from automatic testing to reduce noise.
+
+For task plans, try two small steps editing the same disposable file. Run → inspect → verify first checkpoint, then run → inspect → verify second. Earlier hashes remain historical; later accepted revisions become effective. Refresh/reconcile a linked finished run to inspect it after interruption; failed/interrupted work cannot be checkpointed as success. Inspect files/effects before reset. No automatic Ralph restart or tool replay.
+
 ## 0.10 acceptance
 
 Update/install/restart and let suite3 run in Balanced mode with your remembered local agent. It can take longer (up to30minutes at the allowed bounds); Cancel preserves partial evidence. Review/submit both GitHub drafts and provide links. If a controlled comparison is useful, select Legacy explicitly for one separate run; never rerun silently to get a pass.

@@ -10,6 +10,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 from .providers import Provider, ProviderError
 from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS, StaleFileError, WriteTargetError
+from .tools import validation_feedback, validation_recovery_arguments
 from .harness import request_size
 from .task_checks import TaskChecks, TaskEvidence
 
@@ -209,6 +210,7 @@ class Runtime:
             "writes_verified": 0,
             "commands_passed": 0,
             "recovered_edit_errors": 0,
+            "recovered_validation_errors": 0,
             "python_checks_passed": 0,
             "python_checks_failed": 0,
             "unchanged_writes": 0,
@@ -217,6 +219,7 @@ class Runtime:
         }
         final_response_status = "not_reached"
         failed_signatures = {}
+        validation_failures = {}
         stale_edits = {}
         python_checks = {}
         try:
@@ -390,9 +393,9 @@ class Runtime:
                             "response_only",
                             "The model replied without executing tools. No filesystem operation was recorded.",
                         )
-                    elif tool_counts["failed"] > tool_counts["recovered_edit_errors"] or any(
-                        value != "passed" for value in python_checks.values()
-                    ):
+                    elif tool_counts["failed"] > tool_counts["recovered_edit_errors"] + tool_counts[
+                        "recovered_validation_errors"
+                    ] or any(value != "passed" for value in python_checks.values()):
                         state, outcome = (
                             "needs_review",
                             "Execution ended with failed or denied tools. Review the actual results before accepting the task.",
@@ -404,6 +407,8 @@ class Runtime:
                         )
                         if tool_counts["recovered_edit_errors"]:
                             outcome = "Edits saved; earlier stale-edit errors recovered. Static checks do not prove the program works."
+                        elif tool_counts["recovered_validation_errors"]:
+                            outcome = "Read-only calls succeeded after corrected schema arguments. Historical failures remain recorded; review task checks."
                     self.store.messages(sid, messages)
                     break
                 for call in reply.calls:
@@ -438,16 +443,11 @@ class Runtime:
                     except InterruptedError:
                         raise
                     except ValidationError as exc:
-                        result, status = (
-                            {
-                                "error": "Tool arguments failed schema validation",
-                                "type": "ValidationError",
-                                "validation_errors": exc.errors(
-                                    include_input=False, include_url=False, include_context=False
-                                ),
-                            },
-                            "failed",
-                        )
+                        result, status = validation_feedback(call.name, exc), "failed"
+                        recovery_arguments = validation_recovery_arguments(call)
+                        if recovery_arguments is not None:
+                            recovery_key = (call.name, self.store.fingerprint(recovery_arguments))
+                            validation_failures[recovery_key] = validation_failures.get(recovery_key, 0) + 1
                     except StaleFileError as exc:
                         result, status = (
                             {"error": str(exc), "type": "StaleFileError", "code": "STALE_FILE"},
@@ -468,6 +468,16 @@ class Runtime:
                         )
                     if status == "succeeded":
                         failed_signatures.clear()
+                        recovery_arguments = validation_recovery_arguments(call)
+                        if recovery_arguments is not None:
+                            recovery_key = (call.name, self.store.fingerprint(recovery_arguments))
+                            recovered = validation_failures.pop(recovery_key, 0)
+                            tool_counts["recovered_validation_errors"] += recovered
+                            if recovered:
+                                event(
+                                    "validation.recovered",
+                                    {"tool": call.name, "failures_recovered": recovered},
+                                )
                     else:
                         failed_signatures[signature] = failed_signatures.get(signature, 0) + 1
                     tool_counts[status] += 1
@@ -510,6 +520,7 @@ class Runtime:
                         "python_check",
                         "code",
                         "unchanged",
+                        "validation_issues",
                     ):
                         if key in result:
                             summary[key] = result[key]
@@ -573,7 +584,10 @@ class Runtime:
                     "task_checks": task_result,
                     "final_response_status": final_response_status,
                     "unresolved_tool_errors": max(
-                        0, tool_counts["failed"] - tool_counts["recovered_edit_errors"]
+                        0,
+                        tool_counts["failed"]
+                        - tool_counts["recovered_edit_errors"]
+                        - tool_counts["recovered_validation_errors"],
                     ),
                     "python_files_needing_attention": sum(
                         value != "passed" for value in python_checks.values()

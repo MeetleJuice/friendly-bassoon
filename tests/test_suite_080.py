@@ -23,6 +23,74 @@ class Scripted:
         def reply(name, **kwargs):
             return Reply(calls=[ToolCall(id=str(self.step), name=name, arguments=kwargs)])
 
+        recipes = {
+            "Empty-file exercise:": [
+                ("write_file", {"path": "empty.txt", "content": "", "expected_sha256": "new"}),
+                ("read_file", {"path": "empty.txt"}),
+            ],
+            "Unicode exercise:": [
+                ("write_file", {"path": "unicode.txt", "content": "café 🌊\n", "expected_sha256": "new"}),
+                ("read_file", {"path": "unicode.txt"}),
+            ],
+            "Multiline Python exercise:": [
+                (
+                    "write_file",
+                    {
+                        "path": "square.py",
+                        "content": "def square(number):\n    return number * number\n",
+                        "expected_sha256": "new",
+                    },
+                ),
+                ("read_file", {"path": "square.py"}),
+            ],
+            "Nested-path exercise:": [
+                ("write_file", {"path": "src/report.txt", "content": "harbor\n", "expected_sha256": "new"}),
+                ("read_file", {"path": "src/report.txt"}),
+            ],
+            "Two-file exercise:": [
+                ("write_file", {"path": "first.txt", "content": "alpha\n", "expected_sha256": "new"}),
+                ("write_file", {"path": "second.txt", "content": "beta\n", "expected_sha256": "new"}),
+                ("read_file", {"path": "first.txt"}),
+                ("read_file", {"path": "second.txt"}),
+            ],
+            "Two-input exercise:": [
+                ("read_file", {"path": "input.txt"}),
+                ("read_file", {"path": "second_input.txt"}),
+                (
+                    "write_file",
+                    {"path": "combined.txt", "content": "lighthouse\nharbor\n", "expected_sha256": "new"},
+                ),
+                ("read_file", {"path": "combined.txt"}),
+            ],
+            "No-op exercise:": [
+                ("read_file", {"path": "output.txt"}),
+                (
+                    "write_file",
+                    {"path": "output.txt", "content": "lighthouse\n", "expected_sha256": "last_read"},
+                ),
+                ("read_file", {"path": "output.txt"}),
+            ],
+            "Stale-revision exercise": [
+                ("read_file", {"path": "output.txt"}),
+                (
+                    "write_file",
+                    {"path": "output.txt", "content": "lighthouse\n", "expected_sha256": "0" * 64},
+                ),
+                ("read_file", {"path": "output.txt"}),
+                (
+                    "write_file",
+                    {"path": "output.txt", "content": "lighthouse\n", "expected_sha256": "last_read"},
+                ),
+                ("read_file", {"path": "output.txt"}),
+            ],
+        }
+        for marker, recipe in recipes.items():
+            if prompt.startswith(marker):
+                if self.step <= len(recipe):
+                    name, arguments = recipe[self.step - 1]
+                    return reply(name, **arguments)
+                return Reply(content="Finished.")
+
         if self.step == 1:
             if "replace its contents" in prompt:
                 return reply("read_file", path="output.txt")
@@ -51,12 +119,12 @@ class Scripted:
         return Reply(content="Finished.")
 
 
-def test_ten_real_tools_cases_and_public_minimization(store, credentials):
+def test_expanded_real_tools_cases_and_public_minimization(store, credentials):
     store.save_profile(Profile(id="ollama", name="Local"))
     report = run_suite(store, credentials, Agent(), threading.Event(), lambda e: None, Scripted)
     assert report["state"] == "passed", report
-    assert len(report["checks"]) == len(CASES) == 10
-    assert report["summary"]["passed"] == 10
+    assert len(report["checks"]) == len(CASES) == 18
+    assert report["summary"]["passed"] == len(CASES)
     safe = public_report(report)
     assert all("model" not in r["evidence"] for r in safe["checks"])
     assert safe["checks"][5]["evidence"]["execution_counts"]["writes_verified"] == 1
@@ -82,7 +150,7 @@ def test_disabled_tools_skip_and_cancel_does_not_pass(store, credentials):
     report = run_suite(
         store, credentials, Agent(tools=[], allow_writes=False), threading.Event(), lambda e: None, Scripted
     )
-    assert report["summary"]["skipped"] == 10
+    assert report["summary"]["skipped"] == len(CASES)
     assert report["state"] == "needs_attention"
     stop = threading.Event()
     stop.set()
@@ -217,58 +285,41 @@ def test_guided_flow_waits_for_worker_completion_before_downloading(qtbot, store
     window.store.close = lambda: None
 
 
-def test_bundle_merges_metadata_without_generation_or_extra_share_report(store, credentials, monkeypatch):
+def test_bundle_never_checks_provider_catalogs(store, credentials, monkeypatch):
     import aigentics.test_suite as suite
     import aigentics.catalog as catalog
     from aigentics.evidence import base_report
 
     store.save_profile(Profile(id="ollama", name="Local"))
-    store.save_profile(Profile(id="duplicate", name="Same connection"))
-    calls = []
 
-    class Metadata:
-        def __init__(self, profile, credentials):
-            self.last_http_status = 200
-            calls.append(profile.id)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Automatic agent suite must not check provider catalogs")
 
-        def discover(self):
-            return ["fixture-model"]
-
-        def chat(self, *args):
-            raise AssertionError("Metadata runner must never generate")
-
-    real = catalog.CatalogRunner
-    monkeypatch.setattr(catalog, "CatalogRunner", lambda s, c: real(s, c, Metadata))
+    monkeypatch.setattr(catalog, "CatalogRunner", forbidden)
     monkeypatch.setattr(
-        suite, "run_suite", lambda *args, **kwargs: base_report("agent_suite", "agent-suite-1", "Synthetic")
+        suite, "run_suite", lambda *args, **kwargs: base_report("agent_suite", "agent-suite-4", "Synthetic")
     )
     reports = suite.run_bundle(store, credentials, Agent(), threading.Event(), lambda e: None)
     assert len(reports) == 2
-    assert len(calls) == 1
-    rows = [r for r in reports[0]["checks"] if r["id"].startswith("api_")]
-    assert len(rows) == 1 and rows[0]["evidence"]["generation_requests"] == 0
-    assert store.catalogs()
+    assert not any(r["id"].startswith("api_") for r in reports[0]["checks"])
+    assert not store.catalogs()
 
 
-def test_full_gui_worker_health_catalog_ten_cases_and_two_drafts(qtbot, store, credentials, monkeypatch):
+def test_full_gui_worker_health_expanded_cases_and_two_drafts(qtbot, store, credentials, monkeypatch):
     import aigentics.test_suite as suite
     import aigentics.catalog as catalog
     from aigentics.ui import Window
     from aigentics.suite_ui import SuiteDialog
 
-    real_suite, real_catalog = suite.run_suite, catalog.CatalogRunner
+    real_suite = suite.run_suite
     monkeypatch.setattr(
         suite, "run_suite", lambda *args, **kwargs: real_suite(*args, provider_factory=Scripted, **kwargs)
     )
 
-    class Metadata:
-        def __init__(self, *args):
-            self.last_http_status = 200
+    def forbidden(*args, **kwargs):
+        raise AssertionError("No API checks in automatic suite")
 
-        def discover(self):
-            return ["synthetic-model"]
-
-    monkeypatch.setattr(catalog, "CatalogRunner", lambda s, c: real_catalog(s, c, Metadata))
+    monkeypatch.setattr(catalog, "CatalogRunner", forbidden)
     window = Window(store, credentials)
     qtbot.addWidget(window)
     dialog = SuiteDialog(window)
@@ -276,10 +327,12 @@ def test_full_gui_worker_health_catalog_ten_cases_and_two_drafts(qtbot, store, c
     dialog.start()
     qtbot.waitUntil(lambda: not dialog.worker.isRunning(), timeout=10000)
     qtbot.waitUntil(lambda: len(dialog.urls) == 2, timeout=3000)
-    assert dialog.progress.value() == dialog.progress.maximum() == 32
-    assert all(dialog.results.item(i, 1).text() == "Passed" for i in range(10))
+    from aigentics.diagnostics import OFFLINE_CHECK_COUNT
+
+    assert dialog.progress.value() == dialog.progress.maximum() == OFFLINE_CHECK_COUNT + len(CASES)
+    assert all(dialog.results.item(i, 1).text() == "Passed" for i in range(len(CASES)))
     assert not dialog.share.isEnabled()
-    assert len(store.diagnostic_reports()) == 3  # Catalog cached locally; exactly two sharing drafts.
+    assert len(store.diagnostic_reports()) == 2  # Exactly health and agent evidence, no catalog.
     for url in dialog.urls:
         body = parse_qs(urlsplit(url).query)["body"][0]
         assert len(url) <= 7500

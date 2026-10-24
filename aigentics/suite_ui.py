@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 from .test_suite import CASES, run_bundle
-from .reporting import issue_body, prepare_browser_draft
+from .reporting import issue_body, prepare_browser_draft, ReportingError
 
 
 class SuiteDialog(QDialog):
@@ -171,7 +171,15 @@ class SuiteDialog(QDialog):
                     + str(suite.get("summary", {}))
                 )
         self.window.load_catalog_choices()
-        self.urls = [prepare_browser_draft(*issue_body(r, self.window.credentials)) for r in reports]
+        try:
+            self.urls = [prepare_browser_draft(*issue_body(r, self.window.credentials)) for r in reports]
+        except ReportingError:
+            self.urls = []
+            self.output.appendPlainText(
+                "Reports saved locally, but the browser preview exceeded its limit. Open Diagnose to review/export them; nothing was shared."
+            )
+            QApplication.beep()
+            return
         for index, url in enumerate(self.urls):
             fields = parse_qs(urlsplit(url).query)
             self.output.appendPlainText(

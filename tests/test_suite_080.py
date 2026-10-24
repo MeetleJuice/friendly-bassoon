@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from aigentics.models import Agent, Profile, Reply, ToolCall
 from aigentics.test_suite import CASES, run_suite
-from aigentics.reporting import public_report
+from aigentics.reporting import public_report, issue_body, prepare_browser_draft
 
 
 class Scripted:
@@ -61,6 +61,11 @@ def test_ten_real_tools_cases_and_public_minimization(store, credentials):
     assert all("model" not in r["evidence"] for r in safe["checks"])
     assert safe["checks"][5]["evidence"]["execution_counts"]["writes_verified"] == 1
     assert safe["checks"][9]["evidence"]["file_matches"] is True
+    url = prepare_browser_draft(*issue_body(report, credentials))
+    assert len(url) <= 7500
+    body = parse_qs(urlsplit(url).query)["body"][0]
+    assert all(identity in body for identity, _, _ in CASES)
+    assert "writes/errors=" in body and "tokens in/out=" in body
     assert not store.sessions()  # Synthetic sessions never contaminate user history.
 
 

@@ -364,6 +364,32 @@ def prepare_browser_draft(title, body):
                     + str(r.get("evidence", {}).get("runtime_state", "unknown"))
                     + "; matched="
                     + str(r.get("evidence", {}).get("file_matches", False))
+                    + "; ms="
+                    + str(r.get("duration_ms", 0))
+                    + "; writes/errors="
+                    + str(r.get("evidence", {}).get("execution_counts", {}).get("writes_verified", 0))
+                    + "/"
+                    + str(r.get("evidence", {}).get("execution_counts", {}).get("failed", 0))
+                    + "; checks/final="
+                    + str(r.get("evidence", {}).get("task_checks", {}).get("status", "not_recorded"))
+                    + "/"
+                    + str(r.get("evidence", {}).get("final_response_status", "not_recorded"))
+                    + "; provider="
+                    + str(r.get("evidence", {}).get("provider_error_code", "NONE"))
+                    + "; tokens in/out="
+                    + "/".join(
+                        str(
+                            sum(
+                                t.get("usage", {}).get(key, 0)
+                                for t in r.get("evidence", {}).get("request_traces", [])
+                            )
+                        )
+                        if any(
+                            key in t.get("usage", {}) for t in r.get("evidence", {}).get("request_traces", [])
+                        )
+                        else "unknown"
+                        for key in ("prompt_eval_count", "eval_count")
+                    )
                     if payload.get("kind") == "agent_suite"
                     else ""
                 )
@@ -447,6 +473,19 @@ def prepare_browser_draft(title, body):
             if row["id"] != "selected_local_model"
             and any(key in row.get("evidence", {}) for key in compact_keys)
         }
+        if payload.get("kind") == "agent_suite":
+            # Per-case summaries above retain useful counts without repeating large nested
+            # task-check objects and protocol traces ten times in a browser URL.
+            compact_checks = {}
+            first = next(
+                (
+                    r.get("evidence", {})
+                    for r in payload.get("checks", [])
+                    if r.get("evidence", {}).get("model_metadata")
+                ),
+                {},
+            )
+            model_details = {key: first[key] for key in ("model_metadata", "model") if key in first}
         body = (
             "Diagnostic summary shared with user approval. Full report retained locally.\n"
             + (f"Report ID: {match[1]}\n" if match else "")

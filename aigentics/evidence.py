@@ -177,6 +177,13 @@ def run_report(store, sid):
 def report_guidance(report):
     checks = report.get("checks", [])
     kind = report.get("kind", "health")
+    if kind == "agent_suite":
+        passed = sum(row.get("status") == "passed" for row in checks)
+        return (
+            f"Agent suite: {passed}/10 acceptance tests passed. "
+            + "These exercised a real local model in disposable folders, not your project.\n"
+            + "Skipped, failed or interrupted tests do not certify success. Review the case results and share the approved suite report."
+        )
     if kind == "api_models":
         return (
             "Model lists checked. This did not test model generation or tool use.\n"
@@ -219,7 +226,12 @@ def report_guidance(report):
             )
         )
     local = next((row for row in checks if row.get("id") == "selected_local_model"), None)
-    built_in = [row for row in checks if row.get("id") not in ("selected_local_model", "update_connection")]
+    built_in = [
+        row
+        for row in checks
+        if row.get("id") not in ("selected_local_model", "update_connection")
+        and not row.get("id", "").startswith("api_")
+    ]
     passed = sum(row.get("status") == "passed" for row in built_in)
     text = f"Built-in app checks: {passed}/{len(built_in)} passed. These use disposable test files.\n"
     if local and local.get("status") == "failed":

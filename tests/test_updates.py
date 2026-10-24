@@ -171,7 +171,14 @@ def test_installer_launch_reverifies_and_preserves_argument_boundaries(tmp_path,
     monkeypatch.setattr(module.sys, "executable", str(tmp_path / "Installed App" / "Aigentics.exe"))
     monkeypatch.setattr(module.subprocess, "Popen", lambda argv, **kw: calls.append((argv, kw)))
     launch_installer(update)
-    assert calls[0][0] == [str(update.path), "/UPDATE=1", "/DIR=" + str(tmp_path / "Installed App")]
+    assert calls[0][0] == [
+        str(update.path),
+        "/UPDATE=1",
+        "/VERYSILENT",
+        "/SUPPRESSMSGBOXES",
+        "/NORESTART",
+        "/DIR=" + str(tmp_path / "Installed App"),
+    ]
     assert calls[0][1] == {"close_fds": True}
     update.path.write_bytes(b"tampered")
     with pytest.raises(UpdateError):

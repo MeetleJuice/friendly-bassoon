@@ -268,7 +268,7 @@ def launch_installer(update):
     if sys.platform != "win32":
         raise UpdateError("This installer runs on Windows. Download it on your Windows PC.")
     verify_download(update)  # Recheck immediately before executing a file downloaded earlier.
-    arguments = [str(update.path), "/UPDATE=1"]
+    arguments = [str(update.path), "/UPDATE=1", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"]
     if getattr(sys, "frozen", False):
         arguments.append("/DIR=" + str(Path(sys.executable).parent))
     subprocess.Popen(arguments, close_fds=True)

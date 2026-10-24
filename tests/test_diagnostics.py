@@ -2,7 +2,7 @@ import json
 import threading
 import httpx
 import pytest
-from aigentics.diagnostics import DiagnosticRunner, ScriptedProvider
+from aigentics.diagnostics import DiagnosticRunner, ScriptedProvider, OFFLINE_CHECK_COUNT
 from aigentics.models import Agent, Profile, Reply, ToolCall
 from aigentics.runtime import Runtime, looks_like_text_tool_call
 from aigentics.store import Store
@@ -133,7 +133,7 @@ def test_packaged_health_suite_runs_without_pytest_or_user_project(store, creden
     (project / "private.txt").write_text("private project data")
     report = DiagnosticRunner(store, credentials).run(threading.Event(), include_network=False)
     assert report["state"] == "passed"
-    assert report["summary"] == {"passed": 23, "failed": 0, "warning": 0, "skipped": 0}
+    assert report["summary"] == {"passed": OFFLINE_CHECK_COUNT, "failed": 0, "warning": 0, "skipped": 0}
     assert (project / "private.txt").read_text() == "private project data"
     payload = store.diagnostic_reports()[0]["payload"]
     assert payload["id"] == report["id"]

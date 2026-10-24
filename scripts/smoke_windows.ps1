@@ -29,12 +29,12 @@ Write-Output "Windows installer, desktop shortcut, packaged GUI, SQLite and shut
 $diagnostics = Start-Process -FilePath $executablePath -ArgumentList '--diagnostic-smoke-test' -PassThru
 if (-not $diagnostics.WaitForExit(60000)) { $diagnostics.Kill(); throw "Packaged diagnostic suite timed out" }
 if ($diagnostics.ExitCode -ne 0) { throw "Packaged diagnostic suite failed: exit $($diagnostics.ExitCode)" }
-Write-Output "All 23 built-in packaged diagnostic checks passed. No support report was submitted."
+Write-Output "All 24 built-in packaged diagnostic checks passed. No support report was submitted."
 
-# Verify migration from the public 0.10.0 installer, using its previously verified immutable checksum.
-$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.10.0.exe'
-Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.10.0/Aigentics-Setup-0.10.0.exe' -OutFile $previousInstaller
-$expectedPreviousHash = '81681a21b42e3623a19cff80e4e54410d26f48fb7603b6b450c8c3a4f69788ba'
+# Verify migration from the public 0.11.0 installer, using its previously verified immutable checksum.
+$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.11.0.exe'
+Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.11.0/Aigentics-Setup-0.11.0.exe' -OutFile $previousInstaller
+$expectedPreviousHash = '48783cd34a0d4277d22f798f797a492031837fbacad603ac48ab1c554934cc84'
 if ((Get-FileHash $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedPreviousHash) {
     throw 'Previous release failed its pinned checksum; refusing upgrade test'
 }
@@ -56,4 +56,41 @@ if ($newApp.ExitCode -ne 0) { throw 'Upgraded app startup failed' }
 python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
 if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not preserve data' }
 if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }
-Write-Output 'Real 0.10.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
+Write-Output 'Real 0.11.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
+
+
+# Prove the in-app update contract: silent setup must actually restart its GUI.
+# Disable all startup discovery/network activity in this disposable data folder.
+@'
+import json, os, sqlite3
+from pathlib import Path
+with sqlite3.connect(Path(os.environ["AIGENTICS_DATA_DIR"]) / "aigentics.sqlite3") as db:
+    for key in ("auto_ollama", "auto_desktop_env", "auto_updates"):
+        db.execute("INSERT OR REPLACE INTO settings VALUES(?,?)", (key, json.dumps(False)))
+'@ | python -
+if ($LASTEXITCODE -ne 0) { throw 'Could not configure offline restart fixture' }
+$ownedApps = @(Get-Process -Name Aigentics -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $upgradeExe })
+if ($ownedApps.Count -ne 0) { throw 'Upgrade fixture unexpectedly has a running app' }
+try {
+    $updateSetup = Start-Process -FilePath $installerPath -ArgumentList @('/UPDATE=1', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$upgradeRoot`"") -Wait -PassThru
+    if ($updateSetup.ExitCode -ne 0) { throw 'Silent update-mode installer failed' }
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    do {
+        $ownedApps = @(Get-Process -Name Aigentics -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $upgradeExe })
+        if ($ownedApps.Count -gt 0) { break }
+        Start-Sleep -Milliseconds 200
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if ($ownedApps.Count -eq 0) { throw 'Silent update did not automatically launch the installed app' }
+    Start-Sleep -Seconds 3
+    foreach ($ownedApp in $ownedApps) {
+        $ownedApp.Refresh()
+        if ($ownedApp.HasExited) { throw 'Automatically restarted app exited unexpectedly' }
+    }
+    Write-Output 'Silent update automatically restarted the actual installed GUI without another launch checkbox.'
+} finally {
+    # Only processes belonging to this exact disposable installation are stopped.
+    Get-Process -Name Aigentics -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $upgradeExe } | Stop-Process -Force
+}
+python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
+if ($LASTEXITCODE -ne 0) { throw 'Silent restart changed preserved upgrade data' }
+if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }

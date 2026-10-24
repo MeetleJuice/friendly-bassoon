@@ -1,48 +1,14 @@
-# 0.11.0 • deeper evaluations and verified recovery
+# 0.12.0 — Midnight Crew and repeatable agent evaluations
 
-- Suite4 expands10to18live native-agent cases: empty/Unicode/multiline/nested outputs, multiple files, ordered two-input transformation, proven no-op and stale-hash recovery. Criteria correlate actual ordered operations and exact current bytes; invented prose cannot pass. Dynamic progress23offline+18live, cancellation and bounded Balanced/Legacy modes remain. More live cases use local-model time (up to45minutes at allowed bounds).
-- Removed real API model-list checks from automatic suite and its checkbox. Test APIs remains a separate manual action. Automatic health reports focus on current checks rather than copying legacy session-history counters; manual Diagnose/History remain.
-- Validation feedback supplies fixed issue codes and known schema fields, without arbitrary invalid keys/values. project_map explicitly takes {}. A matching corrected read-only call may operationally recover a schema failure; original failed counters remain. Denials, changed targets and mutating operations are not silently forgiven. No prose-to-tool execution or hidden retry.
-- Plan checkpoints now use latest verified file ownership, allowing a later declared step to edit an earlier output while preserving earlier hashes. Early explicit session binding and manual reconciliation expose interrupted evidence without replay. All dialog actions guard changed projects/stale records; acceptance rechecks the confirmed revision.
-- Health suite6adds actual offline validation-recovery and SQLite-reopen/checkpoint regressions (23total). Expanded tests cover fault handling, correlated ordered acceptance, full GUI plan execution, stale Qt worker signals and browser-sized18case evidence.
-- Compact reports keep every case, timing, available usage, budgets, typed validation and recovered/remaining failures, while full bounded traces stay local. Both previews still require approval and GitHub Create clicks; no public upload or model-training claim.
+Windows installation, startup, packaged diagnostics, and upgrade preservation gate publication. Validation and immutable delivery records are maintained in `docs/VERIFICATION.md`.
 
-# 0.10.0 • coordinated test budgets and explicit task checkpoints
+- **Six individually usable agents:** George (generalist), Scout (investigator), Ada (builder), Vera (test engineer), Sentinel (reviewer), and Atlas (continuity). Roster setup uses the selected local Ollama model for all six and adds missing definitions without overwriting existing personal agents or edits. Campaigns use versioned test configurations independently of editable daily-use definitions. Scout and Sentinel are read-only; host commands remain disabled in the initial crew configurations.
+- **One evaluation campaign screen:** Deep runs 24 offline app checks and up to 42 local-model attempts sequentially: the 18-case baseline, three synthetic scenarios for each of six roles, and six explicitly labeled repeats. Standard omits the repeats; Quick runs only app checks. Deep is the post-update default, bounded to two hours of recorded campaign execution. No API/key checks, cloud fallback, or agent orchestration joins this campaign.
+- **Meaningful specialist exercises:** sourced investigation, focused fixes, exact output targeting, test-vector design, planted-defect and clean-code reviews, stale-note correction, and unresolved-work handoffs. Actual native operations, source reads, file contents, preserved inputs, and required readbacks are checked independently. Vera's generated test data is graded; generated code is not executed by these automatic tests.
+- **Precise failures:** baseline evidence separates correct output bytes, completed native operations, write verification, post-write readbacks, and ordering. Missing requirements are visible in plain language. Existing output-limit failures remain identifiable; new role configurations and repeats are experiments, not a claim that model limitations are repaired.
+- **Durable, bounded evidence:** per-case progress, configuration scope, attempt identity, timing, known usage, requirement outcomes, and safe tool timelines stay local under existing retention controls. Continue unfinished campaign skips finished cases and marks uncertain in-flight attempts without replay. Stop safely preserves partial evidence. Detailed records exclude raw source, prompts, and generated answers.
+- **Update-to-test workflow:** verified updates preserve local records, queue one target-version campaign, restart, and start testing when local setup is usable. The first upgrade launched from 0.11 can still show its existing installation confirmation/wizard. Subsequent updates launched from 0.12 use its streamlined verified update/restart path; operating-system prompts can still appear.
+- **Two reviewed reports:** completion sounds a notification and prepares app-health and campaign previews. One approval opens both browser drafts; click Create on each GitHub page to submit. Browser drafts are not confirmed submissions. Public summaries exclude private paths, source, prompts, and credentials; model names remain excluded by default.
+- **Visual direction preserved:** `docs/design/MIDNIGHT_CREW.md` records the supplied character-sheet direction, colors, roles, and symbols. The original chat image was not available as a downloadable file in this workspace; a raster copy has not been committed. Full character artwork and animation remain future UI work.
 
-- Suite3 offers Balanced vs Legacy budget modes. Each Go is one deliberate run. Balanced allows larger retrieval/edit outputs and coordinated request/session deadlines, respecting stricter saved-agent limits. No hidden retry or cloud generation. Compare within matching mode; changes are experiments, not proof of model repair.
-- Failure rows show output-limit/request-timeout/session-time distinctions, expected versus observed facts and actual budget settings. Ollama length-limit failures retain only bounded numeric usage, never rejected content/thinking.
-- Workbench → Task plan: author up to16small steps, launch one with fresh context and normal approvals, inspect results and explicitly verify output-hash checkpoints. Later steps revalidate preceding checkpoints. Interrupted/failed-dispatch attempts stay uncertain and require explicit review/reset before another run. No automatic Ralph restart or tool replay.
-- Plans stay in local project-scoped settings (up to32projects); a full store refuses additional plans rather than evicting uncertain state. Reset invalidates later checkpoints; removing plan steps does not remove project files. Existing schema5/backup mechanism remains.
-- Expanded budget, privacy, durable-state and native GUI regressions; actual Windows upgrade additionally checks preserved uncertain-plan settings.
-
-# 0.9.0 • measured harness budgets and deterministic backpressure
-
-- Context limits now include serialized tool schemas; no silent history truncation. Character estimates remain distinct from token counts.
-- Agent suite2 advertises only permitted tools relevant to each exercise. Edit/Python output limits are2048tokens; simpler cases remain1024. No automatic replay, commands or cloud fallback.
-- Three identical failed tool requests stop execution with NO_PROGRESS and a reviewable outcome. Changed arguments can still recover.
-- Shared compact suite reports preserve allowlisted tool error types and the output budget, with full bounded protocol evidence retained locally.
-- Expanded offline policy matrices and real-runtime regressions cover permissions, Unicode/envelope limits, context rejection, circuit breaking and public-report fidelity.
-- MCP/skills/external script execution and unattended restart loops remain future integrations, not enabled by this release.
-
-# 0.8.0 • guided update and test suite
-
-- Test suite runs ten preloaded native-agent exercises in fresh disposable folders, with app diagnostics, progress, cancellation, retained reports and completion sound.
-- Update queues one post-install test run; existing installer verification, backup and installation approval remain. First upgrade from0.7: open Test suite once after installing0.8.
-- Two exact allowlisted previews share one approval control, then open two GitHub drafts. Click Create on both pages; no token is required.
-- Local-only configuration-scoped comparison, timings/available usage/protocol/task evidence. Existing retention controls apply. No commands or cloud generation in automatic suites.
-- Optional remembered API model-list refresh joins the health report: one metadata request per connection, no generation tokens.
-- Rounded controls, visible keyboard focus and native hover help. Disabled agent capabilities are skipped instead of being granted.
-
-## Aigentics Desktop 0.7.0 — task checks and trustworthy outcomes
-
-- **Expected output files** is visible below the task. A narrow single-file instruction can suggest a target; review/edit it before Run. Configured targets restrict file-tool writes before approval, so an attempt to rewrite a different file is blocked. Empty means no extra target restriction. Separately approved host commands are not sandboxed by this list.
-- **Require real tools**, **Required tools**, and **Read back output files** check actual successful operations. Target writes must be followed by matching read-back when required, and the current file revision must still match. Missing checks leave the run needing review. Passed operation checks do not certify program behavior or arbitrary English goals.
-- **Fresh context is the default.** Choose Continue conversation or Resume explicitly when desired. Local evidence shows fresh/continued history and command permission; saved agents are preserved.
-- **Missing final answers preserve work.** If the model returns no visible final answer, the app shows incomplete_response and its own recorded-operation summary. No tool is replayed, no extra generation request is made, and thinking is not substituted for an answer.
-- **Runtime evidence is separate from model prose.** Actual calls/writes, unchanged writes skipped, task checks and final-answer status are shown independently. Identical writes are not re-saved, approved pointlessly or counted as real writes.
-- **Better reports** carry fixed task-check/missing-final/no-op counters, successful HTTP status and mixed-history evidence coverage. Target paths, source, tasks and notes remain excluded from public previews. Existing retention limits still apply; sharing requires review/approval.
-- **21 packaged offline checks** plus Linux regressions and actual Windows installation/0.6.0 upgrade preservation are required before publication.
-
-Qwen2.5 native-tool compatibility and the exact Qwen3.5 missing-final cause remain open. Python static checks do not verify dependencies or gameplay. The installer remains unsigned.
-
-After updating: keep a saved working local agent, open a disposable project and enter a simple create-file task. Check the visible output filename, keep fresh context/read-back enabled, and run once. Review the actual diff, runtime task checks and result. Mark Goal met/Needs work and Share run report after inspection.
+No MCP servers, multi-agent delegation, autonomous Ralph restarts, OS command sandbox, or model retraining is introduced by this release. Development fixtures validate application behavior; real agent performance requires the user's local Ollama campaign. Previous-version evidence and immutable release records remain in the engineering log and verification notes.

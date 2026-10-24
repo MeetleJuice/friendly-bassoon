@@ -78,7 +78,7 @@ def button(text, callback, layout, primary=False):
     result.setToolTip(
         {
             "Update": "Check for an update, download it, and queue the guided tests after restart.",
-            "Test suite": "Run ten isolated agent tests plus app diagnostics, then review two shareable reports.",
+            "Test suite": "Run a same-model six-agent campaign plus app checks, then review two shareable reports.",
             "Run task": "Run the selected agent. File edits and host commands pause for approval.",
             "Diagnose": "Choose app checks and optional model tests. Results stay local until you approve sharing.",
             "Test APIs": "Fetch model lists only; no generation tokens are used.",
@@ -375,10 +375,10 @@ class Window(QMainWindow):
         self.open_suite(True)
 
     def open_suite(self, autorun=False):
-        from .suite_ui import SuiteDialog
+        from .campaign_ui import CampaignDialog
 
         if not getattr(self, "suite_dialog", None):
-            self.suite_dialog = SuiteDialog(self)
+            self.suite_dialog = CampaignDialog(self)
         self.suite_dialog.show()
         self.suite_dialog.raise_()
         if autorun:
@@ -679,7 +679,8 @@ class Window(QMainWindow):
             self.error("Finish or cancel the current operation before installing an update.")
             return
         if (
-            QMessageBox.question(
+            not getattr(self, "guided_update", False)
+            and QMessageBox.question(
                 self,
                 "Install update?",
                 "Back up local history, close Aigentics and open the update wizard? "
@@ -700,15 +701,16 @@ class Window(QMainWindow):
                 self.store.set_setting(
                     "guided_tests_after_update", {"version": self.downloaded_update.release.version}
                 )
-            try:
-                launch_installer(self.downloaded_update)
-            except Exception:
-                self.store.set_setting("guided_tests_after_update", None)
-                raise
             self.store.set_setting(
                 "pending_update",
                 {"version": self.downloaded_update.release.version, "from_version": __version__},
             )
+            try:
+                launch_installer(self.downloaded_update)
+            except Exception:
+                self.store.set_setting("guided_tests_after_update", None)
+                self.store.set_setting("pending_update", None)
+                raise
             self.close()
 
         self.guarded(perform)
@@ -751,6 +753,7 @@ class Window(QMainWindow):
         button("Read-only template", self.readonly_template, ll)
         button("Builder template", self.builder_template, ll)
         button("Tools & permissions", self.show_tool_registry, ll)
+        button("Add Midnight Crew", self.add_midnight_crew, ll)
         button("Duplicate", self.duplicate_agent, row)
         button("Delete", self.delete_agent, row)
         row = QHBoxLayout()
@@ -990,6 +993,19 @@ class Window(QMainWindow):
         evidence_tabs.addTab(self.file_preview, "File preview")
         split.addWidget(evidence_tabs)
         split.setSizes([210, 620, 400])
+
+    def add_midnight_crew(self):
+        from .crew import ensure_roster
+
+        chosen = next((a for a in self.store.agents() if a.id == self.run_agent.currentData()), None)
+        if not chosen:
+            self.error("Save an agent with your preferred local model first.")
+            return
+        ensure_roster(self.store, chosen.primary)
+        self.refresh_agents()
+        self.setup_banner.setText(
+            "Midnight Crew added using the selected model. Existing agents and edits were preserved."
+        )
 
     def refresh_agents(self):
         agents = self.store.agents()

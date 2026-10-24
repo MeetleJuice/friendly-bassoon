@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.11.0"
+  #define AppVersion "0.12.0"
 #endif
 #define AppName "Aigentics Desktop"
 
@@ -43,4 +43,13 @@ Name: "{userdesktop}\Aigentics Desktop"; Filename: "{app}\Aigentics.exe"; Tasks:
 Name: "{group}\Aigentics Desktop"; Filename: "{app}\Aigentics.exe"
 
 [Run]
-Filename: "{app}\Aigentics.exe"; Description: "Launch Aigentics Desktop"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Aigentics.exe"; Description: "Launch Aigentics Desktop"; Flags: nowait postinstall skipifsilent; Check: not IsUpdate
+
+; An update requested inside the app must restart it even in unattended mode.
+Filename: "{app}\Aigentics.exe"; Flags: nowait; Check: IsUpdate
+
+[Code]
+function IsUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;

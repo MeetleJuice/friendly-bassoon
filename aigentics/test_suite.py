@@ -134,6 +134,62 @@ CASE_TITLES = (
 )
 COMPLEX_CASES = frozenset(("multiline", "multi_file", "transform", "stale"))
 
+# Fixed vocabulary: safe for public reports, never interpolated from model arguments.
+REQUIREMENT_LABELS = {
+    "EXACT_OUTPUT": "Output bytes match the requested result",
+    "INPUTS_UNCHANGED": "Original inputs and unrelated files are unchanged",
+    "NATIVE_OPERATION": "The required native operation succeeded on the intended target",
+    "TASK_CHECKS": "All configured runtime task checks passed",
+    "VERIFIED_WRITE": "Every requested output has a verified write",
+    "POST_WRITE_READBACK": "Every requested output was read after its current write",
+    "EDIT_ORDER": "Read the original file, save the edit, then read the saved revision",
+    "NOOP_ORDER": "Read the original file, propose unchanged contents, then read again",
+    "NOOP_NO_WRITE": "The unchanged proposal caused no physical write or approval",
+    "STALE_REJECTED_ONCE": "Exactly one deliberately stale revision was rejected",
+    "STALE_RECOVERED": "The stale edit was recovered without hiding the original error",
+    "STALE_ORDER": "Read, stale rejection, reread, successful save, final read occurred in order",
+    "TRANSFORM_INPUT_ORDER": "Both inputs were read before the transformed output was saved",
+    "DENIAL_RESPECTED": "The intended write was denied once and left no file changes",
+    "RUNTIME_FINISHED": "The run finished in its expected state",
+}
+
+
+def requirement_failures(checks):
+    """Only application-owned boolean requirements; unknown/private fields never escape."""
+    return [key for key in REQUIREMENT_LABELS if checks.get(key) is False]
+
+
+def bounded_tool_timeline(results):
+    """Local bounded action sequence, without arguments, source, paths or raw errors."""
+    from .registry import TOOLS
+
+    errors = {
+        "ValidationError",
+        "ValueError",
+        "FileNotFoundError",
+        "PermissionError",
+        "StaleFileError",
+        "WriteTargetError",
+        "OSError",
+        "UnicodeDecodeError",
+    }
+    timeline = []
+    for result in results[:32]:
+        tool, status = result.get("tool"), result.get("status")
+        if tool not in TOOLS or status not in ("succeeded", "failed"):
+            continue
+        row = {"tool": tool, "status": status}
+        duration = result.get("duration_ms")
+        if type(duration) is int and duration >= 0:
+            row["duration_ms"] = min(duration, 300000)
+        for key in ("verified", "unchanged"):
+            if type(result.get(key)) is bool:
+                row[key] = result[key]
+        if result.get("error_type") in errors:
+            row["error_type"] = result["error_type"]
+        timeline.append(row)
+    return timeline
+
 
 def matching_results(events, observed, trial, name, predicate, status="succeeded"):
     """Correlate known arguments to actual result events without keeping raw arguments."""
@@ -169,10 +225,29 @@ def succeeded_call(events, observed, trial, name, predicate):
     return bool(matching_results(events, observed, trial, name, predicate))
 
 
-def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, budget_mode="balanced"):
+def run_suite(
+    store,
+    credentials,
+    agent,
+    cancel,
+    emit,
+    provider_factory=None,
+    budget_mode="balanced",
+    case_ids=None,
+    *,
+    persist=True,
+):
     from .providers import Provider
 
     profile = local_profile(store, agent)
+    cases = CASES
+    if case_ids is not None:
+        selected = tuple(case_ids)
+        known = {case[0] for case in CASES}
+        if not selected or len(selected) != len(set(selected)) or any(key not in known for key in selected):
+            raise ValueError("Choose unique known suite case IDs")
+        by_id = {case[0]: case for case in CASES}
+        cases = tuple(by_id[key] for key in selected)
 
     suite_budget("edit", budget_mode, agent.max_seconds, profile.timeout_seconds)
     observed = []
@@ -194,20 +269,22 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
 
     report = base_report(
         "agent_suite",
-        "agent-suite-4",
+        "agent-suite-5",
         "Synthetic acceptance counters only; no source, paths, prompts or credentials.",
     )
     report["local_scope"] = store.fingerprint(
         {"agent": agent.model_dump(), "profile": profile.model_dump(), "budget_mode": budget_mode}
     )
-    report["planned_cases"] = len(CASES)
+    report["planned_cases"] = len(cases)
+    report["case_ids"] = [case[0] for case in cases]
     report["state"] = "running"
-    store.save_diagnostic(report)
+    if persist:
+        store.save_diagnostic(report)
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="aigentics-suite-") as folder:
         scratch = Path(folder)
         with closing(Store(scratch / "suite.sqlite3", credentials)) as trial:
-            for index, (identity, prompt, required) in enumerate(CASES):
+            for index, (identity, prompt, required) in enumerate(cases):
                 if cancel.is_set():
                     break
                 budget = suite_budget(
@@ -324,14 +401,45 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                         summary = next(
                             (e["data"] for e in reversed(events) if e["kind"] == "run.summary"), {}
                         )
+                        requirements = {"NATIVE_OPERATION": bool(used)}
                         matched = True
+                        inputs_unchanged = (root / "input.txt").read_bytes() == b"lighthouse\n"
                         if outputs:
                             matched = all(
                                 (root / name).is_file() and (root / name).read_bytes() == data
                                 for name, data in outputs.items()
                             )
-                            matched = matched and (root / "input.txt").read_bytes() == b"lighthouse\n"
-                            used = used and summary.get("task_checks", {}).get("status") == "passed"
+                            requirements["EXACT_OUTPUT"] = bool(matched)
+                            matched = matched and inputs_unchanged
+                            checks = summary.get("task_checks", {})
+                            requirements["TASK_CHECKS"] = checks.get("status") == "passed"
+                            if targets:
+                                requirements["VERIFIED_WRITE"] = checks.get("written_files") == len(targets)
+                                requirements["POST_WRITE_READBACK"] = checks.get("readback_files") == len(
+                                    targets
+                                )
+                            used = used and requirements["TASK_CHECKS"]
+                        if identity == "edit":
+                            reads = matching_results(
+                                events,
+                                observed,
+                                trial,
+                                "read_file",
+                                lambda args: same_target(args.get("path"), "output.txt"),
+                            )
+                            saved = [
+                                (i, row)
+                                for i, row in matching_results(
+                                    events,
+                                    observed,
+                                    trial,
+                                    "write_file",
+                                    lambda args: same_target(args.get("path"), "output.txt"),
+                                )
+                                if row.get("verified") is True and not row.get("unchanged")
+                            ]
+                            requirements["EDIT_ORDER"] = ordered_results(reads, saved, reads)
+                            used = used and requirements["EDIT_ORDER"]
                         if identity == "noop":
                             reads = matching_results(
                                 events,
@@ -351,13 +459,13 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 )
                                 if row.get("unchanged") is True
                             ]
-                            used = used and ordered_results(reads, writes, reads)
-                            used = (
-                                used
-                                and summary.get("tools", {}).get("unchanged_writes", 0) == 1
+                            requirements["NOOP_ORDER"] = ordered_results(reads, writes, reads)
+                            requirements["NOOP_NO_WRITE"] = (
+                                summary.get("tools", {}).get("unchanged_writes", 0) == 1
                                 and summary.get("tools", {}).get("writes_verified", 0) == 0
                                 and not decisions
                             )
+                            used = used and requirements["NOOP_ORDER"] and requirements["NOOP_NO_WRITE"]
                         if identity == "stale":
                             reads = matching_results(
                                 events,
@@ -390,11 +498,16 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 )
                                 if row.get("verified") is True and not row.get("unchanged")
                             ]
-                            used = (
-                                used
-                                and len(rejected) == 1
-                                and summary.get("tools", {}).get("recovered_edit_errors", 0) == 1
-                                and ordered_results(reads, rejected, reads, saved, reads)
+                            requirements["STALE_REJECTED_ONCE"] = len(rejected) == 1
+                            requirements["STALE_RECOVERED"] = (
+                                summary.get("tools", {}).get("recovered_edit_errors", 0) == 1
+                            )
+                            requirements["STALE_ORDER"] = ordered_results(
+                                reads, rejected, reads, saved, reads
+                            )
+                            used = used and all(
+                                requirements[key]
+                                for key in ("STALE_REJECTED_ONCE", "STALE_RECOVERED", "STALE_ORDER")
                             )
                         if identity == "transform":
                             reads = [
@@ -418,21 +531,33 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 )
                                 if row.get("verified") is True and not row.get("unchanged")
                             ]
-                            used = used and any(
+                            requirements["TRANSFORM_INPUT_ORDER"] = any(
                                 all(any(r < w for r, _ in group) for group in reads) for w, _ in saved
                             )
-                            matched = matched and (root / "second_input.txt").read_bytes() == b"harbor\n"
+                            used = used and requirements["TRANSFORM_INPUT_ORDER"]
+                            inputs_unchanged = (
+                                inputs_unchanged and (root / "second_input.txt").read_bytes() == b"harbor\n"
+                            )
+                            matched = matched and inputs_unchanged
                         if identity == "denial":
                             used = ("write_file", "output.txt", False) in decisions
                             matched = (
                                 sorted(p.name for p in root.iterdir()) == ["input.txt"]
                                 and (root / "input.txt").read_bytes() == b"lighthouse\n"
                             )
+                            requirements["DENIAL_RESPECTED"] = used and matched and len(decisions) == 1
+                            # A denied write is the expected operation; success is not required.
+                            requirements["NATIVE_OPERATION"] = used
                         if not writing:
                             matched = (
                                 sorted(p.name for p in root.iterdir()) == ["input.txt"]
                                 and (root / "input.txt").read_bytes() == b"lighthouse\n"
                             )
+                            inputs_unchanged = matched
+                        requirements["INPUTS_UNCHANGED"] = inputs_unchanged
+                        requirements["RUNTIME_FINISHED"] = state == "completed" or (
+                            identity == "denial" and state == "needs_review" and len(decisions) == 1
+                        )
                         passed = (
                             used
                             and matched
@@ -473,6 +598,9 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     for issue in row.get("validation_issues", [])
                                 )
                             },
+                            "tool_timeline": bounded_tool_timeline(results),
+                            "requirement_checks": requirements,
+                            "unmet_requirements": requirement_failures(requirements),
                             "execution_counts": summary.get("tools", {}),
                             "tool_error_types": {
                                 key: sum(
@@ -522,7 +650,8 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                     "evidence": evidence,
                 }
                 report["checks"].append(row)
-                store.save_diagnostic(report)
+                if persist:
+                    store.save_diagnostic(report)
                 emit({"kind": "suite.result", "data": row})
     report["summary"] = {
         k: sum(r["status"] == k for r in report["checks"]) for k in ("passed", "failed", "warning", "skipped")
@@ -531,12 +660,13 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
         "cancelled"
         if cancel.is_set()
         else "passed"
-        if report["summary"]["passed"] == len(CASES)
+        if report["summary"]["passed"] == len(cases)
         else "needs_attention"
     )
     report["duration_ms"] = round((time.monotonic() - started) * 1000)
-    store.save_diagnostic(report)
-    store.prune()
+    if persist:
+        store.save_diagnostic(report)
+        store.prune()
     return report
 
 

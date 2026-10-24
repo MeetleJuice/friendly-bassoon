@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.12 implementation: Windows release validation pending
+
+Six same-model agents and crew-campaign-1 are implemented. Deep=24offline+42model attempts; sequential fresh projects, fixed requirements,18rolecases,6repeats, durable bounded progress and two reviewed browser drafts. Baseline suite5 tightens edit-order checks. Quick/Standard/Deep available. Local full run: 708 passed, one optional live test skipped; two additional guided-update queue tests passed; source smokes/dependencies pass. Windows actual installer/upgrade/silent-restart and public delivery stillpending. Read maintenance/UPGRADE_0120_PLAN.md and design/MIDNIGHT_CREW.md beforecontinuing. No live model reliability claim; no MCP/orchestration.
+
 ## 0.11.0 delivered: deeper evaluations and verified recovery
 
 Published [0.11.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.11.0) from immutable `a3f362868a72abf06222c613c607688df7f771fd`. Windows source run40096724399 and tag run40097100418 passed tests/lint/build, actual installer/shortcut/startup/23packaged checks and pinned released0.10 upgrade preserving definitions/history/sharing/catalogs/project briefs/assessments/settings and uncertain task-plan state. Local537passed/1optional live Ollama skipped (89additional regressions vs0.10). Source smokes/dependencies/wheel and actual synthetic full-GUI41check rehearsal passed; its two previews were about2k/3.3kcharacters with explicit approval still required. Production Updater(current_version=0.10.0) discovered/downloaded/reverified the public installer: 42330746bytes, SHA256 `48783cd34a0d4277d22f798f797a492031837fbacad603ac48ab1c554934cc84`. No user key/live model or real issue POST used in development. Real18-case local-model performance remains for user acceptance, not inferred from fixtures.

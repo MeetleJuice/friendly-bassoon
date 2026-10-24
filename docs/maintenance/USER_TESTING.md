@@ -1,3 +1,28 @@
+# 0.12 acceptance — one campaign, six agents
+
+Release validation is in progress; use these steps after the verified 0.12 installer is published.
+
+1. Keep Ollama running and your working local-model agent saved. Click **Update**. The first upgrade launched by 0.11 may still ask you to confirm installation and finish its wizard; let it reopen Aigentics.
+2. After restart, the queued **Midnight Crew** campaign should open and start once. If local setup is missing, select a saved local Ollama agent and start from **Test suite**. The selector supplies the model connection for all six controlled agent configurations.
+3. Let Deep finish: **24 app checks + 42 model attempts = 66 results**. It runs one model task at a time, with a two-hour campaign execution bound. Standard uses 36 model attempts; Quick uses no model generation. Keep the app open. A failed test is useful evidence; do not rerun merely to obtain green results.
+4. Watch the current scenario, elapsed time, progress, and results. Click a result row for the exact passed/unmet requirements and runtime counters. Correct file contents alone do not prove the required workflow completed. Missing usage means unknown, not zero.
+5. Use **Stop safely** if needed. Completed evidence is saved after each case. **Continue unfinished campaign** uses the matching model/configuration and skips completed cases; an uncertain in-flight attempt is marked interrupted and is not replayed. The two-hour limit includes recorded time from prior continuations. Starting a new campaign is a separate deliberate run.
+6. When the completion sound plays, review both exact public previews. Approve opening both drafts, click **Open both approved GitHub drafts**, then click **Create** on each GitHub page. Send both submitted issue links. No GitHub token is needed for this browser mode.
+
+The 42 Deep model attempts comprise the original 18 baseline tasks, three synthetic scenarios for each of George, Scout, Ada, Vera, Sentinel, and Atlas (18 more), and six labeled repeats. These are individual agents, not a collaborating team. Repeated-case consistency, first-attempt success, and specialist capability are different measurements; compare matching versions/configurations.
+
+Campaigns use fresh disposable projects, no host commands, no cloud models, and no API/key-list checks. The app approves only the listed synthetic output edits. Test APIs remains a separate manual action. Vera's automatic scenarios assess generated test data without executing arbitrary generated code.
+
+The six saved roster agents are available for everyday selection. Personal edits and existing agents remain intact. The campaign deliberately uses versioned test definitions with the selected model, so customizing a saved Scout or George does not silently change the controlled experiment. Review each saved agent's tools and permissions before using it on your own project.
+
+Detailed bounded counters and safe tool timelines stay locally under **Local data** and existing retention settings. Public previews contain allowlisted summaries, not raw source, prompts, generated answers, credentials, or private project paths. Sharing remains optional. No live user model is exercised in development fixtures; your run supplies the real local-model evidence.
+
+Updates launched from 0.12 use the streamlined verified install/restart route; Windows prompts may still require attention. Each target-version queue is consumed once, so ordinary app launches do not repeatedly trigger new campaigns. An interrupted campaign is continued explicitly.
+
+## Historical acceptance guides
+
+The following sections describe earlier releases and their original counts. They are retained for interpreting older reports, not as instructions for the current campaign.
+
 ## 0.11 acceptance
 
 Update/install/restart and let suite4 run once with the remembered local Ollama agent in Balanced mode. It now has18live cases plus23offline checks; no actual API list/key checks occur in this suite. The standalone Test APIs button remains. New ordered native cases include empty/Unicode/multiline/nested outputs, two files, two-input transformation, unchanged writes and a deliberately stale hash followed by verified recovery. The expected stale rejection/denied approval is a successful safety exercise, not a reason to retry until green. Inference can take up to45minutes at configured bounds; Cancel keeps partial evidence.

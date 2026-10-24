@@ -96,3 +96,59 @@ def checkpoint_recovery_check(credentials):
             else:
                 raise AssertionError("A changed checkpoint was accepted")
     return {"checkpoint_recovery_verified": True, "external_requests": 0}
+
+
+def crew_evaluation_check(credentials):
+    """Packaged role/tool/evaluator integration; no model server or pytest needed."""
+    import json
+
+    from .campaign import role_case
+    from .crew import ROLES, make_agent
+    from .crew_cases import CASES, evaluate_content
+    from .models import ModelRef
+
+    primary = ModelRef(profile_id="ollama", model="offline-crew-fixture")
+    agents = [make_agent(role, primary) for role in ROLES]
+    require(len(agents) == 6 and len({agent.id for agent in agents}) == 6)
+    require(
+        all(agent.primary == primary and not agent.fallbacks and not agent.allow_commands for agent in agents)
+    )
+    require(all("run_command" not in agent.tools for agent in agents))
+    require(not agents[1].allow_writes and not agents[4].allow_writes)
+    case = next(case for case in CASES if case.id == "scout_symbol")
+
+    class NativeFixture:
+        def __init__(self, *args):
+            pass
+
+        def capabilities(self, model):
+            return {"tools": True, "source": "offline_fixture"}
+
+        def chat(self, model, messages, tools):
+            require(all(tool["function"]["name"] != "write_file" for tool in tools))
+            if not any(message["role"] == "tool" for message in messages):
+                return Reply(
+                    calls=[
+                        ToolCall(id=str(index), name="read_file", arguments={"path": name})
+                        for index, name in enumerate(case.required_reads)
+                    ]
+                )
+            return Reply(content=json.dumps(case.answer))
+
+    with tempfile.TemporaryDirectory(prefix="aigentics-crew-fixture-") as directory:
+        folder = Path(directory)
+        with closing(Store(folder / "fixture.sqlite3", credentials)) as store:
+            store.save_profile(Profile(id="ollama", name="Offline crew fixture"))
+            row = role_case(store, credentials, primary, case, __import__("threading").Event(), NativeFixture)
+            require(row["status"] == "passed")
+            require(row["evidence"]["native_calls_total"] == 2)
+            require(all(row["evidence"]["requirement_checks"].values()))
+        root = folder / "negative"
+        root.mkdir()
+        for name, data in case.files.items():
+            (root / name).write_bytes(data)
+        wrong = evaluate_content(case, root, '{"file":"billing_notes.py","symbol":"calculate_total"}')
+        require(wrong["FINAL_ANSWER"] is False)
+        (root / "unexpected.txt").write_bytes(b"not allowed")
+        require(evaluate_content(case, root, json.dumps(case.answer))["NO_UNEXPECTED_FILES"] is False)
+    return {"crew_fixture_verified": True, "external_requests": 0}

@@ -165,17 +165,35 @@ def public_report(report, include_model=False):
         if key in report
     }
     planned = report.get("planned_cases")
-    if type(planned) is int and 1 <= planned <= 32:
+    if type(planned) is int and (0 if report.get("kind") == "crew_campaign" else 1) <= planned <= (
+        64 if report.get("kind") == "crew_campaign" else 32
+    ):
         result["planned_cases"] = planned
     result["environment"] = {
         key: report.get("environment", {}).get(key) for key in ("os", "os_release", "architecture", "python")
     }
+    campaign = report.get("kind") == "crew_campaign"
+    if campaign:
+        from .campaign import PLAN_IDS
+        from .crew import CREW_VERSION
+
+        if report.get("mode") in ("quick", "standard", "deep"):
+            result["mode"] = report["mode"]
+        if report.get("crew_version") == CREW_VERSION:
+            result["crew_version"] = CREW_VERSION
+        if report.get("stop_reason") in ("cancelled", "campaign_budget", "finished"):
+            result["stop_reason"] = report["stop_reason"]
+        value = report.get("budget_used_ms")
+        if type(value) is int and value >= 0:
+            result["budget_used_ms"] = min(value, 7_380_000)
+
     safe_checks = []
     allowed = {
         "request_timeout_seconds",
         "session_budget_seconds",
         "validation_recovery_verified",
         "checkpoint_recovery_verified",
+        "crew_fixture_verified",
         "blocked_paths",
         "denied_writes",
         "denied_commands",
@@ -242,9 +260,30 @@ def public_report(report, include_model=False):
     if include_model:
         allowed.add("model")
     for row in report.get("checks", []):
+        if campaign and row.get("id") not in PLAN_IDS:
+            continue
         check = {key: row[key] for key in ("id", "status", "code", "message", "duration_ms")}
         check["evidence"] = {key: value for key, value in row.get("evidence", {}).items() if key in allowed}
         evidence = row.get("evidence", {})
+        if (
+            "crew_fixture_verified" in check["evidence"]
+            and type(check["evidence"]["crew_fixture_verified"]) is not bool
+        ):
+            del check["evidence"]["crew_fixture_verified"]
+        if "requirement_checks" in evidence:
+            from .test_suite import REQUIREMENT_LABELS
+
+            labels = REQUIREMENT_LABELS
+            if campaign:
+                from .campaign import REQUIREMENT_LABELS as campaign_labels
+
+                labels = {**labels, **campaign_labels}
+            values = evidence["requirement_checks"]
+            check["evidence"]["requirement_checks"] = (
+                {key: value for key, value in values.items() if key in labels and type(value) is bool}
+                if isinstance(values, dict)
+                else {}
+            )
         if "final_response_status" in evidence:
             check["evidence"]["final_response_status"] = (
                 evidence["final_response_status"]
@@ -359,6 +398,8 @@ def public_report(report, include_model=False):
                 }
                 traces.append(safe)
             check["evidence"]["request_traces"] = traces
+        if campaign:
+            check = safe_campaign_row(check, evidence)
         safe_checks.append(check)
     result["checks"] = safe_checks
     # Only bounded aggregate counters are shared; no session IDs, hashes or original messages.
@@ -371,12 +412,15 @@ def issue_body(report, credentials, include_model=False):
     public = public_report(report, include_model)
     label = {
         "agent_suite": "agent suite",
+        "crew_campaign": "crew evaluation",
         "api_models": "API checks",
         "tool_probe": "tool-call probe",
         "run_review": "run review",
         "python_check": "Python check",
     }.get(report.get("kind"), "diagnostics")
     title = f"Aigentics {label} {report['app_version']}: {report['state']}"
+    if report.get("kind") == "crew_campaign":
+        return title, compact_campaign_body(credentials.scrub(public))
     body = (
         f"<!-- aigentics-report:{report['id']} -->\n"
         "Diagnostic report shared with the user's approval. Allowlisted diagnostic and execution metadata only.\n\n"
@@ -403,7 +447,7 @@ def compact_suite_body(payload):
         known = [v for v in values if type(v) is int and v >= 0]
         return number(sum(known)) if known else "?"
 
-    budgets, errors, issues, codes = {}, {}, {}, {}
+    budgets, errors, issues, codes, requirements = {}, {}, {}, {}, {}
     lines = []
 
     def alias(mapping, value, prefix):
@@ -443,6 +487,26 @@ def compact_suite_body(payload):
             if rejected
             else "-"
         )
+        task = e.get("task_checks", {})
+        missing = (
+            "/".join(
+                number(task.get(key))
+                for key in ("missing_writes", "missing_readbacks", "missing_tools", "revision_mismatches")
+            )
+            if any(
+                key in task
+                for key in ("missing_writes", "missing_readbacks", "missing_tools", "revision_mismatches")
+            )
+            else "-"
+        )
+        unmet = (
+            ",".join(
+                alias(requirements, key, "R")
+                for key, value in sorted(e.get("requirement_checks", {}).items())
+                if value is False
+            )
+            or "-"
+        )
         fields = [
             row["id"],
             {"passed": "P", "failed": "F", "skipped": "S", "warning": "W"}.get(row["status"], "?"),
@@ -463,6 +527,8 @@ def compact_suite_body(payload):
             validation,
             number(counts.get("recovered_validation_errors")),
             number(counts.get("unchanged_writes")) + "/" + number(counts.get("recovered_edit_errors")),
+            missing,
+            unmet,
         ]
         lines.append("|".join(fields))
 
@@ -485,7 +551,7 @@ def compact_suite_body(payload):
         + "\nEnvironment: "
         + ", ".join(str(env.get(k, "?")) for k in ("os", "os_release", "architecture", "python"))
         + "\nP=passed; F=failed; S=skipped; W=warning; ?=unavailable. Usage is known-only, not a complete billing total.\n"
-        + "case|result|code|ms|native|runtime|matched|writes/errors=|checks/final|tokens in/out=|rejected_usage(in/out/raw-duration)|budget|provider|errors|validation|recovered-validation|noop/stale-recovered\n"
+        + "case|result|code|ms|native|runtime|matched|writes/errors=|checks/final|tokens in/out=|rejected_usage(in/out/raw-duration)|budget|provider|errors|validation|recovered-validation|noop/stale-recovered|missing-write/read/tool/revision|unmet\n"
         + "\n".join(lines)
         + "\nBudgets(output/request-s/session-s): "
         + legend(budgets)
@@ -495,6 +561,7 @@ def compact_suite_body(payload):
         + legend(issues)
         + "\nCodes: "
         + legend(codes)
+        + ("\nUnmet requirements: " + legend(requirements) if requirements else "")
         + ("\nModel evidence: " + json.dumps(metadata, separators=(",", ":")) if metadata else "")
     )
 
@@ -590,6 +657,7 @@ def prepare_browser_draft(title, body):
             "final_response_status",
             "task_checks_fixture_verified",
             "empty_final_fixture_verified",
+            "crew_fixture_verified",
             "user_assessment",
         )
         compact_checks = {
@@ -682,3 +750,212 @@ class GitHubReporter:
             raise SubmissionUnknown(
                 "Submission outcome is unknown. Do not retry automatically; search GitHub Issues for the report ID."
             ) from exc
+
+
+CAMPAIGN_CODES = frozenset(
+    (
+        "OK",
+        "MODEL_OR_RUNTIME_FAILED",
+        "SESSION_BUDGET_EXHAUSTED",
+        "NATIVE_PROTOCOL_FAILED",
+        "OUTPUT_BYTES_MISMATCH",
+        "REQUIRED_OPERATIONS_NOT_VERIFIED",
+        "RUN_NOT_COMPLETED",
+        "SUITE_CASE_FAILED",
+        "TOOL_DISABLED",
+        "INTERRUPTED_CASE_NOT_REPLAYED",
+        "CAMPAIGN_BUDGET_EXHAUSTED",
+        "ROLE_REQUIREMENTS_NOT_MET",
+        "CANCELLED",
+        "UNKNOWN",
+    )
+)
+CAMPAIGN_ROLES = ("george", "scout", "ada", "vera", "sentinel", "atlas")
+
+
+def safe_campaign_row(check, original):
+    """Campaign records share fixed identifiers and typed measurements, never generated text."""
+    evidence = check.get("evidence", {})
+    safe = {}
+    for key in (
+        "duration_ms",
+        "native_calls_total",
+        "max_output_tokens",
+        "request_timeout_seconds",
+        "session_budget_seconds",
+        "http_status",
+    ):
+        value = evidence.get(key)
+        if type(value) is int and 0 <= value:
+            safe[key] = min(value, 10**15)
+    for key in ("file_matches", "readback_recorded", "timing_unknown"):
+        if type(evidence.get(key)) is bool:
+            safe[key] = evidence[key]
+    state = evidence.get("runtime_state")
+    if isinstance(state, str) and state in RECENT_STATES:
+        safe["runtime_state"] = state
+    provider = evidence.get("provider_error_code")
+    if isinstance(provider, str) and provider in RECENT_ERROR_CODES | {"NONE", "OUTPUT_LIMIT"}:
+        safe["provider_error_code"] = provider
+    for key in (
+        "requirement_checks",
+        "task_checks",
+        "execution_counts",
+        "failure_usage",
+        "validation_issue_counts",
+        "tool_error_types",
+        "tool_error_codes",
+    ):
+        if key in evidence:
+            safe[key] = evidence[key]
+    final = evidence.get("final_response_status")
+    if final in ("present", "missing", "not_reached", "not_recorded"):
+        safe["final_response_status"] = final
+    metadata = evidence.get("model_metadata", {})
+    digest = metadata.get("template_sha256")
+    if isinstance(digest, str) and re.fullmatch(r"[a-f0-9]{64}", digest):
+        safe["model_metadata"] = {"template_sha256": digest}
+    if isinstance(evidence.get("model"), str) and len(evidence["model"]) <= 200:
+        safe["model"] = evidence["model"]
+    if type(original.get("timing_unknown")) is bool:
+        safe["timing_unknown"] = original["timing_unknown"]
+    role = original.get("role")
+    if role in CAMPAIGN_ROLES:
+        safe["role"] = role
+    attempt = original.get("attempt")
+    if type(attempt) is int and 1 <= attempt <= 3:
+        safe["attempt"] = attempt
+    safe["request_traces"] = [
+        {
+            "usage": {
+                key: min(value, 10**15)
+                for key, value in trace.get("usage", {}).items()
+                if key in ("prompt_eval_count", "eval_count", "total_duration")
+                and type(value) is int
+                and value >= 0
+            }
+        }
+        for trace in evidence.get("request_traces", [])[:8]
+    ]
+    return {
+        "id": check["id"],
+        "status": check["status"]
+        if check["status"] in ("passed", "failed", "skipped", "warning")
+        else "failed",
+        "code": check["code"]
+        if isinstance(check["code"], str) and check["code"] in CAMPAIGN_CODES
+        else "UNKNOWN",
+        "message": "Application-owned synthetic campaign criteria.",
+        "duration_ms": min(check["duration_ms"], 10**15)
+        if type(check.get("duration_ms")) is int and check["duration_ms"] >= 0
+        else 0,
+        "evidence": safe,
+    }
+
+
+def compact_campaign_body(payload):
+    """Keep every case and failed requirement in one practical, reviewable browser draft."""
+    rows = payload.get("checks", [])
+    if len(rows) > 64:
+        raise ReportingError("Too many campaign cases for browser sharing")
+
+    def number(value):
+        return str(min(value, 10**15)) if type(value) is int and value >= 0 else "?"
+
+    def usage(evidence, key):
+        values = [trace.get("usage", {}).get(key) for trace in evidence.get("request_traces", [])]
+        known = [value for value in values if type(value) is int and value >= 0]
+        rejected = evidence.get("failure_usage", {}).get(key)
+        if type(rejected) is int and rejected >= 0:
+            known.append(rejected)
+        return number(sum(known)) if known else "?"
+
+    codes, requirements, budgets, providers = {}, {}, {}, {}
+
+    def alias(mapping, value, prefix):
+        if value not in mapping:
+            mapping[value] = prefix + str(len(mapping) + 1)
+        return mapping[value]
+
+    # A bitset preserves all failed requirements without repeating long lists per row.
+    failed_keys = sorted(
+        {
+            key
+            for row in rows
+            for key, value in row.get("evidence", {}).get("requirement_checks", {}).items()
+            if value is False
+        }
+    )
+    requirements = {key: index for index, key in enumerate(failed_keys)}
+    lines = []
+    for row in rows:
+        e = row.get("evidence", {})
+        code = row.get("code", "UNKNOWN")
+        cid = "OK" if code == "OK" else alias(codes, code, "C")
+        mask = sum(
+            1 << requirements[key] for key, value in e.get("requirement_checks", {}).items() if value is False
+        )
+        unmet = format(mask, "x") if mask else "0"
+        budget = "/".join(
+            number(e.get(key))
+            for key in ("max_output_tokens", "request_timeout_seconds", "session_budget_seconds")
+        )
+        bid = alias(budgets, budget, "B")
+        provider = e.get("provider_error_code", "NONE")
+        pid = "-" if provider == "NONE" else alias(providers, provider, "E")
+        counts = e.get("execution_counts", {})
+        task = e.get("task_checks", {})
+        fields = [
+            row["id"],
+            {"passed": "P", "failed": "F", "skipped": "S", "warning": "W"}.get(row["status"], "?"),
+            cid,
+            "?" if e.get("timing_unknown") is True else number(row.get("duration_ms")),
+            number(e.get("native_calls_total")),
+            number(counts.get("writes_verified")) + "/" + number(counts.get("failed")),
+            number(task.get("missing_readbacks")),
+            usage(e, "prompt_eval_count") + "/" + usage(e, "eval_count"),
+            bid,
+            pid,
+            unmet,
+        ]
+        lines.append("|".join(fields))
+
+    def legend(mapping):
+        return "; ".join(f"{value}={key}" for key, value in mapping.items()) or "none"
+
+    role_scores = []
+    for role in CAMPAIGN_ROLES:
+        selected = [row for row in rows if row.get("evidence", {}).get("role") == role]
+        role_scores.append(f"{role}:{sum(row['status'] == 'passed' for row in selected)}/{len(selected)}")
+    first_model = next(
+        (
+            row.get("evidence", {})
+            for row in rows
+            if row.get("evidence", {}).get("model_metadata") or row.get("evidence", {}).get("model")
+        ),
+        {},
+    )
+    model_details = {key: first_model[key] for key in ("model_metadata", "model") if key in first_model}
+    return (
+        "Reviewed Midnight Crew campaign. Full bounded evidence retained locally.\n"
+        + f"Report ID: {payload.get('id')}\n"
+        + f"App/suite/result: {payload.get('app_version')}/{payload.get('suite_version')}/{payload.get('state')}\n"
+        + f"Crew/mode: {payload.get('crew_version', '?')}/{payload.get('mode', '?')}\n"
+        + f"Recorded/planned: {len(rows)}/{payload.get('planned_cases', '?')}\n"
+        + f"Stop: {payload.get('stop_reason', 'unknown')}; budget charged ms: {number(payload.get('budget_used_ms'))} (includes reserved interrupted-case allowance).\n"
+        + "Role scores(recorded only): "
+        + ", ".join(role_scores)
+        + "\n"
+        + "P=passed F=failed S=skipped W=warning ?=unknown. Tokens include known rejected-response usage; not billing totals.\n"
+        + "case|result|code|ms|native|writes/errors|missing-readbacks|tokens-in/out|budget|provider|unmet\n"
+        + "\n".join(lines)
+        + "\nBudgets(output/request-s/session-s): "
+        + legend(budgets)
+        + "\nCodes: "
+        + legend(codes)
+        + "\nProvider: "
+        + legend(providers)
+        + "\nUnmet(hex bitmask; bit=required check): "
+        + legend(requirements)
+        + ("\nModel evidence: " + json.dumps(model_details, separators=(",", ":")) if model_details else "")
+    )

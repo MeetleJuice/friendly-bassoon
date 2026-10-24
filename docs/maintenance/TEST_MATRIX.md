@@ -54,3 +54,15 @@ Regression depth includes32budget combinations, rejected-response numeric usage/
 
 Published [0.11.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.11.0) from immutable `a3f362868a72abf06222c613c607688df7f771fd`. Windows source run40096724399 and tag run40097100418 passed tests/lint/build, actual installer/shortcut/startup/23packaged checks and pinned released0.10 upgrade preserving definitions/history/sharing/catalogs/project briefs/assessments/settings and uncertain task-plan state. Local537passed/1optional live Ollama skipped (89additional regressions vs0.10). Source smokes/dependencies/wheel and actual synthetic full-GUI41check rehearsal passed; its two previews were about2k/3.3kcharacters with explicit approval still required. Production Updater(current_version=0.10.0) discovered/downloaded/reverified the public installer: 42330746bytes, SHA256 `48783cd34a0d4277d22f798f797a492031837fbacad603ac48ab1c554934cc84`. No user key/live model or real issue POST used in development. Real18-case local-model performance remains for user acceptance, not inferred from fixtures.
 Coverage adds18case exact byte/ordering contracts, negative no-tool prose, wrong-target/no-readback/no-initial-read falsepasses, Unicode/empty/multiline/nested/multi-input outputs, stale/no-op behavior, strict schema feedback privacy/recovery, real SQLite interruption, superseded checkpoints, stale dialogs/confirmation races/foreign roots, full native two-step plan GUI and obsolete queued workers, browser summaries up to24cases, and safe path aliases. Increased count measures regression coverage, not live-model reliability.
+
+
+## 0.12 campaign acceptance
+
+- Controlled role definitions/model clones/personal agent preservation: real Store/restart tests.
+-18specialist semantic/byte fixtures and adversarial evaluators: source/JSON/Unicode/duplicates/links/unexpectedchanges; no model-generated execution.
+- Realnative-runtime42attempt campaign and Qtworker66-step flow; no cloud/APIs/source retention.
+- Exactrequirement evidence, read/write order, latestrevision, denial/cancellation, stale recovery, safe boundedtimelines.
+- Resume supersession/inflightnonreplay/SQLite restart/timeoutisolation/chargepersistence/faultinjection.
+- Public42row worstcase/privacy/knownusage/unknowninterruptedtiming/twoconsentpreview limits.
+- ActualWindows wizard/shortcut/24packagedchecks/pinned0.11upgrade/silentrelaunch; releasegate.
+- LiveOllama capability remainsuseracceptance, distinctfrom fixture correctness.

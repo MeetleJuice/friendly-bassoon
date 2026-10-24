@@ -10,6 +10,7 @@ from .runtime import Runtime
 from .store import Store
 from .harness import exercise_tools, suite_budget
 from .task_checks import TaskChecks
+from .tools import Workspace
 from .tools import VALIDATION_ISSUE_CODES
 
 
@@ -233,6 +234,16 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                 outputs = CASE_OUTPUTS.get(identity, {})
                 targets = list(outputs) if identity != "noop" else []
                 allowed_targets = set(outputs) if outputs else {"output.txt"}
+                workspace = Workspace(root)
+
+                def same_target(path, expected):
+                    if not isinstance(path, str):
+                        return False
+                    try:
+                        return workspace.path(path) == workspace.path(expected)
+                    except (ValueError, PermissionError, OSError):
+                        return False
+
                 writing = bool(outputs) or identity == "denial"
                 status, code, evidence = "skipped", "TOOL_DISABLED", {}
                 if (
@@ -257,9 +268,13 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                         allowed = (
                             identity != "denial"
                             and kind == "write_file"
-                            and details.get("path") in allowed_targets
+                            and any(same_target(details.get("path"), name) for name in allowed_targets)
                         )
-                        decisions.append((kind, details.get("path"), allowed))
+                        target = next(
+                            (name for name in allowed_targets if same_target(details.get("path"), name)),
+                            details.get("path"),
+                        )
+                        decisions.append((kind, target, allowed))
                         return allowed
 
                     try:
@@ -287,11 +302,11 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 if call.name != required:
                                     return False
                                 if required == "read_file":
-                                    return call.arguments.get("path") == "input.txt"
+                                    return same_target(call.arguments.get("path"), "input.txt")
                                 if required in ("search", "retrieve_context"):
                                     return call.arguments.get("query") == "lighthouse"
                                 if required == "list_files":
-                                    return call.arguments.get("path", ".") in (".", "")
+                                    return same_target(call.arguments.get("path", "."), ".")
                                 return True
 
                             hashes = {trial.fingerprint(c.arguments) for c in observed if correct(c)}
@@ -323,7 +338,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 observed,
                                 trial,
                                 "read_file",
-                                lambda args: args.get("path") == "output.txt",
+                                lambda args: same_target(args.get("path"), "output.txt"),
                             )
                             writes = [
                                 (i, row)
@@ -332,7 +347,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     observed,
                                     trial,
                                     "write_file",
-                                    lambda args: args.get("path") == "output.txt",
+                                    lambda args: same_target(args.get("path"), "output.txt"),
                                 )
                                 if row.get("unchanged") is True
                             ]
@@ -349,7 +364,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                 observed,
                                 trial,
                                 "read_file",
-                                lambda args: args.get("path") == "output.txt",
+                                lambda args: same_target(args.get("path"), "output.txt"),
                             )
                             rejected = [
                                 (i, row)
@@ -358,7 +373,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     observed,
                                     trial,
                                     "write_file",
-                                    lambda args: args.get("path") == "output.txt"
+                                    lambda args: same_target(args.get("path"), "output.txt")
                                     and args.get("expected_sha256") == "0" * 64,
                                     "failed",
                                 )
@@ -371,7 +386,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     observed,
                                     trial,
                                     "write_file",
-                                    lambda args: args.get("path") == "output.txt",
+                                    lambda args: same_target(args.get("path"), "output.txt"),
                                 )
                                 if row.get("verified") is True and not row.get("unchanged")
                             ]
@@ -388,7 +403,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     observed,
                                     trial,
                                     "read_file",
-                                    lambda args, name=name: args.get("path") == name,
+                                    lambda args, name=name: same_target(args.get("path"), name),
                                 )
                                 for name in ("input.txt", "second_input.txt")
                             ]
@@ -399,7 +414,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, bu
                                     observed,
                                     trial,
                                     "write_file",
-                                    lambda args: args.get("path") == "combined.txt",
+                                    lambda args: same_target(args.get("path"), "combined.txt"),
                                 )
                                 if row.get("verified") is True and not row.get("unchanged")
                             ]

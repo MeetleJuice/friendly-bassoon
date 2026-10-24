@@ -153,3 +153,19 @@ def test_approximate_output_is_not_exact_output(monkeypatch, store, credentials,
     row = exercise(monkeypatch, store, credentials, case, Wrong)
     assert row["evidence"]["file_matches"] is False
     assert row["status"] == "failed"
+
+
+@pytest.mark.parametrize(
+    "case", ["read", "create", "denial", "noop", "stale", "transform", "multi_file", "nested"]
+)
+def test_equivalent_dot_paths_are_real_authorized_targets(monkeypatch, store, credentials, case):
+    class Equivalent(Scripted):
+        def chat(self, *args):
+            reply = super().chat(*args)
+            for call in reply.calls:
+                if "path" in call.arguments and call.arguments["path"] not in ("", "."):
+                    call.arguments["path"] = "./" + call.arguments["path"]
+            return reply
+
+    row = exercise(monkeypatch, store, credentials, case, Equivalent)
+    assert row["status"] == "passed", row

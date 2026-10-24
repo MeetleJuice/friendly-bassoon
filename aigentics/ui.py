@@ -686,6 +686,11 @@ class Window(QMainWindow):
         self.allow_commands = QCheckBox("Allow host commands (every command requires approval)")
         el.addWidget(self.allow_writes)
         el.addWidget(self.allow_commands)
+        permission_hint = QLabel(
+            "A tool must be selected AND permitted. Run command is hidden from the model until Allow host commands is enabled; each command still needs approval."
+        )
+        permission_hint.setWordWrap(True)
+        el.addWidget(permission_hint)
         limits = QFormLayout()
         self.steps, self.seconds = QSpinBox(), QSpinBox()
         self.steps.setRange(1, 100)
@@ -787,6 +792,9 @@ class Window(QMainWindow):
         button("Check Python file", lambda: self.guarded(self.check_python_file), el)
         center, cl = panel()
         cl.addWidget(QLabel("TASK & EXECUTION · Model completion is not proof that tests passed"))
+        self.run_facts = QLabel("Runtime evidence will appear here separately from the model's response.")
+        self.run_facts.setWordWrap(True)
+        cl.addWidget(self.run_facts)
         self.work_output = QPlainTextEdit()
         self.work_output.setReadOnly(True)
         cl.addWidget(self.work_output, 1)
@@ -794,6 +802,30 @@ class Window(QMainWindow):
         self.task.setPlaceholderText("Describe a focused coding task…")
         self.task.setMaximumHeight(110)
         cl.addWidget(self.task)
+        self.expected_files = QLineEdit()
+        cl.addWidget(QLabel("Expected output files (optional) · review before Run"))
+        self.expected_files.setPlaceholderText(
+            "Expected output files, comma separated · optional; limits file-tool writes"
+        )
+        self.expected_files.setToolTip(
+            "Review/edit before Run. Empty means no task-specific write restriction. This limits file-tool writes; separately approved host commands can access other files and are not sandboxed."
+        )
+        cl.addWidget(self.expected_files)
+        self._suggested_files = ""
+        self.task.textChanged.connect(self.suggest_task_files)
+        options = QHBoxLayout()
+        cl.addLayout(options)
+        self.require_task_tools = QCheckBox("Require real tools")
+        self.require_task_readback = QCheckBox("Read back output files")
+        self.require_task_readback.setChecked(True)
+        options.addWidget(self.require_task_tools)
+        options.addWidget(self.require_task_readback)
+        self.required_task_tools = []
+        self.required_tools_button = button("Required tools (0)…", self.choose_required_tools, options)
+        self.conversation_mode = QComboBox()
+        self.conversation_mode.addItem("New task · fresh context", "fresh")
+        self.conversation_mode.addItem("Continue conversation", "continue")
+        cl.addWidget(self.conversation_mode)
         self.capture = QCheckBox("Save redacted session content for resume (may include project code)")
         cl.addWidget(self.capture)
         self.detailed_activity = QCheckBox("Show detailed execution records")
@@ -804,6 +836,9 @@ class Window(QMainWindow):
         self.task_mode = QComboBox()
         self.task_mode.addItem("Build / edit", "build")
         self.task_mode.addItem("Plan only (read only)", "plan")
+        self.task_mode.currentIndexChanged.connect(
+            lambda: self.expected_files.setEnabled(self.task_mode.currentData() != "plan")
+        )
         row.addWidget(self.task_mode)
         self.work_run = button("Run task", lambda: self.start_run(False), row, True)
         self.cancel_button = button("Cancel", self.cancel_run, row)
@@ -1153,6 +1188,9 @@ class Window(QMainWindow):
         ws = Workspace(path)
         self.workspace = ws.root
         self.parent_session = None
+        if hasattr(self, "conversation_mode"):
+            self.conversation_mode.setCurrentIndex(0)
+            self.run_facts.setText("No task has run for this project selection.")
         self.project_label.setText(f"{ws.root.name} · {ws.root}")
         self.projects.remember(ws.root)
         self.refresh_recent_projects()
@@ -1261,6 +1299,38 @@ class Window(QMainWindow):
             raise ValueError("Select a finished run in History first")
         self.review_saved_report(run_report(self.store, session["id"]), sharing=True)
 
+    def suggest_task_files(self):
+        from .task_checks import suggested_targets
+
+        if self.expected_files.text() == self._suggested_files:
+            self._suggested_files = ", ".join(suggested_targets(self.task.toPlainText()))
+            self.expected_files.setText(self._suggested_files)
+
+    def choose_required_tools(self):
+        from .registry import TOOL_SPECS
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Tools this task must actually execute")
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(
+            QLabel(
+                "A task check passes only after each selected tool succeeds. Agent permissions still apply."
+            )
+        )
+        choices = {}
+        for spec in TOOL_SPECS:
+            check = QCheckBox(spec.title)
+            check.setChecked(spec.name in self.required_task_tools)
+            layout.addWidget(check)
+            choices[spec.name] = check
+        controls = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        controls.accepted.connect(dialog.accept)
+        controls.rejected.connect(dialog.reject)
+        layout.addWidget(controls)
+        if dialog.exec() == QDialog.Accepted:
+            self.required_task_tools = [name for name, check in choices.items() if check.isChecked()]
+            self.required_tools_button.setText(f"Required tools ({len(self.required_task_tools)})…")
+
     def start_run(self, lab=False):
         def perform():
             agent_id = (self.lab_agent if lab else self.run_agent).currentData()
@@ -1286,13 +1356,43 @@ class Window(QMainWindow):
             task = (self.lab_prompt if lab else self.task).toPlainText().strip()
             if not workspace or not task:
                 raise ValueError("Choose a project and enter a task")
+            from .task_checks import TaskChecks, TaskEvidence
+
+            checks = (
+                TaskChecks()
+                if lab
+                else TaskChecks(
+                    write_targets=[]
+                    if self.task_mode.currentData() == "plan"
+                    else [p.strip() for p in self.expected_files.text().split(",") if p.strip()],
+                    required_tools=self.required_task_tools,
+                    require_tools=self.require_task_tools.isChecked(),
+                    require_readback=self.require_task_readback.isChecked(),
+                )
+            )
+            TaskEvidence(Workspace(workspace), checks)  # Validate protected paths before dispatch.
+            from .tools import tool_definitions
+
+            permitted = {tool["function"]["name"] for tool in tool_definitions(agent)}
+            if (
+                set(checks.required_tools) - permitted
+                or (checks.write_targets and "write_file" not in permitted)
+                or (checks.write_targets and checks.require_readback and "read_file" not in permitted)
+            ):
+                raise ValueError(
+                    "Task checks require disabled tools. Change the checks or agent permissions; nothing has run."
+                )
             if not lab:
                 project = next((p for p in self.projects.recent() if p["path"] == str(workspace)), None)
                 if project and project["brief"]:
                     task = "User's saved project brief:\n" + project["brief"] + "\n\nCurrent task:\n" + task
             output = self.lab_output if lab else self.work_output
-            capture, parent = self.capture.isChecked(), None if lab else self.parent_session
+            capture, parent = (
+                self.capture.isChecked(),
+                None if lab or self.conversation_mode.currentData() == "fresh" else self.parent_session,
+            )
             self.active_output = output
+            self.active_is_lab = lab
             started = self.start_worker(
                 lambda worker: self.runtime.run(
                     agent,
@@ -1303,10 +1403,12 @@ class Window(QMainWindow):
                     worker.activity.emit,
                     capture,
                     parent,
+                    task_checks=checks,
                 ),
                 lambda result: self.run_completed(result, lab),
             )
             if started:
+                self.run_facts.setText("Running · task checks and final answer are pending.")
                 output.appendPlainText("\nUSER\n" + self.credentials.redact(task) + "\n")
                 self.statusBar().showMessage("Running · File edits and commands pause for your approval")
 
@@ -1324,9 +1426,19 @@ class Window(QMainWindow):
         if self.detailed_activity.isChecked():
             text = kind + "  " + json.dumps(data, ensure_ascii=False)
         elif kind == "assistant.text":
-            text = "AGENT\n" + data["text"]
+            text = "MODEL RESPONSE · review runtime evidence\n" + data["text"]
         elif kind == "model.requested":
             text = "Asking " + data["model"] + " (step " + str(data["step"] + 1) + ")…"
+        elif kind == "task.context":
+            text = (
+                "CONTEXT: "
+                + data["source"]
+                + " · "
+                + str(data["history_messages"])
+                + " historical messages supplied. Host commands: "
+                + ("enabled" if data["commands_allowed"] else "disabled")
+                + "."
+            )
         elif kind == "model.responded":
             text = (
                 "Model responded in "
@@ -1349,7 +1461,13 @@ class Window(QMainWindow):
                 "Tool succeeded: " if data["status"] == "succeeded" else "Tool failed or was denied: "
             ) + data["tool"]
             if "verified" in data:
-                text += " · file contents verified" if data["verified"] else " · verification failed"
+                text += (
+                    " · unchanged; no file write"
+                    if data.get("unchanged")
+                    else " · file contents verified"
+                    if data["verified"]
+                    else " · verification failed"
+                )
             if "exit_code" in data:
                 text += " · actual exit code " + str(data["exit_code"])
             if "error" in data:
@@ -1382,6 +1500,25 @@ class Window(QMainWindow):
                 + str(counts.get("recovered_edit_errors", 0))
                 + ". Saving/checking files does not prove the program works."
             )
+            from .task_checks import public_task_checks
+
+            checks = public_task_checks(data.get("task_checks"))
+            facts = (
+                f"Runtime evidence: {counts.get('succeeded', 0)} tools succeeded; "
+                f"{counts.get('writes_verified', 0)} actual writes verified; "
+                f"{counts.get('unchanged_writes', 0)} unchanged writes skipped. "
+                "Task checks: " + checks["status"].replace("_", " ") + ". "
+                "Final answer: " + data.get("final_response_status", "not_recorded").replace("_", " ") + "."
+            )
+            if not getattr(self, "active_is_lab", False):
+                self.run_facts.setText(facts)
+            text += "\n" + facts
+        elif kind == "task.checks_evaluated":
+            text = "APPLICATION TASK CHECKS: " + data["status"].replace("_", " ")
+            if data.get("unmet_targets"):
+                text += "\nExpected file write/read-back not verified: " + ", ".join(data["unmet_targets"])
+            if data.get("unmet_tools"):
+                text += "\nRequired tools not successful: " + ", ".join(data["unmet_tools"])
         elif kind == "edit.recovered":
             text = "Earlier stale-edit errors recovered after a successful reviewed write."
         elif kind.startswith("session."):
@@ -1447,6 +1584,13 @@ class Window(QMainWindow):
 
     def new_conversation(self):
         self.parent_session = None
+        self.conversation_mode.setCurrentIndex(0)
+        self.expected_files.clear()
+        self._suggested_files = ""
+        self.required_task_tools = []
+        self.required_tools_button.setText("Required tools (0)…")
+        self.require_task_tools.setChecked(False)
+        self.suggest_task_files()
         self.work_output.clear()
 
     def refresh_history(self):
@@ -1461,6 +1605,7 @@ class Window(QMainWindow):
                 "response_only": "Response only — no tools ran",
                 "protocol_error": "Tool protocol failed",
                 "needs_review": "Failed/denied actions — review needed",
+                "incomplete_response": "Work recorded — model final answer missing",
             }.get(row["state"], row["state"].replace("_", " "))
             self.history.addItem(f"{row['created'][:19]} · {agent.name} · {label}")
 
@@ -1493,6 +1638,12 @@ class Window(QMainWindow):
                     + (assessment["label"].replace("_", " ") if assessment else "not assessed")
                     + "\n\nNext: check the actual result, then choose Goal met or Needs work."
                     + "\nShare run report prepares counters for your review; it does not upload automatically."
+                )
+                text += "\nTask checks: " + summary.get("task_checks", {}).get(
+                    "status", "not_recorded"
+                ).replace("_", " ")
+                text += "\nFinal answer: " + summary.get("final_response_status", "not_recorded").replace(
+                    "_", " "
                 )
                 if not summary:
                     text += "\nDetailed counters are unavailable for this older run."
@@ -1530,6 +1681,7 @@ class Window(QMainWindow):
                 raise ValueError("This agent was deleted; import or create it before resuming")
             self.run_agent.setCurrentIndex(index)
             self.parent_session = session["id"]
+            self.conversation_mode.setCurrentIndex(1)
             self.work_output.clear()
             self.work_output.appendPlainText(
                 "RESUMING CONVERSATION · using the currently saved agent revision; previous tools will not rerun"
@@ -1663,7 +1815,7 @@ def main():
             window.diagnostic_worker = worker
 
             def done(report):
-                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) == 19
+                smoke_state["ok"] = report["state"] == "passed" and len(report["checks"]) == 21
                 window.close()
 
             worker.succeeded.connect(done)

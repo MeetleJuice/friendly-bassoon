@@ -4,7 +4,7 @@
 
 Click **Diagnose** at the top of the installed app. Choose the test agent and options, then click **Run diagnostics**. Opening the window makes no model call. The selected local Ollama model test is enabled when a local Ollama agent is selected; it may take up to three minutes and creates only a fixed test file in a temporary directory. Disable it for an app-only check. No cloud model is called automatically.
 
-The app runs 19 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, active-report retention, registry/retrieval/native-probe fixtures, Python static checking and last-read revision protection. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
+The app runs 21 built-in checks: SQLite integrity/schema access, saved definitions/provider references, file boundaries, permission denial, file write/read/stale-edit protection, cancellation, a fixed harmless command, command timeout, redaction, two provider-protocol fixtures, the text-tool regression, an end-to-end native coding fixture, metadata-only catalog/deduplication, active-report retention, registry/retrieval/native-probe fixtures, Python static checking and last-read revision protection. Optional update connectivity is a separate check. Optional real local inference must actually create and read back the expected file to pass.
 
 This is the **installed app's diagnostic suite**, not every possible test in every project. Developer pytest tests, Windows build/installer tests and upgrade tests run in release CI. No arbitrary project command, project file scan, cloud inference charge or GitHub write is authorized merely by running diagnostics.
 
@@ -71,3 +71,10 @@ Workbench → **Check Python file** reads one protected project .py file (up to1
 History → **Goal met / Needs work** records your actual acceptance. **Share run report** prepares counters/check codes from the selected finished run and the bounded recent20-run aggregates. Source/transcripts/paths/names/assessment notes are excluded; selected model is optional. Without a Goal met assessment, a run review remains needs_attention even if tool execution completed. Preview/approval/browser Create are still required.
 
 Stale-file failures use a fixed STALE_FILE code; recovered errors remain counted. `last_read` references only the revision actually read in this run and does not bypass review or a file change during approval. A different file's success cannot clear an unresolved edit error. Reports use the same age/count/byte limits and no remote telemetry.
+
+
+## 0.7 task checks and incomplete responses
+
+Configured expected files restrict file-tool writes, never independently approved host commands. Required successful tools and current post-write read-back are evaluated from events/revisions. Missing operations leave needs_review even if the model says VERIFIED. Identical writes are skipped without approval/mutation or actual-write credit. Fresh task context is the default; Continue/Resume is explicit.
+
+Missing final content yields incomplete_response with a deterministic application summary of preserved work, no replay or extra inference. Thinking counts/response structure remain diagnostic evidence, not a substitute final answer. Runtime facts are separate from model prose. Public run-review-2 contains only fixed counts/statuses, optional model and user acceptance; target filenames, prompts, source and notes are not included. Mixed-history coverage makes new-field availability explicit. Health suite 5 has 21 offline fixtures, including task-target/revision and missing-final cases.

@@ -27,7 +27,7 @@ from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "4"
+SUITE_VERSION = "5"
 
 
 def model_evidence(events):
@@ -77,7 +77,16 @@ def model_evidence(events):
         "model_metadata": metadata,
         "request_traces": traces[:8],
         "provider_error_code": failures[-1].get("code", "PROVIDER_ERROR") if failures else "NONE",
-        "http_status": failures[-1].get("http_status") if failures else None,
+        "http_status": failures[-1].get("http_status")
+        if failures
+        else next(
+            (
+                e["data"]["http_status"]
+                for e in reversed(events)
+                if e["kind"] == "model.responded" and type(e["data"].get("http_status")) is int
+            ),
+            None,
+        ),
         "native_calls_total": sum(row["native_call_count"] for row in traces),
     }
 
@@ -149,6 +158,12 @@ def safe_recent_summary(store):
     states, errors, protocol, legacy = {}, {}, 0, 0
     runtime_codes, runtime_types, stages = {}, {}, {}
     execution, tool_codes, assessments = {}, {}, {}
+    coverage = {
+        "sessions": 0,
+        "task_checks_recorded": 0,
+        "final_status_recorded": 0,
+        "current_version_sessions": 0,
+    }
     for session in store.sessions()[:20]:
         state = session["state"] if session["state"] in RECENT_STATES else "unknown"
         failed = state in (
@@ -158,8 +173,11 @@ def safe_recent_summary(store):
             "limit_reached",
             "interrupted",
             "needs_review",
+            "incomplete_response",
         )
         session_codes, session_types, session_stages = set(), set(), set()
+        coverage["sessions"] += 1
+        recorded_checks, recorded_final, current_version = False, False, False
         for message in store.messages(session["id"]):
             if (
                 message.get("role") == "assistant"
@@ -175,6 +193,9 @@ def safe_recent_summary(store):
         for event in store.events(session["id"]):
             data = event["data"]
             if event["kind"] == "run.summary":
+                recorded_checks = isinstance(data.get("task_checks"), dict)
+                recorded_final = data.get("final_response_status") in ("present", "missing", "not_reached")
+                current_version = event.get("app_version") == __version__
                 from .evidence import bounded_counts
 
                 for name, value in bounded_counts(
@@ -209,6 +230,8 @@ def safe_recent_summary(store):
                     session_stages.add(
                         "native_protocol"
                         if kind == "NativeToolProtocolError"
+                        else "final_response"
+                        if kind == "EmptyFinalResponse"
                         else "provider"
                         if kind == "ProviderError"
                         else "runtime"
@@ -216,6 +239,9 @@ def safe_recent_summary(store):
                 else:
                     session_stages.add("provider")
         # Count affected sessions once per classification, even when an adapter retries/falls back.
+        coverage["task_checks_recorded"] += int(recorded_checks)
+        coverage["final_status_recorded"] += int(recorded_final)
+        coverage["current_version_sessions"] += int(current_version)
         for counter, values in (
             (runtime_codes, session_codes),
             (runtime_types, session_types),
@@ -237,6 +263,7 @@ def safe_recent_summary(store):
                 "execution_counts": execution,
                 "tool_error_codes": tool_codes,
                 "user_assessments": assessments,
+                "coverage": coverage,
             }
         ),
     }
@@ -640,6 +667,74 @@ class DiagnosticRunner:
                 )
                 return {"revision_fixture_verified": True, "stale_edits_blocked": 1}
 
+            def task_checks_fixture():
+                from .task_checks import TaskChecks, TaskEvidence
+
+                root = scratch / "task-checks"
+                root.mkdir()
+                trial_ws = Workspace(root)
+                checks = TaskChecks(
+                    write_targets=["expected.txt"], required_tools=["write_file", "read_file"]
+                )
+                evidence = TaskEvidence(trial_ws, checks)
+                runner = ToolRunner(trial_ws, Agent(), lambda *args: True, cancel, checks.write_targets)
+                _denied(
+                    lambda: runner.execute(
+                        tool_call("write_file", path="wrong.txt", content="wrong", expected_sha256="new")
+                    )
+                )
+                _require(not (root / "wrong.txt").exists())
+                for name, values in (
+                    ("write_file", {"path": "expected.txt", "content": "expected", "expected_sha256": "new"}),
+                    ("read_file", {"path": "expected.txt"}),
+                ):
+                    call = tool_call(name, **values)
+                    evidence.record(call, runner.execute(call), "succeeded")
+                _require(evidence.evaluate()[0]["status"] == "passed")
+                (root / "expected.txt").write_text("changed", encoding="utf-8")
+                _require(evidence.evaluate()[0]["status"] == "needs_attention")
+                return {"task_checks_fixture_verified": True, "external_requests": 0}
+
+            def empty_final_fixture():
+                from .task_checks import TaskChecks
+
+                root = scratch / "empty-final"
+                root.mkdir()
+                requests = []
+
+                class EmptyFinal:
+                    def __init__(self, *args):
+                        pass
+
+                    def capabilities(self, model):
+                        return {"tools": True, "source": "fixture"}
+
+                    def chat(self, model, messages, tools):
+                        requests.append(1)
+                        if any(m["role"] == "tool" for m in messages):
+                            return Reply(evidence={"thinking_chars": 123, "finish_reason": "stop"})
+                        return Reply(
+                            calls=[
+                                tool_call(
+                                    "write_file", path="saved.txt", content="preserved", expected_sha256="new"
+                                )
+                            ]
+                        )
+
+                with closing(Store(scratch / "empty.sqlite3", self.credentials)) as trial:
+                    trial.save_profile(Profile(id="ollama", name="Fixture"))
+                    sid, state = Runtime(trial, self.credentials, EmptyFinal).run(
+                        Agent(),
+                        root,
+                        "Synthetic fixture",
+                        lambda *args: True,
+                        task_checks=TaskChecks(write_targets=["saved.txt"], require_readback=False),
+                    )
+                    _require(state == "incomplete_response" and len(requests) == 2)
+                    _require((root / "saved.txt").read_text(encoding="utf-8") == "preserved")
+                    _require(sum(e["kind"] == "tool.result" for e in trial.events(sid)) == 1)
+                return {"empty_final_fixture_verified": True, "external_requests": 0}
+
             cases = [
                 ("database", database),
                 ("definitions", definitions),
@@ -660,6 +755,8 @@ class DiagnosticRunner:
                 ("native_probe_fixture", native_probe_fixture),
                 ("python_check_fixture", python_check_fixture),
                 ("revision_fixture", revision_fixture),
+                ("task_checks_fixture", task_checks_fixture),
+                ("empty_final_fixture", empty_final_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

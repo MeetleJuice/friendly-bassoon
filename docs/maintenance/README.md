@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.7 upgrade plan](UPGRADE_070_PLAN.md) and [research](RESEARCH_070.md): explicit task checks, preserved work and fresh context.
 - [0.6 upgrade plan](UPGRADE_060_PLAN.md) and [source research](RESEARCH_060.md): checks, recovery and useful run evidence.
 - [0.5 upgrade plan](UPGRADE_050_PLAN.md) and [source research](RESEARCH_050.md): implementation and acceptance rationale.
 - [Issue triage](ISSUE_TRIAGE.md): verified findings, evidence boundaries and the next experiment.

@@ -68,6 +68,7 @@ def test_last_read_requires_this_run_and_preserves_review_race_check(tmp_path):
         return True
 
     runner.approve = race
+    write = call("write_file", path="game.py", content="value = 3\n", expected_sha256="last_read")
     with pytest.raises(StaleFileError):
         runner.execute(write)
     assert (tmp_path / "game.py").read_text() == "external = True\n"

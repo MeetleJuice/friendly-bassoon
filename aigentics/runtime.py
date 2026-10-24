@@ -9,7 +9,8 @@ import platform
 from uuid import uuid4
 from pydantic import ValidationError
 from .providers import Provider, ProviderError
-from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS, StaleFileError
+from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS, StaleFileError, WriteTargetError
+from .task_checks import TaskChecks, TaskEvidence
 
 
 class NativeToolProtocolError(RuntimeError):
@@ -80,9 +81,21 @@ class Runtime:
         emit=lambda event: None,
         capture=False,
         parent=None,
+        task_checks=None,
     ):
         cancel = cancel or threading.Event()
         ws = Workspace(workspace)
+        checks = TaskChecks.model_validate(task_checks or {})
+        task_evidence = TaskEvidence(ws, checks)
+        advertised_names = {tool["function"]["name"] for tool in tool_definitions(agent)}
+        if set(checks.required_tools) - advertised_names:
+            raise ValueError(
+                "Task requires a disabled tool. Change task checks or the saved agent permissions first."
+            )
+        if checks.write_targets and "write_file" not in advertised_names:
+            raise ValueError("Expected output files require the write tool and write permission.")
+        if checks.write_targets and checks.require_readback and "read_file" not in advertised_names:
+            raise ValueError("Read-back checks require the read_file tool.")
         sid = self.store.start(agent, ws.root, capture, parent)
         deadline = time.monotonic() + agent.max_seconds
         started = time.monotonic()
@@ -145,6 +158,27 @@ class Runtime:
                 if m["role"] in ("user", "assistant") and m.get("content")
             ]
         messages.append({"role": "user", "content": self.credentials.redact(task)})
+        if checks.configured:
+            messages[0]["content"] += (
+                "\nApplication task checks: "
+                + self.credentials.json(checks.model_dump())
+                + (
+                    ". Writes may only target the expected files when listed. Complete the required native tool operations. "
+                    "Read back each expected file after its latest write when required. These checks override historical task targets."
+                )
+            )
+        event(
+            "task.context",
+            {
+                "source": "continued" if parent else "fresh",
+                "history_messages": len(messages) - 2,
+                "tools_selected": list(agent.tools),
+                "writes_allowed": agent.allow_writes,
+                "commands_allowed": agent.allow_commands,
+            },
+        )
+        if checks.configured:
+            event("task.checks", checks.model_dump())
         event(
             "runtime.environment",
             {
@@ -159,7 +193,7 @@ class Runtime:
         profiles = {p.id: p for p in self.store.profiles()}
         chain, route = [agent.primary, *agent.fallbacks], 0
         checked = set()
-        tool_runner = ToolRunner(ws, agent, approval, cancel)
+        tool_runner = ToolRunner(ws, agent, approval, cancel, checks.write_targets)
         state, outcome = "failed", "Runtime did not complete"
         tools = tool_definitions(agent)
         protocol_retries = 0
@@ -172,7 +206,11 @@ class Runtime:
             "recovered_edit_errors": 0,
             "python_checks_passed": 0,
             "python_checks_failed": 0,
+            "unchanged_writes": 0,
+            "write_target_mismatches": 0,
+            "empty_final_responses": 0,
         }
+        final_response_status = "not_reached"
         stale_edits = {}
         python_checks = {}
         try:
@@ -239,6 +277,7 @@ class Runtime:
                                 "tool_calls": len(reply.calls),
                                 "content_chars": len(reply.content),
                                 "response_shape": reply.evidence,
+                                "http_status": getattr(provider, "last_http_status", None),
                             },
                         )
                         break
@@ -318,7 +357,25 @@ class Runtime:
                     )
                 if not reply.calls:
                     if not reply.content.strip():
-                        raise ProviderError("Model returned an empty response")
+                        final_response_status = "missing"
+                        tool_counts["empty_final_responses"] += 1
+                        state = "incomplete_response"
+                        outcome = (
+                            "The model returned no final answer. Recorded tool results are preserved; no action was replayed. "
+                            f"{tool_counts['succeeded']} tools succeeded, {tool_counts['failed']} failed, "
+                            f"{tool_counts['writes_verified']} file writes verified. Review task checks and the actual result."
+                        )
+                        event(
+                            "runtime.error",
+                            {
+                                "type": "EmptyFinalResponse",
+                                "code": "EMPTY_FINAL_RESPONSE",
+                                "message": outcome,
+                            },
+                        )
+                        self.store.messages(sid, messages)
+                        break
+                    final_response_status = "present"
                     if not tool_counts["requested"]:
                         state, outcome = (
                             "response_only",
@@ -384,13 +441,22 @@ class Runtime:
                         )
                         key = str(ws.path(call.arguments["path"]))
                         stale_edits[key] = stale_edits.get(key, 0) + 1
+                    except WriteTargetError as exc:
+                        result, status = (
+                            {"error": str(exc), "type": "WriteTargetError", "code": "WRITE_TARGET_MISMATCH"},
+                            "failed",
+                        )
+                        tool_counts["write_target_mismatches"] += 1
                     except Exception as exc:
                         result, status = (
                             {"error": self.credentials.redact(str(exc)), "type": type(exc).__name__},
                             "failed",
                         )
                     tool_counts[status] += 1
-                    if result.get("verified") is True:
+                    task_evidence.record(call, result, status)
+                    if result.get("unchanged"):
+                        tool_counts["unchanged_writes"] += 1
+                    if result.get("verified") is True and not result.get("unchanged"):
                         tool_counts["writes_verified"] += 1
                         key = str(ws.path(call.arguments["path"]))
                         recovered = stale_edits.pop(key, 0)
@@ -417,7 +483,16 @@ class Runtime:
                     if status == "failed":
                         summary["error"] = result.get("error", "Command exited unsuccessfully")
                         summary["error_type"] = result.get("type", "CommandFailure")
-                    for key in ("exit_code", "reason", "sha256", "verified", "bytes", "python_check", "code"):
+                    for key in (
+                        "exit_code",
+                        "reason",
+                        "sha256",
+                        "verified",
+                        "bytes",
+                        "python_check",
+                        "code",
+                        "unchanged",
+                    ):
                         if key in result:
                             summary[key] = result[key]
                     event("tool.result", summary)
@@ -455,6 +530,14 @@ class Runtime:
             event("runtime.error", {"type": type(exc).__name__, "message": outcome})
         finally:
             timer.cancel()
+            task_result, task_details = task_evidence.evaluate()
+            if checks.configured:
+                event("task.checks_evaluated", task_result | task_details)
+                if task_result["status"] != "passed" and state in ("completed", "response_only"):
+                    state, outcome = (
+                        "needs_review",
+                        "Configured task checks were not met. Review missing writes, read-back and required tools.",
+                    )
             self._conversations[sid] = list(messages)
             while len(self._conversations) > 8:
                 del self._conversations[next(iter(self._conversations))]
@@ -466,6 +549,8 @@ class Runtime:
                     "tools": tool_counts,
                     "protocol_retries": protocol_retries,
                     "goal_verification": "not_evaluated",
+                    "task_checks": task_result,
+                    "final_response_status": final_response_status,
                     "unresolved_tool_errors": max(
                         0, tool_counts["failed"] - tool_counts["recovered_edit_errors"]
                     ),

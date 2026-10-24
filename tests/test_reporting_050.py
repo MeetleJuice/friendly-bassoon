@@ -49,6 +49,7 @@ def test_recent_counts_have_typed_defaults(recent):
         "protocol_failures": 0,
         "legacy_text_tool_responses": 0,
         "execution_counts": {},
+        "coverage": {},
         "tool_error_codes": {},
         "user_assessments": {},
     }
@@ -78,6 +79,7 @@ def test_public_recent_counts_reject_private_keys_and_invalid_values():
         "protocol_failures": 0,
         "legacy_text_tool_responses": 0,
         "execution_counts": {},
+        "coverage": {},
         "tool_error_codes": {},
         "user_assessments": {},
     }

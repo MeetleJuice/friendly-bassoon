@@ -4,7 +4,7 @@ A native Python / PySide6 desktop coding-agent application. Agents and Workbench
 
 ## Windows 10/11: easy installation
 
-Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.6.0.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
+Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.7.0.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
 
 The installer is currently unsigned. Do not confuse the green **Code → Download ZIP** source download with the installer in Release Assets. The Windows build publishes an installer only after its tests and installed-executable/shortcut smoke pass. Check [Actions](https://github.com/MeetleJuice/friendly-bassoon/actions) if the asset is not available yet. See [installer details](docs/INSTALLER.md).
 
@@ -31,7 +31,7 @@ After source installation, `Start-Aigentics.cmd` is an alternative launch shortc
 
 ## Diagnose and share without dragging files
 
-Click **Diagnose** at the top, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 19 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
+Click **Diagnose** at the top, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 21 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
 
 Review the exact public report preview and approve it before sharing. **Browser draft** needs no token; finish with Create (or Submit new issue) on GitHub. **Direct submission** uses an existing `GITHUB_TOKEN` with Issues write access and records the confirmed issue URL. No report is uploaded by merely running diagnostics. Support reports go to **GitHub Issues**, not permanent source commits. Model names are optional; keys, project text, paths and conversations are excluded from the generated public report. See [diagnostic details](docs/DIAGNOSTICS.md).
 
@@ -44,6 +44,16 @@ Click **Test APIs** after local key discovery finishes. It makes one model-list 
 Catalogs persist across restarts with timestamps; failed refreshes keep the previous successful list until retention removes it. Partial first-page results are labeled without making another request. **Local data** shows storage, reports, model catalogs, age/count/size limits and the data-folder location. Reports can be reviewed and explicitly approved for GitHub sharing. **Copy preview** provides a fallback for browser problems.
 
 Qwen2.5-Coder14b still fails native tool calls in issues #5/#6/#8. The user’s Qwen3:8b session successfully edits files; this is model-specific acceptance evidence, not a universal repair. Suite 4 adds static-check/revision fixtures and recovery/assessment counters. See the [maintenance workspace](docs/maintenance/README.md) and [short user testing guide](docs/maintenance/USER_TESTING.md).
+
+## Task checks and clear outcomes (0.7.0)
+
+Workbench shows **Expected output files**, **Require real tools**, **Required tools**, and **Read back output files**. A simple single-file create/edit instruction can suggest a visible target; review/edit it before Run. The runtime restricts file-tool writes to configured targets and checks actual successful writes, independent read-back after the latest write, current file revision and required tools. Missing checks produce needs_review. These are operation checks, not a universal English-goal verifier. Host commands retain separate approval and are not sandboxed by the target list.
+
+**New task · fresh context** is the default. Select Continue conversation or Resume when you want historical context. Model prose is labeled separately from the runtime's facts. A missing visible final becomes incomplete_response with preserved operation evidence and no action replay/extra generation. An identical write is skipped without changing the file or counting an actual write.
+
+Run-review-2 reports contain safe task-check/final/no-op evidence and coverage of new fields in mixed history. User Goal met/Needs work remains separate. Source, target paths, task text and notes are excluded from public previews; existing retention and explicit sharing approval remain.
+
+See the [0.7 plan](docs/maintenance/UPGRADE_070_PLAN.md), [research](docs/maintenance/RESEARCH_070.md) and [one-test guide](docs/maintenance/USER_TESTING.md).
 
 ## Easier verification and reports (0.6.0)
 

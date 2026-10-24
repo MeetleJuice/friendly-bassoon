@@ -41,3 +41,10 @@ The targeted next result is a 0.5 native-call probe (optionally four local route
 Approved issues #5–#8 were read. #5: four Qwen14b route/stream probes all HTTP200, TEXT_TOOL_RESPONSE, zero native calls. #6/#8:17 offline+update checks pass; Qwen14b file test protocol_error, go_template; no file/read-back. #7:five model-list checks pass in969ms, one GET each, zero generation; OpenRouter469, Ollama8, Gemini60, Groq11, NVIDIA85.
 
 The supplied Qwen3:8b session proves native approved file writes/read-back work on the user's installation. It also exposes repeated wrong/stale revision tokens, recovered edits marked needs_review, literal tuple assignment failure, missing runtime verification and confused planning/identity context. No captured launch or final pure-code music result exists. Do not commit the original log/source. 0.6 targets evidence/checks/recovery UX, not a fabricated Qwen2.5 repair. Next useful acceptance: one fresh Qwen3:8b Python edit and its run review, plus actual user gameplay result.
+
+
+## 0.6 acceptance and 0.7 targets
+
+Issues9–12 reviewed:9 repeats old Qwen14b failure;10 passes all21 health checks including live local exact file/read-back;11 catches syntax error line1;12 has7successful tools/one static-checked write but Needs work. The pasted corresponding log confirms wrong output filename and a redundant existing-file rewrite. Supplied Qwen3.5 logs show11successful tools but3empty final answers; no raw server cause established. Captured source hashes confirm literal newline escapes in some earlier Python files. Do not commit original traces/source or infer all reports share the same model/version.
+
+0.7 verifies explicit operations, blocks wrong file-tool targets, preserves incomplete-response work, defaults to actual fresh context and records safe evidence coverage. Generic prose truthfulness, Qwen2.5 repair and gameplay remain unproven. Next acceptance: one fresh simple targeted write plus post-write read-back and actual user assessment; do not repeat unchanged Qwen14b comparisons.

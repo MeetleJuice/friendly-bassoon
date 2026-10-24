@@ -24,3 +24,6 @@ Validated 0.5.0: 196 passed / 1 optional live test skipped; source Windows run 4
 0.6 adds Python compile/no-execution/literal assignment cases, current-versus-historical checks, run-scoped read revisions (including CRLF, review races, denied approval and wrong explicit hashes), recovered/unresolved edit counters, read-only planning, selected-file UI and minimal run-report privacy/assessment rules. Suite4 has19 offline checks. The previous installer is pinned0.5.0; upgrade preservation also covers remembered project briefs and user assessments. Final counts/run IDs are recorded in VERIFICATION.md.
 
 Validated 0.6.0:215 passed/1 optional-live skipped; Windows source 40039113039 and tag/release 40039425834 passed. Production 0.5 updater discovered/downloaded/checksum-verified 0.6.0. See VERIFICATION.md for immutable source/hash and acceptance limits.
+
+
+0.7 adds wrong-target blocking before approval, exact write/read-back/current revision checks, required-native-tool enforcement, safe missing finals without replay or thinking substitution, no-op/CRLF/revision safety, fresh/continued UI dispatch, disabled-tool preflight and private-target report filtering. Health suite 5 has 21 offline checks. Windows upgrade pins released0.6.0's verified hash; preserve all prior fixture data. Final counts/run IDs belong in VERIFICATION.md.

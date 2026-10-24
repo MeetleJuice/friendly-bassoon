@@ -133,7 +133,7 @@ def test_packaged_health_suite_runs_without_pytest_or_user_project(store, creden
     (project / "private.txt").write_text("private project data")
     report = DiagnosticRunner(store, credentials).run(threading.Event(), include_network=False)
     assert report["state"] == "passed"
-    assert report["summary"] == {"passed": 19, "failed": 0, "warning": 0, "skipped": 0}
+    assert report["summary"] == {"passed": 21, "failed": 0, "warning": 0, "skipped": 0}
     assert (project / "private.txt").read_text() == "private project data"
     payload = store.diagnostic_reports()[0]["payload"]
     assert payload["id"] == report["id"]

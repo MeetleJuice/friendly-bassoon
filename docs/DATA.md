@@ -89,3 +89,10 @@ The existing /api/show request now records bounded parser, renderer and template
 Schema5 and storage locations are retained. Python tool results add fixed status/code/line, full local revision hash and executed=false. Run summaries count historical Python passes/failures, current files needing attention, recovered stale-edit errors and unresolved tool errors. Recovery does not delete the initial failure. Human goal labels stay separate from automatic checks.
 
 `python-static-1` selected-file reports retain local path/workspace/hash for comparison but strip them from public output. `run-review-1` reports retain a local session reference, optional model name and bounded fixed counters/check codes; no task/source/transcript/assessment note is copied. User Goal met is explicitly labeled user_goal_met, never an automatic behavior score. Recent20-run reports include fixed execution/error/assessment counters. All reports share existing retention budgets; exports/issues/backups remain separate.
+
+
+## 0.7 task evidence
+
+Schema5 and existing locations/retention are unchanged. Local events add task.context, task.checks and task.checks_evaluated; configured target paths/unmet names stay local. run.summary adds typed task-operation status/counts and final_response_status; counters distinguish actual versus unchanged writes, target mismatches and empty finals. There is no raw thinking collection or automatic extra model call. model.responded now retains actual HTTP status when available.
+
+run-review-2 rebuilds safe task summaries from fixed enums/count keys, excluding target paths, source, tasks, agent names and assessment notes. Recent20 coverage counts which sessions recorded task checks/final status/current-version summaries, so older omissions are not treated as measured zero. Native tool/approval/stale/path guards remain; separately approved commands are not an OS sandbox.

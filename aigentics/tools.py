@@ -16,10 +16,15 @@ from .models import Strict
 from .registry import TOOL_REGISTRY
 from .retrieval import project_map, retrieve_context, MAX_CONTEXT_CHARS
 from .verification import check_python
+from .task_checks import path_key
 
 
 class StaleFileError(ValueError):
     """The proposed revision does not match the actual file."""
+
+
+class WriteTargetError(PermissionError):
+    """A write is outside the explicit task output list."""
 
 
 BLOCKED = {".git", ".venv", "node_modules", "__pycache__", ".aws", ".ssh", ".gnupg"}
@@ -364,9 +369,10 @@ def run_command(root, args, cancel):
 
 
 class ToolRunner:
-    def __init__(self, workspace, agent, approve, cancel):
+    def __init__(self, workspace, agent, approve, cancel, write_targets=None):
         self.workspace, self.agent, self.approve, self.cancel = workspace, agent, approve, cancel
         self._read_revisions = {}
+        self.write_targets = {path_key(workspace, path) for path in write_targets} if write_targets else None
 
     def execute(self, call):
         if call.name not in self.agent.tools or call.name not in EXECUTORS:
@@ -382,12 +388,31 @@ class ToolRunner:
     def _write_file(self, args):
         if not self.agent.allow_writes:
             raise PermissionError("Writes disabled for this agent")
+        if self.write_targets is not None and path_key(self.workspace, args.path) not in self.write_targets:
+            raise WriteTargetError("Write blocked: this file is not in the task's expected output files")
         if args.expected_sha256 == "last_read":
             revision = self._read_revisions.get(str(self.workspace.path(args.path)))
             if not revision:
                 raise StaleFileError("Read this file in the current run before using 'last_read'")
             args = args.model_copy(update={"expected_sha256": revision})
         diff = self.workspace.prepare_write(args)
+        unchanged = diff == "No content changes" and self.workspace.path(args.path).exists()
+        if unchanged:
+            current = self.workspace.read(args.path)
+            if current["sha256"] != args.expected_sha256 or current["content"] != args.content:
+                raise StaleFileError("File changed; read it again before proposing an edit")
+            result = {
+                "path": args.path,
+                "sha256": current["sha256"],
+                "verified": True,
+                "bytes": len(current["content"].encode("utf-8")),
+                "unchanged": True,
+            }
+            if args.path.lower().endswith(".py"):
+                result["python_check"] = check_python(self.workspace, args.path)
+                if result["python_check"]["sha256"] != result["sha256"]:
+                    result["python_check"].update(status="failed", code="CHECK_REVISION_CHANGED")
+            return result
         if not self.approve("write_file", {"path": args.path, "diff": diff}):
             raise PermissionError("User denied file change")
         if self.cancel.is_set():

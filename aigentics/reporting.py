@@ -25,6 +25,7 @@ RECENT_STATES = frozenset(
         "cancelled",
         "limit_reached",
         "unknown",
+        "incomplete_response",
     )
 )
 RECENT_ERROR_TYPES = frozenset(
@@ -49,6 +50,8 @@ RECENT_ERROR_TYPES = frozenset(
         "ToolFailure",
         "OtherError",
         "StaleFileError",
+        "WriteTargetError",
+        "EmptyFinalResponse",
     )
 )
 RECENT_ERROR_CODES = frozenset(
@@ -67,9 +70,11 @@ RECENT_ERROR_CODES = frozenset(
         "NATIVE_TOOL_PROTOCOL",
         "UNKNOWN_ERROR",
         "STALE_FILE",
+        "WRITE_TARGET_MISMATCH",
+        "EMPTY_FINAL_RESPONSE",
     )
 )
-RECENT_FAILURE_STAGES = frozenset(("provider", "runtime", "native_protocol"))
+RECENT_FAILURE_STAGES = frozenset(("provider", "runtime", "native_protocol", "final_response"))
 
 
 def recent_run_counts(recent):
@@ -99,6 +104,19 @@ def recent_run_counts(recent):
     from .evidence import bounded_counts
 
     result["execution_counts"] = bounded_counts(recent.get("execution_counts"))
+    coverage = recent.get("coverage", {})
+    result["coverage"] = (
+        {
+            key: min(value, 20)
+            for key, value in coverage.items()
+            if key
+            in ("sessions", "task_checks_recorded", "final_status_recorded", "current_version_sessions")
+            and type(value) is int
+            and value >= 0
+        }
+        if isinstance(coverage, dict)
+        else {}
+    )
     for key, allowed in (
         ("tool_error_codes", RECENT_ERROR_CODES),
         ("user_assessments", ("goal_met", "needs_work", "not_assessed")),
@@ -207,6 +225,9 @@ def public_report(report, include_model=False):
         "revision_fixture_verified",
         "user_goal_met",
         "user_assessment",
+        "final_response_status",
+        "task_checks_fixture_verified",
+        "empty_final_fixture_verified",
     }
     if include_model:
         allowed.add("model")
@@ -214,6 +235,16 @@ def public_report(report, include_model=False):
         check = {key: row[key] for key in ("id", "status", "code", "message", "duration_ms")}
         check["evidence"] = {key: value for key, value in row.get("evidence", {}).items() if key in allowed}
         evidence = row.get("evidence", {})
+        if "final_response_status" in evidence:
+            check["evidence"]["final_response_status"] = (
+                evidence["final_response_status"]
+                if evidence["final_response_status"] in ("present", "missing", "not_reached", "not_recorded")
+                else "not_recorded"
+            )
+        if "task_checks" in evidence:
+            from .task_checks import public_task_checks
+
+            check["evidence"]["task_checks"] = public_task_checks(evidence["task_checks"])
         if "execution_counts" in evidence:
             from .evidence import bounded_counts
 
@@ -304,7 +335,7 @@ def issue_body(report, credentials, include_model=False):
     title = f"Aigentics {label} {report['app_version']}: {report['state']}"
     body = (
         f"<!-- aigentics-report:{report['id']} -->\n"
-        "Diagnostic report shared with the user's approval. Synthetic test results and metadata only.\n\n"
+        "Diagnostic report shared with the user's approval. Allowlisted diagnostic and execution metadata only.\n\n"
         "```json\n" + credentials.json(public, indent=2, ensure_ascii=False) + "\n```\n"
     )
     if len(body.encode("utf-8")) > MAX_BODY:
@@ -393,6 +424,10 @@ def prepare_browser_draft(title, body):
             "tool_error_codes",
             "user_goal_met",
             "python_check_codes",
+            "task_checks",
+            "final_response_status",
+            "task_checks_fixture_verified",
+            "empty_final_fixture_verified",
             "user_assessment",
         )
         compact_checks = {

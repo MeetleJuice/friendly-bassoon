@@ -1,54 +1,21 @@
 # Build progress and next actions
 
-## 0.6.0 verification and useful agent evidence
+## 0.7.0 task checks and trustworthy outcomes
 
-Implemented the approved maintenance/UPGRADE_060_PLAN.md after inspecting issues5–8, the supplied successful Qwen3:8b session and focused upstream sources. Adds automatic/manual non-executing Python checks, last_read revisions, recovered/unresolved edit evidence, enforced read-only planning, agent identity, readable diagnostics/history, selected-run sharing and suite 4/19 offline checks. 215 Linux tests passed / 1 optional live test skipped. Windows source run 40039113039 and tag release run 40039425834 passed, including the actual 0.5 installer upgrade. Published 0.6.0 was downloaded/checksum-verified by the production updater; see VERIFICATION.md. Live Qwen2.5 failure remains open.
+Implemented maintenance/UPGRADE_070_PLAN.md using approved issues9–12 and the supplied evaluation/log evidence. Adds visible output-file restrictions, required native tools/current post-write read-back checks, fresh context by default, preserved incomplete-response work, separate runtime facts, skipped no-op writes, permission preflight and safe evidence/coverage counters. Existing schema5/agents/locations/retention remain. Local 242 tests pass / 1 optional live Ollama skipped;21 packaged offline checks and both source smokes pass. Final Windows install/actual 0.6 upgrade and publication evidence follows in VERIFICATION.md.
 
-## 0.5.0 projects and native tool certification
+## Delivered baselines
 
-Implemented the research-driven plan in maintenance/UPGRADE_050_PLAN.md: registry, remembered projects/briefs, cited lexical context, templates, tiny explicit model probes/route comparisons, structured streaming, parser metadata and reporting corrections. Linux: 196 passed / 1 optional live test skipped; 17 packaged offline checks and source startup pass. Windows source run 40003836390 passed all installer/17-check/actual upgrade checks; tag run 40004436196 published 0.5.0 and the production updater discovered/downloaded/checksum-verified it. The actual Qwen failure remains unresolved until a live matching probe/workflow passes.
+0.6.0:215Linux tests/1optional skip; Windows source 40039113039 and tag 40039425834 passed actual installation/19 offline checks/0.5upgrade. Public updater download verified. User issue10 independently passes21checks including the actual selected-model file task; issue11 catches syntax error; issue12 records the wrong-target task failure despite successful tools.
 
-## 0.4.0 model catalogs and retention
+0.5.0:196tests/1skip, projects/retrieval/native probes,17offline checks, verified Windows installer and0.4upgrade. 0.4.0:107tests/1skip, metadata catalogs/retention,14offline checks, verified0.3upgrade. Earlier delivery and immutable hashes/run IDs remain in ENGINEERING_LOG.md and VERIFICATION.md.
 
-Implemented explicit Test APIs metadata batches, persistent dated catalogs/dropdowns, Local data inventory and age/count/report-size controls, bounded structural Ollama evidence, same-suite/model comparisons, two more packaged diagnostic checks and a maintenance workspace. Linux: 107 passed, 1 optional live-Ollama skipped; lint/format pass. Windows run 39987348899 passed tests, actual installation/14-check diagnostics and released-0.3.0 upgrade preservation; tag run 39987814325 published 0.4.0 and the actual installer download/checksum passed. The live Qwen protocol failure remains unresolved.
+## Next useful user acceptance
 
-## 0.3.0 update
+After 0.7publication, use Update and restart. Keep a saved working Qwen3-family agent. In Workbench enter a simple single-file create request, review the visible expected filename and keep fresh context/read-back enabled. Approve only its intended diff. Inspect actual task-check/operation facts, label Goal met/Needs work and share one reviewed run report. A missing final answer must preserve successful writes without replay; do not blindly repeat the whole task. Do not rerun unchanged Qwen14b route matrices.
 
-Implemented the packaged diagnostic suite, optional verified local-model exercise, completion sound/review offer, persistent bounded reports, preview-approved GitHub issue sharing, two native-protocol correction attempts, truthful outcome states, readable activity, prominent Update/Diagnose buttons and durable research/engineering records. Linux validation: 84 passed, 1 optional real-Ollama test skipped. Windows installed diagnostics and the actual 0.2.0 upgrade/data-preservation checks passed, and tag run 39977576531 published 0.3.0. The published installer download/checksum was verified; see VERIFICATION.md.
+## Validation boundaries and deferred work
 
+Cloud fixtures and Windows CI do not certify the user's GPU, live cloud models, gameplay or universal native-tool compatibility. Qwen2.5's text-tool failure and the precise Qwen3.5 empty-final cause remain open. Explicit task operations are not a general English-goal evaluator. Python static checks do not launch code, validate dependencies or certify controls/audio. Approved host commands remain outside a true OS sandbox and can access other files; output restrictions apply to file tools.
 
-## 0.2.0 update
-
-Automatic local Ollama model discovery, editable model dropdowns, Desktop/OneDrive `.env` and `.env.txt` discovery, matching provider-profile setup, startup/manual GitHub update checks, bounded SHA-256-verified installer downloads, pre-install history backups, version-outcome diagnostics, a custom app icon, and a Windows PyInstaller/Inno Setup release pipeline are implemented. The pipeline tests the actual installed app and desktop shortcut before publishing a version-tag release. The Windows build/install/shortcut/packaged-startup checks passed in run 39965837080. The version-tag build/publish run 39966453059 also passed and published Aigentics-Setup-0.2.0.exe in GitHub Releases. The actual published download was fetched and checksum-verified; see VERIFICATION.md.
-
-
-## Delivered: first end-to-end release
-
-- Native PySide6 shell with connected Agents/Workbench tabs.
-- Agent creation, editing, persistence, duplication, deletion, JSON import/export, read-only template, model override in the laboratory, per-agent tools/permissions/limits and ordered fallback configuration.
-- Native Ollama and OpenAI-compatible adapters, discovery/connection tests, capability checks, bounded HTTP, explicit credential references, selected .env loading and OS-vault writes.
-- Workspace exploration/preview, bounded search/read, reviewed and verified file writes, approved argv execution, actual exit codes, cancellation and time/output/context/step budgets.
-- Shared background runtime with live evidence, session history, opt-in persistent content, conversation resume, restart recovery and one-instance data-folder locking.
-- SQLite migrations v1→v2, immutable session agent snapshots, revision retention, correlated execution records, aggregate evidence, human goal assessments, export/deletion and configurable retention.
-- Automated runtime/provider/filesystem/subprocess/desktop tests, optional real-Ollama workflow, Linux dependency snapshot, source installation and Windows launch instructions.
-
-## Validation boundaries
-
-The cloud machine is Linux/Python 3.12 with Qt offscreen rendering. Controlled provider fixtures exercise real adapters and the runtime; subprocess/file operations are real in temporary projects. No access to the user's Windows desktop, GPU, Ollama instance or API-key file was available. Do not treat fixture results as live model integration results. Latest automated result: 84 passed, 1 optional real-Ollama test skipped; lint/format, dependency checks, actual entry-point smoke and wheel build passed. Refer to VERIFICATION.md for details.
-
-## Next useful action on the user's machine
-
-Install the published 0.5.0 via Update, then Test model using the saved Qwen agent. Compare four local routes if desired, review/share the report (including model name) and send its issue URL. Remote probes require separate one-request generation approval. Open an existing project once in PROJECTS and inspect a local context preview. Do not run identical full diagnostics repeatedly before a hypothesis changes.
-
-## Deferred work (not claimed complete)
-
-- Live Windows 10/11, OS-vault and local/cloud model acceptance; model-quality/performance measurements on the RTX 3050.
-- Authenticode-signed Windows installer, independent update signing and Windows 10 hardware acceptance. The release/update channel and Windows build/smoke workflow are now implemented.
-- Native Gemini adapter and provider-specific live certification, richer capability settings, token streaming, throttling/backoff controls.
-- Fully atomic/race-resistant file edits, multi-file transactions/rollback, Windows Job Objects and OS execution sandboxing.
-- Search ignores beyond the current sensitive/cache directories, repository mapping, tokenizer-aware context compression and large-project optimization.
-- Rich visual provider/configuration forms in place of advanced JSON, richer live diff panes and dedicated side-by-side laboratory comparison.
-- Automated retention by disk bytes, encrypted database, broader user data-management/credential deletion UI and stronger local threat hardening.
-- Agent-definition revision browser, fixture replay/evaluation UI, automatic failure clustering, controlled benchmarks and PULSE.
-
-No autonomous self-modification, remote analytics, trained improvement, comprehensive provider support or full original Phase 1 completion is claimed. This is a functional initial vertical slice with a foundation for measured improvements.
+Deferred: independent installer signing/Authenticode, atomic multi-file transactions and rollback, Windows Job Objects/OS sandboxing, full provider certification/credential UX, richer review UI, measured tokenizer/context compression, controlled live benchmarks and embedding/MCP/team features with separate permission/cost policies. No automatic uploads, cloud generation, source self-modification or trained improvement is claimed.

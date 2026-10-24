@@ -18,6 +18,9 @@ EXECUTION_KEYS = frozenset(
         "python_checks_failed",
         "unresolved_tool_errors",
         "python_files_needing_attention",
+        "unchanged_writes",
+        "write_target_mismatches",
+        "empty_final_responses",
     )
 )
 
@@ -108,7 +111,7 @@ def run_report(store, sid):
     state = session["state"] if session["state"] in RECENT_STATES else "unknown"
     report = base_report(
         "run_review",
-        "run-review-1",
+        "run-review-2",
         "Execution counters and check codes only. No task, source, paths, messages or assessment notes.",
     )
     assessment = store.assessment(sid)
@@ -121,6 +124,14 @@ def run_report(store, sid):
         "user_goal_met": label == "goal_met",
         "user_assessment": label if label in ("goal_met", "needs_work") else "not_assessed",
     }
+    from .task_checks import public_task_checks
+
+    evidence["task_checks"] = public_task_checks(summary.get("task_checks"))
+    evidence["final_response_status"] = (
+        summary.get("final_response_status")
+        if summary.get("final_response_status") in ("present", "missing", "not_reached")
+        else "not_recorded"
+    )
     if model:
         evidence["model"] = model
     codes = {}
@@ -189,6 +200,12 @@ def report_guidance(report):
             f"Files saved: {counts.get('writes_verified', 0)}; approved commands passed: {counts.get('commands_passed', 0)}.\n"
             f"Recovered edit errors: {counts.get('recovered_edit_errors', 0)}; unresolved tool errors: "
             f"{counts.get('unresolved_tool_errors', 'unknown')}.\n"
+            "Task checks: "
+            + evidence.get("task_checks", {}).get("status", "not_recorded").replace("_", " ")
+            + ". "
+            "Model final answer: "
+            + evidence.get("final_response_status", "not_recorded").replace("_", " ")
+            + ".\n"
             "Next: verify the actual result and label the run Goal met or Needs work. No program behavior is certified by saving files."
         )
     if kind == "tool_probe":

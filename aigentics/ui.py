@@ -403,7 +403,9 @@ class Window(QMainWindow):
 
     def update_action(self):
         self.guided_update = True
-        self.store.set_setting("suite_agent", self.run_agent.currentData())
+        preferred = self.store.setting("suite_agent", None)
+        if preferred not in {agent.id for agent in self.store.agents()}:
+            self.store.set_setting("suite_agent", self.run_agent.currentData())
         self.open_setup()
         if self.downloaded_update or self.available_release:
             self.guided_next()

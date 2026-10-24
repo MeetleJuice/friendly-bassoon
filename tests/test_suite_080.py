@@ -150,7 +150,11 @@ def test_update_no_new_version_dispatches_suite_without_install(qtbot, store, cr
     monkeypatch.setattr(window, "open_setup", lambda: None)
     monkeypatch.setattr(window, "check_updates", lambda: actions.append("check"))
     monkeypatch.setattr(window, "resume_guided_tests", lambda: actions.append("suite"))
+    preferred = Agent(name="Preferred suite agent")
+    store.save_agent(preferred)
+    store.set_setting("suite_agent", preferred.id)
     window.update_action()
+    assert store.setting("suite_agent", None) == preferred.id
     assert actions == ["check"]
     assert store.setting("guided_tests_after_update", None) is None
     window.update_checked(None)

@@ -176,3 +176,8 @@ CI test observability now preserves the last-started test and exact interpreter 
 
 
 Source run40116380991 remained active substantially longer than the previous five-minute successful0.11 build, without intermediate step metadata. Added finite dependency/test/package/installer phase limits and always-run phase-outcome/last-test annotations, preserving every test and installer requirement. This makes stalls diagnosable before the30minute job ceiling. The superseded run is cancelled; only the latest exact source can be tagged after success.
+
+
+### Controlled Windows runner comparison
+
+The previous successful source run40096724399 exposes14executedsteps. Recent stalled Windows-latest runs expose0steps, including the generic initial failure. This is insufficient to attribute a cause to application code. Pinning validation to the supported Windows2022 runner image tests runner variability and makes the Windows10-compatible build environment reproducible. All tests, phase limits, actual installation, previous-release upgrade and silent restart requirements remain. A pass is still required before tagging; the runner change is not presented as a proven fix until measured.

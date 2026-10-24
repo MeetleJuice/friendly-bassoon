@@ -36,3 +36,9 @@ Validated 0.7.0:243 passed/1 optional-live skip; Windows source 40043557907 and 
 See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.
 
 Final0.8:253 local regressions pass/1 optional live skip; Windows source40047789947 and tag40048328486 pass real installation/shortcut/packaged21checks/released0.7 preservation. Production public updater download/checksum accepted. See ../VERIFICATION.md.
+
+
+## 0.9 final evidence
+
+Published0.9.0 from immutable `dd80858397566aeadcfeb9f4fa8561d92096213f`. Source Windows run40050971888 and tag run40051222173 passed tests/lint/build, actual installation/shortcut/startup/21packaged checks and pinned released0.8 upgrade preservation. Local403passed/1optional live Ollama skipped (150additional regressions). Full source smokes, dependency checks and wheel pass. Production Updater(current_version=0.8.0) discovered/downloaded/reverified the public installer: 42302410bytes, SHA256 `cebcca98a7fb39fb6b371e9039ff40a1b784ecfca8953283f1fe640822708ab5`. No user key/live model or actual issue POST was used. User live acceptance is pending; model failure correction is a hypothesis to measure, not a certification.
+128subsets cover all built-in permission combinations; Unicode/schema-envelope tests, real pre-dispatch context rejection, repeated failures and successful recovery, typed-error allowlist/compact browser fidelity and full native GUI bundle remain offline synthetic acceptance, not universal model compatibility.

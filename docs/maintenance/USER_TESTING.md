@@ -1,3 +1,7 @@
+## 0.9 acceptance
+
+Click Update from0.8 and install/restart. The queued suite2 uses your remembered local agent. Simple cases advertise just their required tool; file-write cases additionally expose read_file. Edit/Python output caps are2048; simple cases1024. No commands/cloud fallback/replay. A new suite identity prevents misleading comparisons with suite1. When finished, inspect both exact previews, approve opening the two drafts, click Create on both GitHub pages and provide both URLs. Report typed tool errors and provider limits as useful data, not reasons to rerun until green.
+
 ## 0.8 guided acceptance
 
 After first updating from0.7, click **Test suite**, choose your working local Ollama agent, and click **Go**. The screen lists all ten tests. Go authorizes the listed temporary output edits; denial test rejects its edit automatically. No project files/commands/cloud models are used. Allow roughly ten minutes; Cancel keeps partial data. Disabled tools show skipped. The completion sound means review is ready, not that every case passed.

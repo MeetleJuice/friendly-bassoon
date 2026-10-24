@@ -26,4 +26,6 @@ Validated 0.5.0: 196 passed / 1 optional live test skipped; source Windows run 4
 Validated 0.6.0:215 passed/1 optional-live skipped; Windows source 40039113039 and tag/release 40039425834 passed. Production 0.5 updater discovered/downloaded/checksum-verified 0.6.0. See VERIFICATION.md for immutable source/hash and acceptance limits.
 
 
-0.7 adds wrong-target blocking before approval, exact write/read-back/current revision checks, required-native-tool enforcement, safe missing finals without replay or thinking substitution, no-op/CRLF/revision safety, fresh/continued UI dispatch, disabled-tool preflight and private-target report filtering. Health suite 5 has 21 offline checks. Windows upgrade pins released0.6.0's verified hash; preserve all prior fixture data. Final counts/run IDs belong in VERIFICATION.md.
+0.7 adds wrong-target blocking before approval, exact write/read-back/current revision checks, required-native-tool enforcement, safe missing finals without replay or thinking substitution, no-op/CRLF/revision safety, fresh/continued UI dispatch, disabled-tool preflight and private-target report filtering. Health suite 5 has 21 offline checks. Windows upgrade pins released 0.6.0's verified hash; preserve all prior fixture data. Final counts/run IDs belong in VERIFICATION.md.
+
+Validated 0.7.0:243 passed/1 optional-live skip; Windows source 40043557907 and release 40044023333 passed. Production updater current 0.6 discovered/downloaded/checksum-verified 0.7.0. Immutable source/hash and limitations are in VERIFICATION.md.

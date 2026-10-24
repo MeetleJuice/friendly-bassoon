@@ -30,7 +30,7 @@ class SuiteDialog(QDialog):
         self.resize(850, 720)
         layout = QVBoxLayout(self)
         label = QLabel(
-            "Ten tests, fresh disposable folders, no host commands or cloud calls.\nGo authorizes only listed synthetic output edits. Denial test rejects its write automatically.\nUp to ten minutes. Local records follow your retention settings. Sharing stays optional."
+            "Ten tests, fresh disposable folders, no host commands or cloud calls.\nGo authorizes only listed synthetic output edits. Denial test rejects its write automatically.\nBalanced budgets may take up to 30 minutes. Local records follow your retention settings. Sharing stays optional."
         )
         label.setWordWrap(True)
         layout.addWidget(label)
@@ -72,6 +72,13 @@ class SuiteDialog(QDialog):
             "At most one metadata request per configured connection. Existing keys remain private. No cloud generation."
         )
         layout.addWidget(self.catalog)
+        self.budget_mode = QComboBox()
+        self.budget_mode.addItem("Balanced • coordinated time/token budgets", "balanced")
+        self.budget_mode.addItem("Legacy • previous suite2 budgets (explicit comparison)", "legacy")
+        self.budget_mode.setToolTip(
+            "Each Go is one run. Compare modes deliberately; no automatic reruns. Saved agent limits still apply."
+        )
+        layout.addWidget(self.budget_mode)
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
         self.output.setPlainText(
@@ -105,11 +112,13 @@ class SuiteDialog(QDialog):
         if not agent:
             w.error("Save a local Ollama agent first.")
             return
+        budget_mode = self.budget_mode.currentData()
         include_catalog = self.catalog.isChecked()
         w.store.set_setting("suite_catalogs", include_catalog)
         w.store.set_setting("suite_agent", agent.id)
         self.go.setEnabled(False)
         self.agents.setEnabled(False)
+        self.budget_mode.setEnabled(False)
         self.approval.setChecked(False)
         self.approval.setEnabled(False)
         self.urls = []
@@ -124,7 +133,7 @@ class SuiteDialog(QDialog):
                 self.results.setItem(index, column, QTableWidgetItem("Ready" if column == 1 else ""))
         worker = Worker(
             lambda job: run_bundle(
-                w.store, w.credentials, agent, job.cancel, job.activity.emit, include_catalog
+                w.store, w.credentials, agent, job.cancel, job.activity.emit, include_catalog, budget_mode
             ),
             w.credentials,
             w,
@@ -135,6 +144,7 @@ class SuiteDialog(QDialog):
         worker.failed.connect(w.error)
         worker.finished.connect(lambda: self.go.setEnabled(True))
         worker.finished.connect(lambda: self.agents.setEnabled(True))
+        worker.finished.connect(lambda: self.budget_mode.setEnabled(True))
         worker.start()
 
     def activity(self, event):
@@ -144,13 +154,42 @@ class SuiteDialog(QDialog):
             if event["kind"] == "suite.result":
                 index = next(i for i, case in enumerate(CASES) if case[0] == row["id"])
                 values = [
-                    row["status"].replace("_", " ").title(),
+                    (
+                        row["status"].replace("_", " ").title()
+                        if row["status"] == "passed"
+                        else {"OUTPUT_LIMIT": "Output length limit", "TIMEOUT": "Request timed out"}.get(
+                            row.get("evidence", {}).get("provider_error_code"),
+                            "Session time exhausted"
+                            if row.get("evidence", {}).get("runtime_state") == "timed_out"
+                            else "Skipped: disabled tool"
+                            if row["status"] == "skipped"
+                            else "Acceptance needs review",
+                        )
+                    ),
                     f"{row['duration_ms'] / 1000:.2f} s",
                     str(row.get("evidence", {}).get("native_calls_total", 0)),
                 ]
                 for column, text in enumerate(values, 1):
                     self.results.setItem(index, column, QTableWidgetItem(text))
             self.output.appendPlainText(row["id"] + ": " + row["status"] + " (" + row["code"] + ")")
+            if event["kind"] == "suite.result":
+                evidence = row.get("evidence", {})
+                self.output.appendPlainText(
+                    "Expected: "
+                    + next(c[1] for c in CASES if c[0] == row["id"])
+                    + "\nObserved: runtime="
+                    + str(evidence.get("runtime_state", "not run"))
+                    + "; output match="
+                    + str(evidence.get("file_matches", "unknown"))
+                    + "; provider="
+                    + str(evidence.get("provider_error_code", "NONE"))
+                    + "; tokens/request seconds/session seconds="
+                    + str(evidence.get("max_output_tokens", "unknown"))
+                    + "/"
+                    + str(evidence.get("request_timeout_seconds", "unknown"))
+                    + "/"
+                    + str(evidence.get("session_budget_seconds", "unknown"))
+                )
         elif event["kind"] == "suite.started":
             self.results.setItem(event["data"]["index"] - 1, 1, QTableWidgetItem("Running…"))
             self.output.appendPlainText("Running " + event["data"]["id"] + "…")

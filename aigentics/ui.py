@@ -890,6 +890,7 @@ class Window(QMainWindow):
         self.tree.itemDoubleClicked.connect(self.preview_file)
         el.addWidget(self.tree, 1)
         button("Refresh files", self.refresh_tree, el)
+        button("Task plan", self.open_task_plan, el)
         button("Check Python file", lambda: self.guarded(self.check_python_file), el)
         center, cl = panel()
         cl.addWidget(QLabel("TASK & EXECUTION · Model completion is not proof that tests passed"))
@@ -1233,6 +1234,8 @@ class Window(QMainWindow):
         return True
 
     def worker_finished(self):
+        if not self.worker or not self.worker.isRunning():
+            self.active_plan_step = None
         self.work_run.setEnabled(True)
         self.lab_run.setEnabled(True)
         self.refresh_history()
@@ -1375,6 +1378,15 @@ class Window(QMainWindow):
         if sharing:
             self.diagnostics_dialog.review()
 
+    def open_task_plan(self):
+        if not self.workspace:
+            self.error("Open a project first")
+            return
+        from .task_plans_ui import TaskPlanDialog
+
+        self.task_plan_dialog = TaskPlanDialog(self)
+        self.task_plan_dialog.show()
+
     def check_python_file(self):
         from .evidence import python_report
 
@@ -1512,11 +1524,16 @@ class Window(QMainWindow):
                 self.run_facts.setText("Running · task checks and final answer are pending.")
                 output.appendPlainText("\nUSER\n" + self.credentials.redact(task) + "\n")
                 self.statusBar().showMessage("Running · File edits and commands pause for your approval")
+            return started
 
-        self.guarded(perform)
+        return self.guarded(perform)
 
     def run_completed(self, result, lab):
         sid, state = result
+        planned = getattr(self, "active_plan_step", None)
+        if planned and not lab:
+            self.active_plan_step = None
+            self.guarded(lambda: planned[0].finish(planned[1], sid))
         if not lab:
             self.parent_session = sid
         self.statusBar().showMessage(f"Session {state} · {sid}")

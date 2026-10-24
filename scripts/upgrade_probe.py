@@ -19,6 +19,25 @@ def main():
             db.execute(
                 "INSERT OR REPLACE INTO settings VALUES(?,?)", ("upgrade_sentinel", '"preserve-settings"')
             )
+            db.execute(
+                "INSERT OR REPLACE INTO settings VALUES(?,?)",
+                (
+                    "task_plans",
+                    json.dumps(
+                        {
+                            "synthetic-plan": [
+                                {
+                                    "task": "Review uncertain action",
+                                    "outputs": [],
+                                    "state": "started",
+                                    "session": None,
+                                    "hashes": {},
+                                }
+                            ]
+                        }
+                    ),
+                ),
+            )
             stamp = datetime.now(timezone.utc).isoformat()
             profile = json.loads(db.execute("SELECT data FROM profiles LIMIT 1").fetchone()[0])
             signature = hashlib.sha256(
@@ -82,6 +101,9 @@ def main():
                 != '"preserve-settings"'
             ):
                 raise RuntimeError("User setting was lost")
+            plans = json.loads(db.execute("SELECT value FROM settings WHERE key='task_plans'").fetchone()[0])
+            if plans["synthetic-plan"][0]["state"] != "started":
+                raise RuntimeError("Uncertain task-plan state was lost")
             message = json.loads(
                 db.execute("SELECT data FROM messages WHERE session_id='upgrade-fixture'").fetchone()[0]
             )

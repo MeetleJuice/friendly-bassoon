@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.10 coordinated-budget and checkpoint plan](UPGRADE_0100_PLAN.md).
 - [0.9 research and implementation plan](UPGRADE_090_PLAN.md).
 - [0.8 guided suite plan](UPGRADE_080_PLAN.md) and [research](RESEARCH_080.md).
 - [0.7 upgrade plan](UPGRADE_070_PLAN.md) and [research](RESEARCH_070.md): explicit task checks, preserved work and fresh context.

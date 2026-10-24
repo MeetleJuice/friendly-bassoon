@@ -78,6 +78,7 @@ def model_evidence(events):
     return {
         "model_metadata": metadata,
         "request_traces": traces[:8],
+        "failure_usage": failures[-1].get("usage", {}) if failures else {},
         "provider_error_code": failures[-1].get("code", "PROVIDER_ERROR") if failures else "NONE",
         "http_status": failures[-1].get("http_status")
         if failures

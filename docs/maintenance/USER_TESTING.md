@@ -1,3 +1,9 @@
+## 0.10 acceptance
+
+Update/install/restart and let suite3 run in Balanced mode with your remembered local agent. It can take longer (up to30minutes at the allowed bounds); Cancel preserves partial evidence. Review/submit both GitHub drafts and provide links. If a controlled comparison is useful, select Legacy explicitly for one separate run; never rerun silently to get a pass.
+
+For Task plan: open a disposable project → Workbench → Task plan → Add step (task/acceptance criteria and relative expected files). Select Run step. Inspect the actual diff and results. Reopen Task plan → Verify checkpoint only when you accept the actual result. A later step requires prior accepted file revisions still matching. Changed files, uncertain attempts and missing history require inspection/reset, not blind continuation. Plans are local metadata, not automatic code commits or an autonomous Ralph loop.
+
 ## 0.9 acceptance
 
 Click Update from0.8 and install/restart. The queued suite2 uses your remembered local agent. Simple cases advertise just their required tool; file-write cases additionally expose read_file. Edit/Python output caps are2048; simple cases1024. No commands/cloud fallback/replay. A new suite identity prevents misleading comparisons with suite1. When finished, inspect both exact previews, approve opening the two drafts, click Create on both GitHub pages and provide both URLs. Report typed tool errors and provider limits as useful data, not reasons to rerun until green.

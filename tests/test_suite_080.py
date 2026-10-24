@@ -240,7 +240,7 @@ def test_bundle_merges_metadata_without_generation_or_extra_share_report(store, 
     real = catalog.CatalogRunner
     monkeypatch.setattr(catalog, "CatalogRunner", lambda s, c: real(s, c, Metadata))
     monkeypatch.setattr(
-        suite, "run_suite", lambda *args: base_report("agent_suite", "agent-suite-1", "Synthetic")
+        suite, "run_suite", lambda *args, **kwargs: base_report("agent_suite", "agent-suite-1", "Synthetic")
     )
     reports = suite.run_bundle(store, credentials, Agent(), threading.Event(), lambda e: None)
     assert len(reports) == 2
@@ -257,7 +257,9 @@ def test_full_gui_worker_health_catalog_ten_cases_and_two_drafts(qtbot, store, c
     from aigentics.suite_ui import SuiteDialog
 
     real_suite, real_catalog = suite.run_suite, catalog.CatalogRunner
-    monkeypatch.setattr(suite, "run_suite", lambda *args: real_suite(*args, provider_factory=Scripted))
+    monkeypatch.setattr(
+        suite, "run_suite", lambda *args, **kwargs: real_suite(*args, provider_factory=Scripted, **kwargs)
+    )
 
     class Metadata:
         def __init__(self, *args):

@@ -168,6 +168,8 @@ def public_report(report, include_model=False):
     }
     safe_checks = []
     allowed = {
+        "request_timeout_seconds",
+        "session_budget_seconds",
         "blocked_paths",
         "denied_writes",
         "denied_commands",
@@ -251,6 +253,19 @@ def public_report(report, include_model=False):
             check["evidence"]["tool_error_types"] = recent_run_counts(
                 {"tool_error_types": evidence["tool_error_types"]}
             )["tool_error_types"]
+        if "failure_usage" in evidence:
+            values = evidence["failure_usage"]
+            check["evidence"]["failure_usage"] = (
+                {
+                    k: min(v, 10**15)
+                    for k, v in values.items()
+                    if k in ("prompt_eval_count", "eval_count", "total_duration")
+                    and type(v) is int
+                    and v >= 0
+                }
+                if isinstance(values, dict)
+                else {}
+            )
         if "execution_counts" in evidence:
             from .evidence import bounded_counts
 
@@ -370,6 +385,12 @@ def prepare_browser_draft(title, body):
                     + json.dumps(r.get("evidence", {}).get("tool_error_types", {}), separators=(",", ":"))
                     + "; budget="
                     + str(r.get("evidence", {}).get("max_output_tokens", "unknown"))
+                    + "; deadlines request/session="
+                    + str(r.get("evidence", {}).get("request_timeout_seconds", "unknown"))
+                    + "/"
+                    + str(r.get("evidence", {}).get("session_budget_seconds", "unknown"))
+                    + "; rejected_usage="
+                    + json.dumps(r.get("evidence", {}).get("failure_usage", {}), separators=(",", ":"))
                     + "; native="
                     + str(r.get("evidence", {}).get("native_calls_total", 0))
                     + "; state="

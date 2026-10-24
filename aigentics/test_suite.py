@@ -8,7 +8,7 @@ from .diagnostics import DiagnosticRunner, model_evidence
 from .evidence import base_report
 from .runtime import Runtime
 from .store import Store
-from .harness import exercise_tools, output_budget
+from .harness import exercise_tools, suite_budget
 from .task_checks import TaskChecks
 
 
@@ -57,11 +57,12 @@ CASES = (
 )
 
 
-def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
+def run_suite(store, credentials, agent, cancel, emit, provider_factory=None, budget_mode="balanced"):
     from .providers import Provider
 
     profile = local_profile(store, agent)
 
+    suite_budget("edit", budget_mode, agent.max_seconds, profile.timeout_seconds)
     observed = []
 
     class BoundedProvider:
@@ -73,7 +74,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
 
         def chat(self, model, messages, tools):
             if provider_factory is None:
-                reply = self.inner.chat(model, messages, tools, max_output_tokens=output_budget(identity))
+                reply = self.inner.chat(model, messages, tools, max_output_tokens=budget["max_output_tokens"])
             else:
                 reply = self.inner.chat(model, messages, tools)
             observed.extend(reply.calls)
@@ -81,22 +82,25 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
 
     report = base_report(
         "agent_suite",
-        "agent-suite-2",
+        "agent-suite-3",
         "Synthetic acceptance counters only; no source, paths, prompts or credentials.",
     )
-    report["local_scope"] = store.fingerprint({"agent": agent.model_dump(), "profile": profile.model_dump()})
+    report["local_scope"] = store.fingerprint(
+        {"agent": agent.model_dump(), "profile": profile.model_dump(), "budget_mode": budget_mode}
+    )
     report["state"] = "running"
     store.save_diagnostic(report)
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="aigentics-suite-") as folder:
         scratch = Path(folder)
         with closing(Store(scratch / "suite.sqlite3", credentials)) as trial:
-            trial.save_profile(
-                profile.model_copy(update={"timeout_seconds": min(profile.timeout_seconds, 45)})
-            )
             for index, (identity, prompt, required) in enumerate(CASES):
                 if cancel.is_set():
                     break
+                budget = suite_budget(identity, budget_mode, agent.max_seconds, profile.timeout_seconds)
+                trial.save_profile(
+                    profile.model_copy(update={"timeout_seconds": budget["request_timeout_seconds"]})
+                )
                 observed.clear()
                 before = time.monotonic()
                 emit({"kind": "suite.started", "data": {"id": identity, "index": index + 1}})
@@ -120,7 +124,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
                             "fallbacks": [],
                             "allow_writes": agent.allow_writes and writing,
                             "max_steps": min(agent.max_steps, 5),
-                            "max_seconds": min(agent.max_seconds, 60),
+                            "max_seconds": budget["session_budget_seconds"],
                             "context_chars": min(agent.context_chars, 16000),
                         }
                     )
@@ -226,7 +230,14 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
                                     for e in events
                                 )
                             },
-                            "max_output_tokens": output_budget(identity),
+                            **budget,
+                            "failure_stage": "none"
+                            if passed
+                            else "provider"
+                            if state == "failed"
+                            else "session_budget"
+                            if state == "timed_out"
+                            else "acceptance",
                             "task_checks": summary.get("task_checks", {}),
                             "final_response_status": summary.get("final_response_status", "not_reached"),
                             "native_calls_total": sum(
@@ -267,7 +278,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
     return report
 
 
-def run_bundle(store, credentials, agent, cancel, emit, include_catalog=True):
+def run_bundle(store, credentials, agent, cancel, emit, include_catalog=True, budget_mode="balanced"):
     local_profile(store, agent)
     health = DiagnosticRunner(store, credentials).run(cancel, emit, include_network=False)
     if not cancel.is_set() and include_catalog:
@@ -302,4 +313,4 @@ def run_bundle(store, credentials, agent, cancel, emit, include_catalog=True):
         store.save_diagnostic(health)
     if cancel.is_set():
         return [health]
-    return [health, run_suite(store, credentials, agent, cancel, emit)]
+    return [health, run_suite(store, credentials, agent, cancel, emit, budget_mode=budget_mode)]

@@ -297,6 +297,7 @@ class Runtime:
                                 "error": str(exc),
                                 "retryable": exc.retryable,
                                 "code": exc.code,
+                                "usage": exc.usage,
                                 "http_status": exc.http_status,
                             },
                         )

@@ -9,8 +9,13 @@ from .models import Reply, ToolCall
 
 
 class ProviderError(RuntimeError):
-    def __init__(self, message, retryable=False, code="PROVIDER_ERROR", http_status=None):
+    def __init__(self, message, retryable=False, code="PROVIDER_ERROR", http_status=None, usage=None):
         super().__init__(message)
+        self.usage = {
+            k: min(v, 10**15)
+            for k, v in (usage or {}).items()
+            if k in ("prompt_eval_count", "eval_count", "total_duration") and type(v) is int and v >= 0
+        }
         self.retryable = retryable
         self.code, self.http_status = code, http_status
 
@@ -206,6 +211,8 @@ class Provider:
                 raise ProviderError(
                     "Provider stopped before a complete response; reduce context or change model",
                     code="OUTPUT_LIMIT",
+                    usage=usage,
+                    http_status=self.last_http_status,
                 )
             message = data.get("message", {})
         else:

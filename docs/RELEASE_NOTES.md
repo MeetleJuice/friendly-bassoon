@@ -1,3 +1,11 @@
+# 0.10.0 • coordinated test budgets and explicit task checkpoints
+
+- Suite3 offers Balanced vs Legacy budget modes. Each Go is one deliberate run. Balanced allows larger retrieval/edit outputs and coordinated request/session deadlines, respecting stricter saved-agent limits. No hidden retry or cloud generation. Compare within matching mode; changes are experiments, not proof of model repair.
+- Failure rows show output-limit/request-timeout/session-time distinctions, expected versus observed facts and actual budget settings. Ollama length-limit failures retain only bounded numeric usage, never rejected content/thinking.
+- Workbench → Task plan: author up to16small steps, launch one with fresh context and normal approvals, inspect results and explicitly verify output-hash checkpoints. Later steps revalidate preceding checkpoints. Interrupted/failed-dispatch attempts stay uncertain and require explicit review/reset before another run. No automatic Ralph restart or tool replay.
+- Plans stay in local project-scoped settings (up to32projects); a full store refuses additional plans rather than evicting uncertain state. Reset invalidates later checkpoints; removing plan steps does not remove project files. Existing schema5/backup mechanism remains.
+- Expanded budget, privacy, durable-state and native GUI regressions; actual Windows upgrade additionally checks preserved uncertain-plan settings.
+
 # 0.9.0 • measured harness budgets and deterministic backpressure
 
 - Context limits now include serialized tool schemas; no silent history truncation. Character estimates remain distinct from token counts.

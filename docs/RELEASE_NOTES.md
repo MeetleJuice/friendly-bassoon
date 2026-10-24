@@ -1,3 +1,11 @@
+# 0.8.0 • guided update and test suite
+
+- Test suite runs ten preloaded native-agent exercises in fresh disposable folders, with app diagnostics, progress, cancellation, retained reports and completion sound.
+- Update queues one post-install test run; existing installer verification, backup and installation approval remain. First upgrade from0.7: open Test suite once after installing0.8.
+- Two exact allowlisted previews share one approval control, then open two GitHub drafts. Click Create on both pages; no token is required.
+- Local-only configuration-scoped comparison, timings/available usage/protocol/task evidence. Existing retention controls apply. No commands or cloud generation in automatic suites.
+- Rounded controls, visible keyboard focus and native hover help. Disabled agent capabilities are skipped instead of being granted.
+
 ## Aigentics Desktop 0.7.0 — task checks and trustworthy outcomes
 
 - **Expected output files** is visible below the task. A narrow single-file instruction can suggest a target; review/edit it before Run. Configured targets restrict file-tool writes before approval, so an attempt to rewrite a different file is blocked. Empty means no extra target restriction. Separately approved host commands are not sandboxed by this list.

@@ -7,7 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 from uuid import uuid4
-from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile
+from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile, Qt
 from PySide6.QtGui import QIcon, QDesktopServices
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
@@ -59,7 +59,10 @@ QPlainTextEdit, QLineEdit, QListWidget, QComboBox, QSpinBox, QTreeWidget {
 }
 QLineEdit, QComboBox, QSpinBox { min-height: 24px; padding: 4px 6px; }
 QPlainTextEdit { font-family: Consolas, monospace; }
-QPushButton { background: #26394d; border: 1px solid #3c566e; border-radius: 5px; padding: 7px 12px; }
+QToolTip { color: #edf8ff; background: #203849; border: 1px solid #72e2cb; padding: 8px; }
+QPushButton:pressed { background: #124f57; }
+QPushButton:focus { border: 2px solid #72e2cb; }
+QPushButton { background: #26394d; border: 1px solid #3c566e; border-radius: 9px; padding: 9px 14px; }
 QPushButton:hover { background: #36546a; }
 QPushButton:disabled { color: #657487; background: #192332; }
 QPushButton#primary { background: #166b61; border-color: #2c9e8d; }
@@ -71,6 +74,33 @@ QSplitter::handle { background: #243247; width: 3px; }
 
 def button(text, callback, layout, primary=False):
     result = QPushButton(text)
+    result.setCursor(Qt.PointingHandCursor)
+    result.setToolTip(
+        {
+            "Update": "Check for an update, download it, and queue the guided tests after restart.",
+            "Test suite": "Run ten isolated agent tests plus app diagnostics, then review two shareable reports.",
+            "Run task": "Run the selected agent. File edits and host commands pause for approval.",
+            "Diagnose": "Choose app checks and optional model tests. Results stay local until you approve sharing.",
+            "Test APIs": "Fetch model lists only; no generation tokens are used.",
+            "Test model": "Check native tool-call compatibility with one small model request.",
+            "Local data": "Inspect local reports, storage and retention settings.",
+            "Save agent": "Save this agent configuration for future tasks.",
+            "Open project": "Select an existing folder. Its files remain in their current location.",
+            "Create project": "Create a new project folder and open it in Workbench.",
+            "New conversation": "Start with fresh context; previous files and history remain saved.",
+            "Refresh files": "Reload the project file list from disk.",
+            "Goal met": "Record that you checked the result and it meets your task.",
+            "Needs work": "Record a failed or incomplete outcome with an optional local note.",
+            "Delete": "Delete the selected local record after confirmation.",
+            "Export": "Save a local export. Review its contents before sharing it.",
+            "Resume": "Continue the selected captured conversation without replaying its tools.",
+            "Check Python": "Check syntax and basic assignments without running the program.",
+            "Install & restart": "Back up local records, verify the installer again, and open the Windows wizard.",
+            "Go • run all tests": "Authorize only the ten displayed synthetic exercises in temporary folders. No host commands.",
+            "Cancel tests": "Stop after the current bounded operation. Completed results stay recorded.",
+            "Open both approved GitHub drafts": "Open two reviewed reports in your default browser. Click Create on each GitHub page to submit.",
+        }.get(text, text.replace("_", " ") + ": select to " + text.lower().replace("_", " ") + ".")
+    )
     result.clicked.connect(callback)
     if primary:
         result.setObjectName("primary")
@@ -245,6 +275,7 @@ class Window(QMainWindow):
         button("Test APIs", lambda: self.open_records(True), heading)
         button("Test model", self.open_model_probe, heading)
         button("Local data", self.open_records, heading)
+        button("Test suite", self.open_suite, heading)
         self.update_button = button("Update", self.update_action, heading)
         button("Setup & updates", self.open_setup, heading)
         self.setup_banner = QLabel("Local setup is available from Setup & updates.")
@@ -259,6 +290,21 @@ class Window(QMainWindow):
 
         self.project_panel = ProjectPanel(self)
         self.tabs.addTab(self.project_panel, "PROJECTS")
+        for name, tip in {
+            "expected_files": "Only these relative output paths may be written. Separate multiple paths with commas.",
+            "require_task_tools": "A text-only model answer cannot satisfy this task check.",
+            "require_task_readback": "Require read_file after the latest actual write, matching its current revision.",
+            "conversation_mode": "New task starts fresh. Continue reuses conversation text without replaying old tools.",
+            "capture": "Save redacted conversation text locally for resume. It may include project source.",
+            "allow_commands": "Host commands require individual approval and can access files outside the project.",
+            "allow_writes": "Enable reviewed project-file edits. Normal tasks require approval for each diff.",
+            "credential_value": "Secret key to save in the operating-system vault; never paste keys into a task.",
+            "steps": "Maximum model turns before the run stops; this is not a completion guarantee.",
+            "seconds": "Maximum run duration in seconds, including model and tool operations.",
+            "retention_days": "How long completed local history is retained when retention is applied.",
+            "run_agent": "The saved agent whose model, instructions and permissions will run your task.",
+        }.items():
+            getattr(self, name).setToolTip(tip)
         self.refresh_recent_projects()
         if startup:
             self.tabs.setCurrentIndex(2)
@@ -319,7 +365,28 @@ class Window(QMainWindow):
             self.model_lists.setdefault("ollama", self.discovered_models)
         self.refresh_model_choices()
 
+    def resume_guided_tests(self):
+        if any(
+            j and j.isRunning()
+            for j in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)
+        ):
+            QTimer.singleShot(500, self.resume_guided_tests)
+            return
+        self.open_suite(True)
+
+    def open_suite(self, autorun=False):
+        from .suite_ui import SuiteDialog
+
+        if not getattr(self, "suite_dialog", None):
+            self.suite_dialog = SuiteDialog(self)
+        self.suite_dialog.show()
+        self.suite_dialog.raise_()
+        if autorun:
+            QTimer.singleShot(0, self.suite_dialog.start)
+
     def update_action(self):
+        self.guided_update = True
+        self.store.set_setting("suite_agent", self.run_agent.currentData())
         self.open_setup()
         if self.downloaded_update:
             self.install_update()
@@ -381,6 +448,10 @@ class Window(QMainWindow):
         )
 
     def startup_tasks(self):
+        queued = self.store.setting("guided_tests_after_update", None)
+        if isinstance(queued, dict) and queued.get("version") == __version__:
+            self.store.set_setting("guided_tests_after_update", None)
+            QTimer.singleShot(1000, self.resume_guided_tests)
         if self.store.setting("auto_ollama", True) or self.store.setting("auto_desktop_env", True):
             self.refresh_discovery()
         if self.store.setting("auto_updates", True):
@@ -538,6 +609,12 @@ class Window(QMainWindow):
             {"available_version": release.version if release else None, "running_version": __version__},
         )
         self.update_setup_view()
+        if getattr(self, "guided_update", False):
+            if release:
+                self.download_update()
+            else:
+                self.guided_update = False
+                self.resume_guided_tests()
 
     def download_update(self):
         if not self.available_release or self.background_updates_running():
@@ -576,6 +653,8 @@ class Window(QMainWindow):
             {"version": update.release.version, "bytes": update.release.size, "sha256": update.sha256},
         )
         self.update_setup_view()
+        if getattr(self, "guided_update", False) and sys.platform == "win32":
+            self.install_update()
 
     def install_update(self):
         if not self.downloaded_update:
@@ -603,7 +682,15 @@ class Window(QMainWindow):
                 "update.install_requested",
                 {"version": self.downloaded_update.release.version, "database_backup": True},
             )
-            launch_installer(self.downloaded_update)
+            if getattr(self, "guided_update", False):
+                self.store.set_setting(
+                    "guided_tests_after_update", {"version": self.downloaded_update.release.version}
+                )
+            try:
+                launch_installer(self.downloaded_update)
+            except Exception:
+                self.store.set_setting("guided_tests_after_update", None)
+                raise
             self.store.set_setting(
                 "pending_update",
                 {"version": self.downloaded_update.release.version, "from_version": __version__},

@@ -152,3 +152,7 @@ See [verification and Windows smoke testing](docs/VERIFICATION.md), [architectur
 Software-release build and update integrity details: [docs/INSTALLER.md](docs/INSTALLER.md).
 
 Research and continuing development records: [RESEARCH.md](docs/RESEARCH.md), [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md).
+
+### Guided tests (0.8)
+
+After installing, choose **Test suite**, select a working local Ollama agent and click **Go**. Ten isolated tests and app diagnostics run in sequence; no project commands or cloud generation. Review both previews, approve opening the drafts and click **Create** on each GitHub page. Future Update clicks queue this workflow after installation. Existing retention settings govern saved reports. See [testing guide](docs/maintenance/USER_TESTING.md).

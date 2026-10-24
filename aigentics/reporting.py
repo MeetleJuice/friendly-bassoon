@@ -327,6 +327,7 @@ def public_report(report, include_model=False):
 def issue_body(report, credentials, include_model=False):
     public = public_report(report, include_model)
     label = {
+        "agent_suite": "agent suite",
         "api_models": "API checks",
         "tool_probe": "tool-call probe",
         "run_review": "run review",
@@ -356,6 +357,16 @@ def prepare_browser_draft(title, body):
                 f"- {r['id']}"
                 + (" [" + r["evidence"]["provider"] + "]" if r.get("evidence", {}).get("provider") else "")
                 + f": {r['status']} ({r['code']})"
+                + (
+                    "; native="
+                    + str(r.get("evidence", {}).get("native_calls_total", 0))
+                    + "; state="
+                    + str(r.get("evidence", {}).get("runtime_state", "unknown"))
+                    + "; matched="
+                    + str(r.get("evidence", {}).get("file_matches", False))
+                    if payload.get("kind") == "agent_suite"
+                    else ""
+                )
                 for r in payload.get("checks", [])
             ]
             summary = "\n".join(rows)

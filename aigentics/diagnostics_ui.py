@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QCheckBox,
     QComboBox,
     QLineEdit,
@@ -33,14 +32,11 @@ from .reporting import (
     browser_draft,
     SubmissionUnknown,
 )
-from .ui import Worker
+from .ui import Worker, button as make_button
 
 
 def add_button(label, slot, layout):
-    button = QPushButton(label)
-    button.clicked.connect(slot)
-    layout.addWidget(button)
-    return button
+    return make_button(label, slot, layout)
 
 
 class DiagnosticsDialog(QDialog):

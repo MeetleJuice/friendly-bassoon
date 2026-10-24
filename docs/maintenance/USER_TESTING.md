@@ -1,3 +1,11 @@
+## 0.8 guided acceptance
+
+After first updating from0.7, click **Test suite**, choose your working local Ollama agent, and click **Go**. The screen lists all ten tests. Go authorizes the listed temporary output edits; denial test rejects its edit automatically. No project files/commands/cloud models are used. Allow roughly ten minutes; Cancel keeps partial data. Disabled tools show skipped. The completion sound means review is ready, not that every case passed.
+
+Review both exact public previews at the bottom. Check the shared approval box and click **Open both approved GitHub drafts**. In your browser, click **Create** on each page, then send both issue links here. Browser drafts are not submissions. You do not need a token. Local detailed metadata remains under existing retention settings; model names remain excluded publicly. A failed test is useful data—do not rerun repeatedly just to get a green result.
+
+Future Update clicks download/verify, ask to install, then run this workflow once after the target version restarts. Existing0.7 lacks this queue, hence the first manual Test suite click.
+
 # One useful 0.7 acceptance test
 
 1. Update to 0.7.0 and restart. Keep your saved Qwen3:8b or Qwen3.5:9b agent; no new download is needed.

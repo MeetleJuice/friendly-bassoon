@@ -1,0 +1,15 @@
+# 0.8 upgrade: guided repeatable acceptance
+
+User authorized implementation of a ten-test suite, update orchestration, improved buttons/help, local evidence, and two jointly approved browser drafts.
+
+Implement ten fixed agent-suite-1 cases: list, read, search, map, retrieval, exact create, safe edit, Python source/newlines, read-only integrity, and denied-write handling. Each case uses a fresh temporary directory and native runtime. Criterion is successful required tool evidence plus actual bytes/read-back, not final prose. Denial requires an actual rejected approval callback, no created file, exactly one attempt and a needs-review final state. Disabled permissions skip, never silently expand. Offline diagnostics additionally exercise path/stale/cancellation/provider failure recovery.
+
+Selected agent must be local-loopback Ollama. Preserve its instructions/tools/write permission, disable commands and all fallbacks, bound each case to five steps/60 seconds/16k context/1024 output tokens and provider timeout45seconds. Fixtures inject deterministic replies through the real runtime/tools. No cloud generation or automatic API-list refresh in this workflow; Test APIs remains available separately. Maximum ten minutes is approximate including bounded network/cancellation overhead.
+
+Update click checks/downloads; installer approval and checksum/backup protections remain. Persist target-version queue only when launching installation; consume once on that exact version startup. Wait for discovery/update workers to finish, then run tests. No startup replay of interrupted suites. Standalone Test suite lets users inspect cases/choose agent/Go. Persist preferred agent. Current 0.7 cannot retroactively provide this new orchestration: installing0.8 the first time may need one Test suite click.
+
+Health and suite reports checkpoint to existing bounded local storage. Synthetic runtime store is disposable, preventing fabricated user history. Retain template/schema hashes, bounded structural traces and available usage, task/execution/final-response counts and timings; no raw response/thinking/source/paths. Local-only configuration hash scopes previous-suite comparisons; public model name remains opted out. Health suite remains5/21 offline checks. Cancellation retains partial report and cannot pass. Abrupt exit existing recovery marks running reports interrupted.
+
+Two exact public previews are generated through existing allowlist and browser-size cap. One explicit checkbox enables opening both URLs once. Browser pages are drafts, never claimed posted; user clicks Create on both. No token, automatic POST or ambiguous retry. Completion beep. Rounded buttons, focus/pressed/hover states and contextual tooltips in shared helpers, including diagnostics.
+
+Validation: real runtime all ten cases with synthetic native provider, cloud rejection, disabled-tool/cancel semantics, fresh-context/no fallback, scope-limited approval/denial, two-preview consent and duplicate-open prevention, updater orchestration and prior regression suite; actual Windows install/shortcut/packaged21checks and released0.7 upgrade before immutable0.8tag.

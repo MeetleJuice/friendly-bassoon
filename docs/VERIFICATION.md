@@ -89,3 +89,10 @@ The opt-in real Ollama test is skipped unless `AIGENTICS_TEST_OLLAMA_MODEL` is s
 - **Source install on Windows fails:** confirm 64-bit Python 3.11–3.13, preferably 3.12. This release has not been verified on Python 3.14 or 32-bit Windows.
 
 Source --smoke-test and --diagnostic-smoke-test both exited 0 in disposable directories; dependency check passed and the 0.4.0 wheel built with new modules/icon included.
+
+
+## 0.8 guided suite (implementation validation in progress)
+
+See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.
+
+Local0.8 validation:250 passed/1 optional live Ollama skipped; lint/format/pipcheck/source startup and packaged21-check diagnostics passed. Deterministic suite uses actual runtime/tools, all ten cases pass; negative tests cover wrong queries/prose, cloud rejection, disabled tools/cancel, exact dual-preview consent, no-update dispatch and target-version queue consumption. Native dialog rendered/inspected; final Windows/release verification pending.

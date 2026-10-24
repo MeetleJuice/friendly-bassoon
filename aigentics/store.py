@@ -147,15 +147,24 @@ class Store:
             result[name + "_bytes"] = sum(p.stat().st_size for p in files)
         return result
 
-    def save_diagnostic(self, report):
+    def save_diagnostic(self, report, *, refresh_retention=False):
+        # The row timestamp is the retention activity clock. Only an explicit refresh
+        # advances it; payload["created"] remains the original report creation time.
         raw = self.credentials.json(report)
         if len(raw.encode("utf-8")) > 250000:
             raise ValueError("Diagnostic report exceeds the storage limit")
         with self.lock, self.db:
             self.db.execute(
                 "INSERT INTO diagnostics(id,created,state,payload) VALUES(?,?,?,?) "
-                "ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload",
-                (report["id"], report["created"], report["state"], raw),
+                "ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload,"
+                "created=CASE WHEN ? THEN excluded.created ELSE diagnostics.created END",
+                (
+                    report["id"],
+                    now() if refresh_retention else report["created"],
+                    report["state"],
+                    raw,
+                    bool(refresh_retention),
+                ),
             )
 
     def diagnostic_reports(self):

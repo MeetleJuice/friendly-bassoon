@@ -349,6 +349,6 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         if report["summary"]["passed"] == len(identities)
         else "needs_attention"
     )
-    store.save_diagnostic(report)
+    store.save_diagnostic(report, refresh_retention=True)
     store.prune()
     return [health, report]

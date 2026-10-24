@@ -170,3 +170,8 @@ Source run40116380991 remained active substantially longer than the previous fiv
 ### Controlled Windows runner comparison
 
 The previous successful source run40096724399 exposes14executedsteps. Recent stalled Windows-latest runs expose0steps, including the generic initial failure. This is insufficient to attribute a cause to application code. Pinning validation to the supported Windows2022 runner image tests runner variability and makes the Windows10-compatible build environment reproducible. All tests, phase limits, actual installation, previous-release upgrade and silent restart requirements remain. A pass is still required before tagging; the runner change is not presented as a proven fix until measured.
+
+
+### Recoverable release handoff
+
+Final local run:714passed/1optional liveOllamaskipped. Exact release candidate849b42b5c61316b7fccedf4f7e2629f7c4ccef7e is being validated by Windows2022 run40117966348. Product code is frozen while the external gate runs. Source startup/24offline diagnostics/dependencies/wheel/lint/format and full42attempt GUI rehearsal pass. No release tag or new public installer exists yet. Read PROGRESS.md for exact remaining steps and prior cancelled/generic-failure evidence.

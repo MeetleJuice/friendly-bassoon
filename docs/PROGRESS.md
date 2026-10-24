@@ -1,8 +1,14 @@
 # Build progress and next actions
 
-## 0.12 implementation: Windows release validation pending
+## 0.12 implementation complete; Windows release gate pending
 
-Six same-model agents and crew-campaign-1 are implemented. Deep=24offline+42model attempts; sequential fresh projects, fixed requirements,18rolecases,6repeats, durable bounded progress and two reviewed browser drafts. Baseline suite5 tightens edit-order checks. Quick/Standard/Deep available. Local full run: 708 passed, one optional live test skipped; two additional guided-update queue tests passed; source smokes/dependencies pass. Windows actual installer/upgrade/silent-restart and public delivery stillpending. Read maintenance/UPGRADE_0120_PLAN.md and design/MIDNIGHT_CREW.md beforecontinuing. No live model reliability claim; no MCP/orchestration.
+Latest application/release candidate: `849b42b5c61316b7fccedf4f7e2629f7c4ccef7e`. Windows validation: [40117966348](https://github.com/MeetleJuice/friendly-bassoon/actions/runs/40117966348), on pinned Windows2022. Do not tag or claim publication before this exact source passes the full installer/upgrade/restart workflow. Documentation-only commits after this candidate may skip CI; release the explicitly validated source, not an unverified HEAD.
+
+Local final result: **714 passed, one optional live Ollama test skipped**. Source startup,24packaged offline diagnostics, dependency consistency, lint/format, wheel building and actual42attempt Qt campaign rehearsal pass. Deep produces66results:24offline+42model attempts. Six roles are individually usable; no orchestration/MCP or real-user model success is claimed. Safe continuation, exact requirement reporting, dual preview consent, silent future updates and resumed-report retention are implemented.
+
+Initial source40115798980 failed with generic exit1 and no step details. Superseded Windows-latest runs exposed0steps and stalled far longer than prior successful0.11 run (14steps/about5minutes). Added crash breadcrumbs, phase outcome annotations, finite phase limits, and a controlled pinned runner comparison. Cause remains unproven; do not describe the runner change or Qt test cleanup as a confirmed fix. Superseded runs were cancelled to avoid continued resource use. User has no new installer yet.
+
+Next: inspect run40117966348. If successful, create immutablev0.12.0 at849b42b, wait for tag installer/release workflow, verify public installer using production Updater(current_version=0.11.0), record size/SHA/runIDs in VERIFICATION and ENGINEERING_LOG, then publish the concise user steps. If failure, inspect explicit annotations/last-test context; preserve all acceptance gates. `/tmp/verify_aigentics_0120_release.py` accepts sourceSHA/sourceRun/tagRun arguments. Do not overwrite an existing tag/checksum. Original artwork has no accessible binary; faithful direction is in design/MIDNIGHT_CREW.md.
 
 ## 0.11.0 delivered: deeper evaluations and verified recovery
 

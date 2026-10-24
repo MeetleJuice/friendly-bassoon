@@ -22,8 +22,11 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install build and development dependencies
+        timeout-minutes: 6
         run: python -m pip install -e ".[dev]" "pyinstaller==6.16.0"
       - name: Validate tests and code
+        id: tests
+        timeout-minutes: 8
         env:
           QT_QPA_PLATFORM: offscreen
           AIGENTICS_CI_PROGRESS: .ci-active-test.txt
@@ -38,6 +41,14 @@ jobs:
           }
           python -m ruff check aigentics tests scripts
           if ($LASTEXITCODE -ne 0) { throw 'Lint failed' }
+      - name: Record test phase outcome
+        if: always()
+        run: |
+          Write-Output "::notice title=Test phase::Outcome ${{ steps.tests.outcome }}"
+          if ('${{ steps.tests.outcome }}' -ne 'success' -and (Test-Path .ci-active-test.txt)) {
+            $lastTest = (Get-Content .ci-active-test.txt -Raw).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Last started test::$lastTest"
+          }
       - name: Determine version and validate tag
         id: version
         run: |
@@ -54,6 +65,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
           }
       - name: Build standalone executable and installer
+        id: package
+        timeout-minutes: 10
         run: |
           try { ./scripts/build_windows.ps1 -Version '${{ steps.version.outputs.version }}' }
           catch {
@@ -62,6 +75,8 @@ jobs:
             throw
           }
       - name: Verify actual installer and desktop shortcut
+        id: installer
+        timeout-minutes: 6
         run: |
           try { ./scripts/smoke_windows.ps1 -Version '${{ steps.version.outputs.version }}' }
           catch {
@@ -69,6 +84,11 @@ jobs:
             Write-Output "::error title=Windows installer verification::$detail"
             throw
           }
+      - name: Record installer phase outcomes
+        if: always()
+        run: |
+          Write-Output "::notice title=Package phase::Outcome ${{ steps.package.outcome }}"
+          Write-Output "::notice title=Installer phase::Outcome ${{ steps.installer.outcome }}"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: Aigentics-Windows-${{ steps.version.outputs.version }}

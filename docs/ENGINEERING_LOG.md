@@ -173,3 +173,6 @@ Windows source run40115798980 failed with only a generic exit-code annotation; a
 
 
 CI test observability now preserves the last-started test and exact interpreter exit code when a process stops before JUnit output exists. The full campaign GUI fixture has a finite90second completion allowance for Windows I/O and always cancels/joins child workers before Qt parent teardown, including assertion-failure paths. Five focused GUI tests pass. This addresses a plausible lifecycle failure, not a confirmed cause of the earlier generic Windows failure.
+
+
+Source run40116380991 remained active substantially longer than the previous five-minute successful0.11 build, without intermediate step metadata. Added finite dependency/test/package/installer phase limits and always-run phase-outcome/last-test annotations, preserving every test and installer requirement. This makes stalls diagnosable before the30minute job ceiling. The superseded run is cancelled; only the latest exact source can be tagged after success.

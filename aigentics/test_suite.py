@@ -8,6 +8,7 @@ from .diagnostics import DiagnosticRunner, model_evidence
 from .evidence import base_report
 from .runtime import Runtime
 from .store import Store
+from .harness import exercise_tools, output_budget
 from .task_checks import TaskChecks
 
 
@@ -72,7 +73,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
 
         def chat(self, model, messages, tools):
             if provider_factory is None:
-                reply = self.inner.chat(model, messages, tools, max_output_tokens=1024)
+                reply = self.inner.chat(model, messages, tools, max_output_tokens=output_budget(identity))
             else:
                 reply = self.inner.chat(model, messages, tools)
             observed.extend(reply.calls)
@@ -80,7 +81,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
 
     report = base_report(
         "agent_suite",
-        "agent-suite-1",
+        "agent-suite-2",
         "Synthetic acceptance counters only; no source, paths, prompts or credentials.",
     )
     report["local_scope"] = store.fingerprint({"agent": agent.model_dump(), "profile": profile.model_dump()})
@@ -114,6 +115,7 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
                 ):
                     bounded = agent.model_copy(
                         update={
+                            "tools": exercise_tools(agent.tools, required, writing),
                             "allow_commands": False,
                             "fallbacks": [],
                             "allow_writes": agent.allow_writes and writing,
@@ -206,6 +208,25 @@ def run_suite(store, credentials, agent, cancel, emit, provider_factory=None):
                             **model_evidence(events),
                             "model": agent.primary.model,
                             "execution_counts": summary.get("tools", {}),
+                            "tool_error_types": {
+                                key: sum(
+                                    e["kind"] == "tool.result" and e["data"].get("error_type") == key
+                                    for e in events
+                                )
+                                for key in (
+                                    "ValidationError",
+                                    "ValueError",
+                                    "FileNotFoundError",
+                                    "PermissionError",
+                                    "StaleFileError",
+                                    "WriteTargetError",
+                                )
+                                if any(
+                                    e["kind"] == "tool.result" and e["data"].get("error_type") == key
+                                    for e in events
+                                )
+                            },
+                            "max_output_tokens": output_budget(identity),
                             "task_checks": summary.get("task_checks", {}),
                             "final_response_status": summary.get("final_response_status", "not_reached"),
                             "native_calls_total": sum(

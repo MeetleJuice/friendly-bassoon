@@ -10,7 +10,12 @@ from uuid import uuid4
 from pydantic import ValidationError
 from .providers import Provider, ProviderError
 from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS, StaleFileError, WriteTargetError
+from .harness import request_size
 from .task_checks import TaskChecks, TaskEvidence
+
+
+class NoProgressError(RuntimeError):
+    pass
 
 
 class NativeToolProtocolError(RuntimeError):
@@ -211,6 +216,7 @@ class Runtime:
             "empty_final_responses": 0,
         }
         final_response_status = "not_reached"
+        failed_signatures = {}
         stale_edits = {}
         python_checks = {}
         try:
@@ -220,7 +226,7 @@ class Runtime:
                     raise RunTimeout("Session time budget reached")
                 if cancel.is_set():
                     raise InterruptedError("Cancelled")
-                if len(json.dumps(messages)) > agent.context_chars:
+                if request_size(messages, tools) > agent.context_chars:
                     raise ValueError(
                         "Context budget reached. Start a new focused task; context is never silently discarded."
                     )
@@ -254,6 +260,8 @@ class Runtime:
                                 "model": ref.model,
                                 "message_count": len(messages),
                                 "context_chars": len(json.dumps(messages)),
+                                "request_chars": request_size(messages, tools),
+                                "tool_schema_chars": len(json.dumps(tools)),
                                 "tools_advertised": [tool["function"]["name"] for tool in tools],
                                 "tool_schema_sha256": self.store.fingerprint(tools),
                                 "message_roles": [message["role"] for message in messages],
@@ -398,6 +406,11 @@ class Runtime:
                     self.store.messages(sid, messages)
                     break
                 for call in reply.calls:
+                    signature = self.store.fingerprint({"tool": call.name, "arguments": call.arguments})
+                    if failed_signatures.get(signature, 0) >= 3:
+                        raise NoProgressError(
+                            "Stopped after three identical failed tool requests. Review the cause before continuing."
+                        )
                     if cancel.is_set():
                         raise InterruptedError("Cancelled")
                     before = time.monotonic()
@@ -452,6 +465,9 @@ class Runtime:
                             {"error": self.credentials.redact(str(exc)), "type": type(exc).__name__},
                             "failed",
                         )
+                    failed_signatures[signature] = (
+                        failed_signatures.get(signature, 0) + 1 if status == "failed" else 0
+                    )
                     tool_counts[status] += 1
                     task_evidence.record(call, result, status)
                     if result.get("unchanged"):
@@ -514,6 +530,9 @@ class Runtime:
                     self.store.messages(sid, messages)
             else:
                 state, outcome = "limit_reached", "Maximum model steps reached"
+        except NoProgressError as exc:
+            state, outcome = "needs_review", str(exc)
+            event("runtime.error", {"type": "NoProgressError", "code": "NO_PROGRESS", "message": outcome})
         except NativeToolProtocolError as exc:
             state, outcome = "protocol_error", str(exc)
             event(

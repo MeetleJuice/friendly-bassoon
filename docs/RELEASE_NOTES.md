@@ -1,3 +1,12 @@
+# 0.9.0 • measured harness budgets and deterministic backpressure
+
+- Context limits now include serialized tool schemas; no silent history truncation. Character estimates remain distinct from token counts.
+- Agent suite2 advertises only permitted tools relevant to each exercise. Edit/Python output limits are2048tokens; simpler cases remain1024. No automatic replay, commands or cloud fallback.
+- Three identical failed tool requests stop execution with NO_PROGRESS and a reviewable outcome. Changed arguments can still recover.
+- Shared compact suite reports preserve allowlisted tool error types and the output budget, with full bounded protocol evidence retained locally.
+- Expanded offline policy matrices and real-runtime regressions cover permissions, Unicode/envelope limits, context rejection, circuit breaking and public-report fidelity.
+- MCP/skills/external script execution and unattended restart loops remain future integrations, not enabled by this release.
+
 # 0.8.0 • guided update and test suite
 
 - Test suite runs ten preloaded native-agent exercises in fresh disposable folders, with app diagnostics, progress, cancellation, retained reports and completion sound.

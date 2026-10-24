@@ -32,6 +32,7 @@ RECENT_ERROR_TYPES = frozenset(
     (
         "ProviderError",
         "NativeToolProtocolError",
+        "NoProgressError",
         "RunTimeout",
         "TimeoutError",
         "InterruptedError",
@@ -56,6 +57,7 @@ RECENT_ERROR_TYPES = frozenset(
 )
 RECENT_ERROR_CODES = frozenset(
     (
+        "NO_PROGRESS",
         "PROVIDER_ERROR",
         "HTTP_ERROR",
         "TIMEOUT",
@@ -245,6 +247,10 @@ def public_report(report, include_model=False):
             from .task_checks import public_task_checks
 
             check["evidence"]["task_checks"] = public_task_checks(evidence["task_checks"])
+        if "tool_error_types" in evidence:
+            check["evidence"]["tool_error_types"] = recent_run_counts(
+                {"tool_error_types": evidence["tool_error_types"]}
+            )["tool_error_types"]
         if "execution_counts" in evidence:
             from .evidence import bounded_counts
 
@@ -295,6 +301,8 @@ def public_report(report, include_model=False):
                         "text_tool_response",
                         "tool_schema_sha256",
                         "advertised_tool_count",
+                        "request_chars",
+                        "tool_schema_chars",
                     )
                     if key in trace
                 }
@@ -358,7 +366,11 @@ def prepare_browser_draft(title, body):
                 + (" [" + r["evidence"]["provider"] + "]" if r.get("evidence", {}).get("provider") else "")
                 + f": {r['status']} ({r['code']})"
                 + (
-                    "; native="
+                    "; errors="
+                    + json.dumps(r.get("evidence", {}).get("tool_error_types", {}), separators=(",", ":"))
+                    + "; budget="
+                    + str(r.get("evidence", {}).get("max_output_tokens", "unknown"))
+                    + "; native="
                     + str(r.get("evidence", {}).get("native_calls_total", 0))
                     + "; state="
                     + str(r.get("evidence", {}).get("runtime_state", "unknown"))

@@ -30,3 +30,10 @@ Deferred: independent installer signing/Authenticode, atomic multi-file transact
 ## 0.8 implementation history
 
 See maintenance/UPGRADE_080_PLAN.md and maintenance/RESEARCH_080.md (relative to docs). Adds ten isolated native cases, per-case bounded evidence, two exact approved drafts, one-shot target-version update queue and shared hover help. Existing schema5/storage/healthsuite5 remain. No live model or issue POST used in development. Final test/Windows/release results will be recorded before delivery.
+
+
+## 0.9 harness implementation and validation
+
+Read maintenance/UPGRADE_090_PLAN.md for research sources, term definitions, evidence and deferred integrations. User issues13/14 show8/10native acceptance, unknown discovery error and pre-tool OUTPUT_LIMIT;21offline+5model-list checks passed. Added schema-inclusive request accounting, suite2 least-authority tool disclosure and differentiated output budgets, typed failure reporting and three-identical-failure circuit breaking. No automatic replay or permission expansion. MCP/SKILL scripts/embedding/Ralph restart integration remain deferred with rationale.
+
+Expanded local result402passed/1optional live skip, including128permission subsets, Unicode/context accounting, actual pre-dispatch context rejection, repeated-failure breaker, public typed-error fidelity and existing full GUI bundle regression. Synthetic schema measurement: all7tools2750serialized characters; list-only347, search-only356, read+write1181. These are character savings, not measured token/latency or live-model success gains. Source startup/21offline smoke and lint/format pass. Windows/install/upgrade/release verification follows. Persistent source/SQLite safeguards remain intact.

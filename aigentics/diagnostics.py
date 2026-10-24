@@ -64,6 +64,8 @@ def model_evidence(events):
                     "text_tool_response": data["request_id"] in invalid,
                     "tool_schema_sha256": request.get("tool_schema_sha256"),
                     "advertised_tool_count": len(request.get("tools_advertised", [])),
+                    "request_chars": request.get("request_chars"),
+                    "tool_schema_chars": request.get("tool_schema_chars"),
                     "response_shape": data.get("response_shape", {}),
                     "usage": {
                         key: value

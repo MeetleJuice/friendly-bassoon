@@ -465,9 +465,10 @@ class Runtime:
                             {"error": self.credentials.redact(str(exc)), "type": type(exc).__name__},
                             "failed",
                         )
-                    failed_signatures[signature] = (
-                        failed_signatures.get(signature, 0) + 1 if status == "failed" else 0
-                    )
+                    if status == "succeeded":
+                        failed_signatures.clear()
+                    else:
+                        failed_signatures[signature] = failed_signatures.get(signature, 0) + 1
                     tool_counts[status] += 1
                     task_evidence.record(call, result, status)
                     if result.get("unchanged"):

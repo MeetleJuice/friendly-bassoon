@@ -118,3 +118,41 @@ def test_three_identical_failures_stop_without_a_fourth_execution(store, credent
     assert state == "needs_review"
     assert len([e for e in events if e["kind"] == "tool.result"]) == 3
     assert any(e["data"].get("code") == "NO_PROGRESS" for e in events)
+
+
+def test_successful_progress_resets_failed_request_breaker(store, credentials, tmp_path):
+    from aigentics.models import ToolCall
+
+    store.save_profile(Profile(id="ollama", name="Fixture"))
+    count = []
+
+    class Recovering:
+        def __init__(self, *args):
+            pass
+
+        def capabilities(self, model):
+            return {"tools": True}
+
+        def chat(self, *args):
+            count.append(1)
+            step = len(count)
+            if step == 6:
+                return Reply(content="Recovered.")
+            if step == 4:
+                return Reply(
+                    calls=[
+                        ToolCall(
+                            id="write",
+                            name="write_file",
+                            arguments={"path": "missing.txt", "content": "ready", "expected_sha256": "new"},
+                        )
+                    ]
+                )
+            return Reply(calls=[ToolCall(id=str(step), name="read_file", arguments={"path": "missing.txt"})])
+
+    sid, _ = Runtime(store, credentials, Recovering).run(Agent(), tmp_path, "Recover", lambda *a: True)
+    events = store.events(sid)
+    assert not any(e["data"].get("code") == "NO_PROGRESS" for e in events)
+    assert (
+        len([e for e in events if e["kind"] == "tool.result" and e["data"].get("status") == "succeeded"]) == 2
+    )

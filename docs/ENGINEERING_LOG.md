@@ -357,3 +357,11 @@ Post-shutdown full local validation:1105passed/1optional live-model skipped in10
 ### Windows completion and explicit Unicode benchmark reader
 
 Shutdown-corrected source6c9a924c333669cffb7bdbe6432c1164606c9999 /Windows40206669640 completed the test process normally (15:23:46–15:30:53UTC,7m7s) with a concrete frozen-manifest mismatch: test_committed_measurement_definition_matches_runtime read new UTF8 JSON using platform-default encoding. No native crash in this run. Corrected both new/archived benchmark fixture reads to explicitUTF8; canonical manifest/hash and all runtime behavior stay unchanged. This is a test-file reader correction, not relaxation of the equality/hash assertion. New source will repeat the Windows gates. User's PC reset is unrelated to cloud build; partial local reports should be retained if any.
+
+
+### Exhausted-campaign floating-point boundary regression
+
+UTF8-corrected source ffc291e5c9ab8aaad5326e97f27190e08217b096 /Windows40207457612 completed normally:1103passed/2platform-live skips/1failure in458.75s. Golden Unicode check now passes. Failure: resumed exhausted budget dispatched two forbidden fixture attempts. Deterministic Linux reproduction with fixed monotonic10000.1 fails before correction: (7200 +10000.1)-10000.1 becomes7199.999999999998, below the exact7200second boundary. Added fixed-clock parameter alongside real-clock regression. Campaign now rejects integer spent milliseconds already at ceiling before doing clock arithmetic, and adds elapsed delta in parentheses. No time allowance increased; exact exhausted budget cannot dispatch. Intended bounded policy/benchmark definition unchanged, unpublished0.17manifest2hash stays. Full validation repeats for this actual harness correction.
+
+
+Post-deadline full local validation:1106passed/1optional live-model skipped in95.88s;16focused campaign/shutdown checks, Ruff/source startup/27offline diagnostics and rebuilt wheel pass. Exhausted-budget fixture also uses a forbidden provider factory so it makes no actual endpoint observation. Final2fixed/real-clock cases repeat after that test-only isolation. No benchmark policy/hash, request/session allowance or permission change. Windows acceptance reruns from corrected source.

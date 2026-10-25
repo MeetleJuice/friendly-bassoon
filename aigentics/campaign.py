@@ -341,7 +341,8 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
             return (
                 self.local.is_set()
                 or cancel.is_set()
-                or prior_budget_ms / 1000 + time.monotonic() - before >= MAX_SECONDS
+                or prior_budget_ms >= MAX_SECONDS * 1000
+                or prior_budget_ms / 1000 + (time.monotonic() - before) >= MAX_SECONDS
             )
 
     bounded_cancel = CampaignCancel()

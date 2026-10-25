@@ -161,7 +161,10 @@ def test_actual_store_restart_keeps_completed_and_does_not_replay_inflight(
     assert len([e for e in events if e["kind"] == "campaign.result"]) == 3
 
 
-def test_resumed_exhausted_budget_never_starts_model_work(store, credentials, monkeypatch):
+@pytest.mark.parametrize("fixed_clock", [None, 10000.1])
+def test_resumed_exhausted_budget_never_starts_model_work(store, credentials, monkeypatch, fixed_clock):
+    if fixed_clock is not None:
+        monkeypatch.setattr(campaign.time, "monotonic", lambda: fixed_clock)
     store.save_profile(Profile(id="ollama", name="Local"))
     scope = campaign.campaign_scope(store, Agent(), "deep")
     report = saved(store, scope, "cancelled", "2026-10-24T10:00:00+00:00")
@@ -175,7 +178,13 @@ def test_resumed_exhausted_budget_never_starts_model_work(store, credentials, mo
     monkeypatch.setattr(campaign, "run_suite", forbidden)
     monkeypatch.setattr(campaign, "role_case", forbidden)
     result = campaign.run_campaign(
-        store, credentials, Agent(), threading.Event(), lambda event: None, resume=True
+        store,
+        credentials,
+        Agent(),
+        threading.Event(),
+        lambda event: None,
+        resume=True,
+        provider_factory=forbidden,
     )[1]
     assert result["id"] == report["id"] and result["checks"] == []
     assert result["state"] == "needs_attention"

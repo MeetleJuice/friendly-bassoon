@@ -116,3 +116,13 @@ Next: let the user's existing0.15run finish and save/review its diagnostic ZIP b
 Native unchanged-file completion/one-feedback/readback/duplicate/actual-write guards; explicit JSON-wrapper and no-answer-leak schema checks; streamed/nonstreamed think dispatch and missing-control refusal; per-run metadata cache; observed-context privacy; conditional skipping/profile preservation; matched-pair and cross-run setting guards; archived manifest preservation; reviewed ZIP safe metadata and timings; actual Connections selector with no generation. Two new installed offline fixtures bring health to27. Default34trials/61result slots, optional66trials/93slots. Live user model quality remains unverified by synthetic developer tests. CI progress/slow-phase notices do not change gates.
 
 Final0.17 adds native deferred-close failure suppression/new-task refusal, always-joined real GUI integration with unchanged outcome assertions, explicit UTF8 frozen readers and fixed-clock/real-clock exhausted-budget non-dispatch. Local1106passed/1optional live skipped; Windows source40208559425 and tag40209357532attempt1 passed complete installed/upgrade/restart gates. Production updater verified public checksum; actual local model quality awaits userZIP.
+
+
+## 0.18 targeted additions
+
+- Typed coordinator validation, same-model serial dispatch, read-only review, revision-stale/duplicate/recursive/empty-result rejection, exact diff denial, cancellation and SQLite crash/reopen without replay.
+- Shared root request/output/time bounds and stage evidence; real Qt Workbench execution with always-joined worker lifecycle.
+- Native/compatible HTTP sampling bodies, inherited values, invalid/nonfinite/boolean ranges; experimental preset preview versus saved state.
+- JSON parser position/reason privacy, ordinal source/readback and terminal status; old benchmark1/2identities and complete reviewed ZIP export.
+- Frozen56slotmeasurement3plan, eligible per-role default/off pairs, matched TOTAL direct/managed caps and explicit26conditional skips. Actual local-model comparisons run on the user's PC; scripted checks do not prove model improvement.
+- Release promotion rejects failed/non-main/foreign/PR/untrusted workflow runs, expired/ambiguous artifacts and corrupted installers. Actual Windows source gate remains mandatory and pins0.17upgrade.

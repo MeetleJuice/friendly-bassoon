@@ -83,7 +83,7 @@ def test_full_gui_real_66_attempt_worker_and_two_approved_previews(qtbot, store,
     assert saved[personal.id] == personal
     assert all(
         saved[f"midnight-{role}-v1"].primary == personal.primary
-        for role in ("george", "scout", "ada", "vera", "sentinel", "atlas")
+        for role in ("orion", "scout", "ada", "vera", "sentinel", "atlas")
     )
     previews = dialog.output.toPlainText()
     assert previews.count("EXACT PUBLIC PREVIEW") == 2

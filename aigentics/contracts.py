@@ -37,6 +37,29 @@ HINTS = {
     "UNEXPECTED_FILE": "Keep only the original inputs and declared outputs; do not create unrelated files.",
     "STRUCTURE_LIMIT": "The artifact exceeds the bounded schema diagnostic depth or size.",
 }
+PARSE_REASONS = frozenset(("syntax", "duplicate_key_or_nonfinite", "encoding", "structure_limit"))
+
+
+def parse_diagnostic(data):
+    """Parser location/reason only; never echo error messages, tokens or JSON keys."""
+    try:
+        _json(data)
+
+        def reject_constant(value):
+            raise ValueError("Non-finite JSON number")
+
+        json.loads(data, parse_constant=reject_constant)
+    except json.JSONDecodeError as exc:
+        return {"reason": "syntax", "line": min(exc.lineno, 100000), "column": min(exc.colno, 100000)}
+    except UnicodeError:
+        return {"reason": "encoding"}
+    except RecursionError:
+        return {"reason": "structure_limit"}
+    except (ValueError, TypeError):
+        return {"reason": "duplicate_key_or_nonfinite"}
+    return {}
+
+
 MISMATCH_CODES = frozenset(HINTS)
 TYPE_NAMES = frozenset(("null", "boolean", "number", "string", "object", "array", "missing", "unknown"))
 
@@ -134,6 +157,12 @@ def public_mismatches(value, allowed_targets=None):
                 "hint": HINTS[code],
             }
         )
+        parser = item.get("parser")
+        if isinstance(parser, dict) and parser.get("reason") in PARSE_REASONS:
+            result[-1]["parser"] = {"reason": parser["reason"]}
+            for key in ("line", "column"):
+                if type(parser.get(key)) is int and 1 <= parser[key] <= 100000:
+                    result[-1]["parser"][key] = parser[key]
     return result
 
 
@@ -250,7 +279,10 @@ def evaluate_contract(case, root: Path, finaltext: str):
         try:
             actual = _json(data)
         except (ValueError, UnicodeError, TypeError, RecursionError):
+            count = len(mismatches)
             add("JSON_PARSE", name, expected_type=_type(expected))
+            if len(mismatches) > count:
+                mismatches[-1]["parser"] = parse_diagnostic(data)
         else:
             compare(actual, expected, name)
     if case.answer is not None:
@@ -259,7 +291,10 @@ def evaluate_contract(case, root: Path, finaltext: str):
                 raise ValueError("Answer exceeds its bound")
             actual = _json(finaltext)
         except (ValueError, UnicodeError, TypeError, RecursionError):
+            count = len(mismatches)
             add("ANSWER_PARSE", "final_answer", expected_type=_type(case.answer))
+            if len(mismatches) > count:
+                mismatches[-1]["parser"] = parse_diagnostic(finaltext)
         else:
             compare(actual, case.answer, "final_answer")
     if not checks["INPUTS_UNCHANGED"]:

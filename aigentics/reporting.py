@@ -225,8 +225,8 @@ def public_report(report, include_model=False):
 
         if report.get("mode") in ("quick", "standard", "deep", "measurement"):
             result["mode"] = report["mode"]
-        if report.get("crew_version") == CREW_VERSION:
-            result["crew_version"] = CREW_VERSION
+        if report.get("crew_version") in ("midnight-crew-1", "midnight-crew-2", CREW_VERSION):
+            result["crew_version"] = report["crew_version"]
         if report.get("stop_reason") in ("cancelled", "campaign_budget", "finished", "benchmark_changed"):
             result["stop_reason"] = report["stop_reason"]
         value = report.get("budget_used_ms")
@@ -325,6 +325,7 @@ def public_report(report, include_model=False):
         "final_response_status",
         "task_checks_fixture_verified",
         "empty_final_fixture_verified",
+        "team_pilot_fixture_verified",
     }
     if include_model:
         allowed.add("model")
@@ -418,6 +419,9 @@ def public_report(report, include_model=False):
             from .evidence import bounded_counts
 
             check["evidence"]["execution_counts"] = bounded_counts(evidence["execution_counts"])
+        from .inference import public_run_details, public_model_details
+
+        check["evidence"].update(public_run_details(evidence))
         if "tool_error_codes" in evidence:
             check["evidence"]["tool_error_codes"] = recent_run_counts(
                 {"tool_error_codes": evidence["tool_error_codes"]}
@@ -454,6 +458,7 @@ def public_report(report, include_model=False):
                 )
             }
             check["evidence"]["model_metadata"].update(public_thinking(evidence["model_metadata"]))
+            check["evidence"]["model_metadata"].update(public_model_details(evidence["model_metadata"]))
         if "request_traces" in evidence:
             traces = []
             for trace in evidence["request_traces"][:8]:
@@ -866,13 +871,15 @@ CAMPAIGN_CODES = frozenset(
         "UNKNOWN",
     )
 )
-CAMPAIGN_ROLES = ("george", "scout", "ada", "vera", "sentinel", "atlas")
+CAMPAIGN_ROLES = ("george", "orion", "scout", "ada", "vera", "sentinel", "atlas")
 
 
 def safe_campaign_row(check, original):
     """Campaign records share fixed identifiers and typed measurements, never generated text."""
     evidence = check.get("evidence", {})
-    safe = {}
+    from .inference import public_run_details, public_model_details
+
+    safe = public_run_details(evidence)
     for key in (
         "duration_ms",
         "native_calls_total",
@@ -929,6 +936,8 @@ def safe_campaign_row(check, original):
         safe["model_metadata"] = {"template_sha256": digest}
     if public_thinking(metadata):
         safe.setdefault("model_metadata", {}).update(public_thinking(metadata))
+    if public_model_details(metadata):
+        safe.setdefault("model_metadata", {}).update(public_model_details(metadata))
     if isinstance(evidence.get("model"), str) and len(evidence["model"]) <= 200:
         safe["model"] = evidence["model"]
     if type(original.get("timing_unknown")) is bool:

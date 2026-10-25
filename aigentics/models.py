@@ -22,6 +22,7 @@ class Agent(Strict):
     revision: int = Field(default=1, ge=1)
     name: str = Field(default="Coding partner", min_length=1, max_length=100)
     description: str = Field(default="", max_length=2000)
+    kind: Literal["worker", "coordinator"] = "worker"
     instructions: str = Field(
         default="Inspect files before editing. Make focused changes and verify them.", max_length=16000
     )
@@ -33,6 +34,16 @@ class Agent(Strict):
     max_steps: int = Field(default=12, ge=1, le=100)
     max_seconds: int = Field(default=300, ge=5, le=3600)
     context_chars: int = Field(default=48000, ge=4000, le=200000)
+
+    @model_validator(mode="after")
+    def coordinator_permissions(self):
+        if self.kind == "coordinator" and (
+            self.tools or self.allow_writes or self.allow_commands or self.fallbacks
+        ):
+            raise ValueError(
+                "Coordinators use the bounded team pilot, without file tools, commands or fallbacks"
+            )
+        return self
 
     @field_validator("tools")
     @classmethod
@@ -53,7 +64,16 @@ class Profile(Strict):
     ollama_api: Literal["native", "compatible"] = "native"
     ollama_stream: bool = False
     ollama_thinking: Literal["default", "off", "on"] = "default"
+    temperature: float | None = Field(default=0.2, ge=0, le=2, allow_inf_nan=False, strict=True)
+    top_p: float | None = Field(default=None, gt=0, le=1, allow_inf_nan=False, strict=True)
+    top_k: int | None = Field(default=None, ge=1, le=1000, strict=True)
     timeout_seconds: int = Field(default=120, ge=1, le=300)
+
+    @model_validator(mode="after")
+    def native_top_k(self):
+        if self.top_k is not None and (self.kind != "ollama" or self.ollama_api != "native"):
+            raise ValueError("top_k requires native Ollama")
+        return self
 
     @model_validator(mode="after")
     def native_thinking_only(self):

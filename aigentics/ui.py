@@ -250,6 +250,11 @@ class Window(QMainWindow):
             store.save_profile(Profile(id="ollama", name="Local Ollama"))
         if not store.agents():
             store.save_agent(Agent())
+        stock = next((a for a in store.agents() if a.id == "midnight-george-v1"), None)
+        if stock:
+            from .crew import ensure_roster
+
+            ensure_roster(store, stock.primary)
         root = QWidget()
         shell = QHBoxLayout(root)
         shell.setContentsMargins(0, 0, 0, 0)
@@ -1008,6 +1013,16 @@ class Window(QMainWindow):
         self.profile_json = QPlainTextEdit()
         self.profile_json.textChanged.connect(self.sync_thinking_selector)
         pl.addWidget(self.profile_json, 1)
+        self.sampling_preset = QComboBox()
+        self.sampling_preset.addItem("Inference presets · keep current settings", "unchanged")
+        self.sampling_preset.addItem("Baseline · temperature 0.2, model-default thinking", "baseline")
+        self.sampling_preset.addItem("Experimental tools · temperature 0.2, thinking off", "tools")
+        self.sampling_preset.addItem("Experimental chat · temperature 0.7, model-default thinking", "chat")
+        self.sampling_preset.setToolTip(
+            "Presets edit the preview only; Save profile applies it. Explicit requests override Modelfile values. null inherits a server sampling value. Context sizing remains automatic. Experimental settings are not certified improvements."
+        )
+        self.sampling_preset.currentIndexChanged.connect(self.apply_inference_preset)
+        pl.addWidget(self.sampling_preset)
         row = QHBoxLayout()
         pl.addLayout(row)
         button("Save profile", lambda: self.guarded(self.save_profile), row, True)
@@ -1263,6 +1278,8 @@ class Window(QMainWindow):
             from .crew import ROLES
 
             role = next((key for key in ROLES if agent.id == f"midnight-{key}-v1"), None)
+            if agent.kind == "coordinator":
+                role = "george"  # Retain the user's blue Nexus Crown visual identity.
             item = QListWidgetItem(agent.name)
             item.setIcon(icon(role or "agents", ROLES[role].color if role else "#b7a7fa"))
             item.setToolTip(agent.description or "Saved agent configuration")
@@ -1300,6 +1317,12 @@ class Window(QMainWindow):
         self.instructions.setPlainText(agent.instructions)
         self.allow_writes.setChecked(agent.allow_writes)
         self.allow_commands.setChecked(agent.allow_commands)
+        for control in (*self.tool_checks.values(), self.allow_writes, self.allow_commands, self.fallbacks):
+            control.setEnabled(agent.kind != "coordinator")
+        if agent.kind == "coordinator":
+            self.agent_role_label.setText(
+                "Orion · experimental team pilot. Declare output filenames in Workbench. Ada builds; Sentinel may review. One shared model and budget. Each file diff still needs approval."
+            )
         self.steps.setValue(agent.max_steps)
         self.seconds.setValue(agent.max_seconds)
         self.fallbacks.setPlainText(json.dumps([m.model_dump() for m in agent.fallbacks], indent=2))
@@ -1476,6 +1499,27 @@ class Window(QMainWindow):
         index = self.thinking_selector.findData(mode) if isinstance(mode, str) else -1
         self.thinking_selector.setCurrentIndex(max(0, index))
         self.thinking_selector.blockSignals(False)
+
+    def apply_inference_preset(self):
+        preset = self.sampling_preset.currentData()
+        if preset == "unchanged":
+            return
+
+        def apply():
+            data = json.loads(self.profile_json.toPlainText())
+            data.update(
+                temperature=0.7 if preset == "chat" else 0.2,
+                top_p=None,
+                top_k=None,
+                ollama_thinking="off" if preset == "tools" else "default",
+            )
+            Profile.model_validate(data)
+            self.profile_json.setPlainText(json.dumps(data, indent=2))
+
+        self.guarded(apply)
+        self.sampling_preset.blockSignals(True)
+        self.sampling_preset.setCurrentIndex(0)
+        self.sampling_preset.blockSignals(False)
 
     def change_thinking_setting(self):
         try:
@@ -1767,6 +1811,10 @@ class Window(QMainWindow):
             agent = next((a for a in self.store.agents() if a.id == agent_id), None)
             if not agent:
                 raise ValueError("Save and select an agent first")
+            if agent.kind == "coordinator" and (lab or self.task_mode.currentData() == "plan"):
+                raise ValueError(
+                    "Use Orion in Workbench with explicit output filenames. Use Scout or Sentinel for direct read-only work."
+                )
             if not lab and self.task_mode.currentData() == "plan":
                 agent = agent.model_copy(
                     update={
@@ -1804,7 +1852,7 @@ class Window(QMainWindow):
             from .tools import tool_definitions
 
             permitted = {tool["function"]["name"] for tool in tool_definitions(agent)}
-            if (
+            if agent.kind != "coordinator" and (
                 set(checks.required_tools) - permitted
                 or (checks.write_targets and "write_file" not in permitted)
                 or (checks.write_targets and checks.require_readback and "read_file" not in permitted)
@@ -1823,8 +1871,14 @@ class Window(QMainWindow):
             )
             self.active_output = output
             self.active_is_lab = lab
+            runtime = self.runtime
+            if agent.kind == "coordinator":
+                from .coordination import Coordinator
+
+                runtime = Coordinator(self.store, self.credentials)
+                parent = None
             started = self.start_worker(
-                lambda worker: self.runtime.run(
+                lambda worker: runtime.run(
                     agent,
                     workspace,
                     task,
@@ -1867,6 +1921,29 @@ class Window(QMainWindow):
             text = kind + "  " + json.dumps(data, ensure_ascii=False)
         elif kind == "assistant.text":
             text = "MODEL RESPONSE · review runtime evidence\n" + data["text"]
+        elif kind in ("team.stage", "team.owner"):
+            budget = data.get("budget", {})
+            text = (
+                "TEAM · "
+                + str(data.get("role", data.get("stage", "working")))
+                + " · "
+                + str(budget.get("remaining_seconds", "?"))
+                + "s remaining · "
+                + str(budget.get("calls", 0))
+                + "/"
+                + str(budget.get("call_limit", 12))
+                + " total model calls"
+            )
+            self.run_facts.setText(text)
+        elif kind == "team.worker_finished":
+            text = (
+                "TEAM · "
+                + data["role"]
+                + " · "
+                + data["state"]
+                + " · checks "
+                + ("passed" if data["verified"] else "need review")
+            )
         elif kind == "model.requested":
             text = "Asking " + data["model"] + " (step " + str(data["step"] + 1) + ")…"
         elif kind == "task.context":

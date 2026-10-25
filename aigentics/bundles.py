@@ -125,6 +125,7 @@ def clean_report(report, credentials):
                 "correctness_fixture",
                 "completion_order_fixture",
                 "thinking_control_fixture",
+                "team_pilot_fixture",
                 "update_connection",
                 "selected_local_model",
             }
@@ -138,6 +139,9 @@ def clean_report(report, credentials):
             }
             continue
         original = originals.get(row["id"], {}).get("evidence", {})
+        from .inference import public_sampling, public_run_details
+
+        row["evidence"].update(public_run_details(original))
         traces = []
         for trace in original.get("request_traces", [])[:8]:
             entry = {
@@ -158,6 +162,8 @@ def clean_report(report, credentials):
             }
             if isinstance(trace.get("thinking_mode"), str) and trace.get("thinking_mode") in THINKING_MODES:
                 entry["thinking_mode"] = trace["thinking_mode"]
+            if "sampling" in trace:
+                entry["sampling"] = public_sampling(trace["sampling"])
             entry["response_shape"] = public_shape(trace.get("response_shape", {}))
             entry["usage"] = {
                 k: min(v, 10**15)

@@ -43,8 +43,8 @@ class CampaignDialog(QDialog):
         layout.addWidget(text_label("TEST · OBSERVE · IMPROVE", "eyebrow"))
         layout.addWidget(text_label("Put the Midnight Crew to the test.", "pageTitle"))
         label = text_label(
-            f"{OFFLINE_CHECK_COUNT} offline app checks + 34 local trials by default (30 completion trials + 4 conditional thinking-off trials). "
-            "One model, six independent roles, disposable files. Up to 2 hours. "
+            f"{OFFLINE_CHECK_COUNT} offline app checks + 56 local trials: retained comparisons, every role with thinking off, and a bounded Orion pilot. "
+            "Scout and Vera calibration runs first. One selected local model, serial work, disposable files. Up to 2 hours; stop safely at any time. "
             "No API checks. Saved personal agents stay unchanged."
         )
         layout.addWidget(label)
@@ -60,7 +60,7 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Measurement • 34 trials + app checks", "measurement")
+        self.mode.addItem("Recommended • 56 measured trials + app checks", "measurement")
         self.mode.addItem("Discovery • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
@@ -216,7 +216,14 @@ class CampaignDialog(QDialog):
 
         role_cases = {c.id: c for c in ROLE_CASES}
         for trial in measurement_plan():
+            if trial.case_kind == "workflow":
+                titles[trial.id] = (
+                    f"Orion pilot • Ada build • {trial.arm} • {trial.repeat}/2 • thinking off (conditional)"
+                )
+                continue
             role = ROLES[role_cases[trial.case_id].role].name if trial.case_kind == "role" else "George"
+            if role == "George":
+                role = "Generalist baseline (legacy George)"
             scenario = (
                 role_cases[trial.case_id].title
                 if trial.case_kind == "role"
@@ -402,6 +409,10 @@ class CampaignDialog(QDialog):
             )
         text.append("Mismatch diagnosis: " + str(e.get("mismatches", [])))
         text.append("Thinking request: " + str(e.get("thinking_mode", "default")))
+        text.append("Terminal final response: " + str(e.get("terminal_response_status", "not recorded")))
+        text.append("Numbered source/output reads: " + str(e.get("target_reads", [])))
+        if "team_metrics" in e:
+            text.append("Team TOTAL budget / stages: " + str(e["team_metrics"]))
         text.append("Per-call schema evidence: " + str(e.get("tool_diagnostics", [])))
         text.append("Initial content acceptance: " + str(e.get("initial_acceptance_checks", {})))
         text.append("Content acceptance: " + str(e.get("acceptance_checks", {})))

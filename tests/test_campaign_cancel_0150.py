@@ -19,7 +19,12 @@ def test_stop_during_native_model_call_is_unknown(store, credentials, mode):
             pass
 
         def capabilities(self, *args):
-            return {"tools": True}
+            return {
+                "tools": True,
+                "thinking_support": "reported",
+                "thinking_values": [False, True],
+                "thinking_default": True,
+            }
 
         def chat(self, *args):
             cancel.set()

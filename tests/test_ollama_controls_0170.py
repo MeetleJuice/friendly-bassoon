@@ -193,9 +193,9 @@ def test_unknown_capability_skips_only_four_experiments_without_changing_saved_p
         mode="measurement",
         provider_factory=Unknown,
     )[1]
-    assert report["planned_cases"] == 34 and report["summary"]["passed"] == 30
+    assert report["planned_cases"] == 56 and report["summary"]["passed"] == 30
     skipped = [r for r in report["checks"] if r["status"] == "skipped"]
-    assert len(skipped) == 4 and all(r["code"] == "THINKING_CONTROL_UNAVAILABLE" for r in skipped)
+    assert len(skipped) == 26 and all(r["code"] == "THINKING_CONTROL_UNAVAILABLE" for r in skipped)
     assert "off" not in seen and store.profiles()[0].model_dump() == before
 
 

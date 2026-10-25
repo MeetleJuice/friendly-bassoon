@@ -139,6 +139,9 @@ class Provider:
                 if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]{0,64}", value):
                     metadata[key] = value
             metadata.update(thinking_metadata(data.get("thinking")))
+            from .inference import public_model_details
+
+            metadata.update(public_model_details(data.get("details")))
             self.remember_capabilities(model, metadata)
             capabilities = data.get("capabilities")
             if capabilities is not None:
@@ -172,6 +175,7 @@ class Provider:
                 for row in models:
                     if isinstance(row, dict) and target in (row.get("name"), row.get("model")):
                         safe.update(context_length=row.get("context_length"), status="observed")
+                        safe.update(model_bytes=row.get("size"), model_vram_bytes=row.get("size_vram"))
                         break
         except ProviderError:
             pass
@@ -265,8 +269,11 @@ class Provider:
                 "model": model,
                 "messages": converted,
                 "stream": streaming,
-                "options": {"temperature": 0.2, "num_predict": max_output_tokens},
+                "options": {"num_predict": max_output_tokens},
             }
+            from .inference import sampling_options
+
+            body["options"].update(sampling_options(self.profile))
             if self.profile.ollama_thinking != "default":
                 body["think"] = self.profile.ollama_thinking == "on"
             if tools:
@@ -297,8 +304,10 @@ class Provider:
                 "messages": converted,
                 "stream": streaming,
                 "max_tokens": max_output_tokens,
-                "temperature": 0.2,
             }
+            from .inference import sampling_options
+
+            body.update(sampling_options(self.profile))
             if tools:
                 body["tools"] = tools
                 body["tool_choice"] = "auto"

@@ -21,18 +21,44 @@ class CrewScripted(Scripted):
             "thinking_default": True,
         }
 
-    def chat(self, model, messages, tools):
+    def chat(self, model, messages, tools, **kwargs):
+        names = {tool["function"]["name"] for tool in tools}
+        if "dispatch_worker" in names:
+            previous = [m for m in messages if m["role"] == "tool"]
+            if not previous:
+                return Reply(calls=[ToolCall(id="status", name="team_status", arguments={})])
+            status = json.loads(previous[-1]["content"])
+            if len(status["evidence"]) < 2:
+                return Reply(
+                    calls=[
+                        ToolCall(
+                            id="dispatch",
+                            name="dispatch_worker",
+                            arguments={
+                                "role": "ada" if not status["evidence"] else "sentinel",
+                                "revision": status["revision"],
+                            },
+                        )
+                    ]
+                )
+            return Reply(content="Recorded build/review complete.")
         prompt = next(m["content"] for m in messages if m["role"] == "user")
         from aigentics.contracts import contract_prompt
 
-        case = next((c for c in CASES if c.prompt == prompt or contract_prompt(c) == prompt), None)
+        case = next((c for c in CASES if c.prompt == prompt or contract_prompt(c) in prompt), None)
         if case is None:
             return super().chat(model, messages, tools)
         calls = [("read_file", {"path": name}) for name in case.required_reads]
+        if "write_file" not in names:
+            calls += [
+                ("read_file", {"path": name}) for name in case.outputs if name not in case.required_reads
+            ]
         for name, data in {
             **case.outputs,
             **{n: json.dumps(v).encode() for n, v in case.output_json.items()},
         }.items():
+            if "write_file" not in names:
+                continue
             calls.append(
                 (
                     "write_file",

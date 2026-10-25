@@ -48,7 +48,7 @@ def test_existing_user_agents_and_edited_roster_are_preserved(store, primary):
     assert len(store.agents()) == 7
     assert again["ada"] == saved
     assert next(a for a in store.agents() if a.id == personal.id) == personal
-    assert again["george"].primary == primary
+    assert again["orion"].primary == primary
     assert make_agent("ada", primary).primary == primary
     assert make_agent("ada", primary).allow_writes
 
@@ -82,7 +82,7 @@ def test_missing_role_recreates_without_revising_survivors(store, primary):
     store.delete_agent(first["atlas"].id)
     second = ensure_roster(store, primary)
     assert len(store.agents()) == 6
-    assert second["george"] == first["george"]
+    assert second["orion"] == first["orion"]
     assert second["atlas"].primary == primary
 
 
@@ -91,4 +91,4 @@ def test_registry_is_immutable_and_unknown_role_fails(primary):
         ROLES["other"] = ROLES["george"]
     with pytest.raises(KeyError):
         make_agent("unknown", primary)
-    assert CREW_VERSION == "midnight-crew-2"
+    assert CREW_VERSION == "midnight-crew-3"

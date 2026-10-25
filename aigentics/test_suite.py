@@ -273,7 +273,9 @@ def run_suite(
     if thinking_override not in (None, "default", "on", "off"):
         raise ValueError("Unknown thinking override")
     if thinking_override is not None:
-        profile = profile.model_copy(update={"ollama_thinking": thinking_override})
+        profile = profile.model_copy(
+            update={"ollama_thinking": thinking_override, "temperature": 0.2, "top_p": None, "top_k": None}
+        )
     cases = CASES
     if case_ids is not None:
         selected = tuple(case_ids)

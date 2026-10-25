@@ -9,7 +9,7 @@ from types import MappingProxyType
 
 from .models import Agent, ModelRef
 
-CREW_VERSION = "midnight-crew-2"
+CREW_VERSION = "midnight-crew-3"
 READ_TOOLS = ("list_files", "read_file", "search", "project_map", "retrieve_context")
 WRITE_TOOLS = (*READ_TOOLS, "write_file")
 COMMON_INSTRUCTIONS = (
@@ -121,6 +121,18 @@ ROLES = MappingProxyType(
 
 def make_agent(role: str, primary: ModelRef) -> Agent:
     """Build one independent, reproducible baseline with no cloud fallback/commands."""
+    if role == "orion":
+        return Agent(
+            id="midnight-orion-v1",
+            name="Orion",
+            kind="coordinator",
+            description="Coordinator · Bounded build/review pilot; delegates to Ada and optionally Sentinel.",
+            instructions="You are Orion, the coordinator. Assign focused work, track application evidence and report unresolved requirements. Never claim a worker succeeded without its recorded checks. You have no direct file or command authority.",
+            primary=primary.model_copy(deep=True),
+            tools=[],
+            allow_writes=False,
+            allow_commands=False,
+        )
     definition = ROLES[role]
     return Agent(
         id=f"midnight-{role}-v1",
@@ -146,11 +158,27 @@ def ensure_roster(store, primary: ModelRef) -> dict[str, Agent]:
     This function performs no model requests, discovery, execution, or publication.
     """
     existing = {agent.id: agent for agent in store.agents()}
+    # Migrate only the exact stock generalist. Custom George definitions remain intact.
+    legacy = existing.get("midnight-george-v1")
+    if legacy and "midnight-orion-v1" not in existing:
+        original = make_agent("george", legacy.primary)
+        fields = {"revision", "id"}
+        if legacy.model_dump(exclude=fields) == original.model_dump(exclude=fields):
+            orion = make_agent("orion", legacy.primary).model_copy(update={"id": legacy.id})
+            existing[legacy.id] = store.save_agent(orion)
     result = {}
-    for role in ROLES:
+    for role in ACTIVE_ROLES:
         identity = f"midnight-{role}-v1"
         agent = existing.get(identity)
+        if role == "orion" and agent is None:
+            agent = next(
+                (a for a in existing.values() if a.id == "midnight-george-v1" and a.kind == "coordinator"),
+                None,
+            )
         if agent is None:
             agent = store.save_agent(make_agent(role, primary))
         result[role] = agent
     return result
+
+
+ACTIVE_ROLES = ("orion", "scout", "ada", "vera", "sentinel", "atlas")

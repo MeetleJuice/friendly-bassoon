@@ -1,6 +1,6 @@
 # 0.18 draft — Orion coordination and measured model profiles
 
-**Status: planning only. Implementation/release not started.** User accepted Orion's name and manager role and requested a plan based on the new ZIP. App remains0.17.0. See RESULTS_0170_REVIEW.md; user confirmed the ZIP uses the same8Bmodel as before; exact tag/quantization remain omitted. Keep the praised UI and existing Update/restart/reviewedZIP flow.
+**Status: user authorized implementation. Source implementation and validation in progress; no release claim yet.** User accepted Orion's name and manager role and requested a plan based on the new ZIP. The installed app remains0.17.0 until verified release delivery. See RESULTS_0170_REVIEW.md; user confirmed the ZIP uses the same8Bmodel as before; exact tag/quantization remain omitted. Keep the praised UI and existing Update/restart/reviewedZIP flow.
 
 ## Outcome
 
@@ -50,3 +50,14 @@ Make inference settings explicit and measurable; preserve a generalist baseline;
 Full relevant native/schema/GUI/storage regressions, lint/format, source startup/offline smoke, wheel fidelity, actual Windows installer/shortcut, released0.17upgrade/data preservation/restart and productionUpdater verification. Preserve the newly fixed explicitUTF8 readers, integer spent-budget guard and always-joined GUI test workers. Keep critical CI failure annotations available; progress stays ordinary logs.
 
 Use a tested coordinator feature flag/pilot surface until matched local runs demonstrate benefit. Name change alone is not an architectural upgrade. Ship inference-profile/evidence foundations first; activate the managed pilot only after its safety/state/budget tests pass. No release or app modification is authorized by this planning document alone.
+
+
+## Implemented scope and predeclared workload
+
+Campaign6 / measurement3 / crew3 / strict-contract4 / verified-completion3. Retain34 trial slots, add18 role thinking-off trials and4 total-budget direct/managed comparisons:56model slots plus28offline checks =84recorded outcomes. Scout/Vera repeat1 pairs lead the fixed order; there is no outcome-dependent early selection or hidden retry. Total campaign ceiling remains7200s; completion is not promised by that time. All26off-dependent slots skip when explicit active-default controls are unavailable. Personal settings remain unchanged; measurement temperature0.2 and inherited top-p/top-k are explicit and recorded. Test a9Bcandidate by selecting its saved model separately, not automatic reloads.
+
+Orion is a typed coordinator; only an exact stock George definition migrates in place. User edits/custom George remain, with a separate Orion record. A saved generalist session keeps its original snapshot. The internal George benchmark remains a generalist baseline, not a manager score. Closed pilot uses canonical bounded worker definitions on Orion's selected native local engine, independent of personal worker editor changes. Workbench selection plus explicit outputs starts the experimental pilot; direct agent mode remains the default elsewhere. Workers cannot dispatch. Root12requests/49152outputreservation (further clamped by root steps), maximum2worker dispatches, one serial writer and original root time include all planning/worker/narration calls. Child links are lineage only, never conversation replay. Read-only review is advisory, not semantic proof; arbitrary daily tasks only prove configured operational checks unless an application-owned acceptance contract is supplied.
+
+Sampling presets edit the preview; saving is explicit. Existing temperature0.2/model-defaultthinking retained. Omitted top-p/top-k are server-inherited, not known numeric settings. No universal vendor optimum or hidden-compute guarantee claimed. Current scope adds parameter/quantization metadata and allocation/context end observations when reported; no per-request full GPU telemetry, seed isolation, automatic model tournament or schema-validated JSON writer.
+
+Release optimization: main-branch Windows source run remains the full gate. An explicit promotion dispatch verifies successful source/run/artifact provenance, downloads that immutable installer, verifies version/checksum and publishes without another full run/build. Published tags/checksums cannot be overwritten. Public BUILD_PROVENANCE.json records the binding. This replaces duplicate source/tag validation, not the actual installer/upgrade checks.

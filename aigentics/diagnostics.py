@@ -29,13 +29,15 @@ from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
 from .ollama_settings import OLLAMA_USAGE_FIELDS, public_thinking
 
-SUITE_VERSION = "9"
-OFFLINE_CHECK_COUNT = 27
+SUITE_VERSION = "10"
+OFFLINE_CHECK_COUNT = 28
 
 
 def model_evidence(events):
     """Bounded protocol structure only, never raw synthetic/model/provider text."""
     from .tool_diagnostics import tool_diagnostics
+
+    from .inference import public_sampling, public_model_details
 
     metadata, traces = {}, []
     requests = {e["data"]["request_id"]: e["data"] for e in events if e["kind"] == "model.requested"}
@@ -59,12 +61,14 @@ def model_evidence(events):
                 if key in data
             }
             metadata.update(public_thinking(data))
+            metadata.update(public_model_details(data))
         if event["kind"] == "model.responded":
             request = requests.get(data["request_id"], {})
             traces.append(
                 {
                     "step": request.get("step"),
                     "thinking_mode": request.get("thinking_mode", "default"),
+                    "sampling": public_sampling(request.get("sampling", {})),
                     "duration_ms": data["duration_ms"],
                     "native_call_count": data["tool_calls"],
                     "content_chars": data["content_chars"],
@@ -82,6 +86,19 @@ def model_evidence(events):
                 }
             )
     return {
+        "terminal_response_status": next(
+            (
+                e["data"].get("terminal_response_status", "not_recorded")
+                for e in reversed(events)
+                if e["kind"] == "run.summary"
+            ),
+            "not_recorded",
+        ),
+        "target_reads": [
+            {k: e["data"][k] for k in ("category", "ordinal", "after_latest_write")}
+            for e in events
+            if e["kind"] == "tool.target_read"
+        ][-32:],
         "thinking_mode": next(
             (e["data"].get("thinking_mode", "default") for e in events if e["kind"] == "model.requested"),
             "default",
@@ -321,6 +338,11 @@ class DiagnosticRunner:
         from .self_checks_0170 import thinking_control_check
 
         return thinking_control_check(self.credentials)
+
+    def team_pilot_fixture(self):
+        from .self_checks_0180 import team_pilot_check
+
+        return team_pilot_check(self.credentials)
 
     def __init__(self, store, credentials, provider_factory=Provider, updater=None):
         self.store, self.credentials = store, credentials
@@ -822,6 +844,7 @@ class DiagnosticRunner:
                 ("correctness_fixture", lambda: correctness_check(self.credentials)),
                 ("completion_order_fixture", lambda: self.completion_order_fixture()),
                 ("thinking_control_fixture", lambda: self.thinking_control_fixture()),
+                ("team_pilot_fixture", self.team_pilot_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

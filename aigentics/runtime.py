@@ -12,7 +12,8 @@ from .providers import Provider, ProviderError
 from .tools import Workspace, ToolRunner, tool_definitions, SCHEMAS, StaleFileError, WriteTargetError
 from .tools import validation_feedback, validation_recovery_arguments
 from .harness import request_size
-from .task_checks import TaskChecks, TaskEvidence
+from .task_checks import TaskChecks, TaskEvidence, path_key
+from .inference import sampling_options
 
 
 class NoProgressError(RuntimeError):
@@ -44,7 +45,7 @@ def looks_like_text_tool_call(text):
     return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
-RUNTIME_POLICY_VERSION = "verified-completion-2"
+RUNTIME_POLICY_VERSION = "verified-completion-3"
 
 
 class RunTimeout(TimeoutError):
@@ -92,7 +93,10 @@ class Runtime:
         parent=None,
         task_checks=None,
         acceptance=None,
+        handoff_parent=None,
     ):
+        if agent.kind != "worker":
+            raise ValueError("Use the bounded team pilot for a coordinator")
         cancel = cancel or threading.Event()
         ws = Workspace(workspace)
         checks = TaskChecks.model_validate(task_checks or {})
@@ -149,7 +153,7 @@ class Runtime:
             raise ValueError("Read-back checks require the read_file tool.")
         if checks.unchanged_targets and not {"read_file", "write_file"} <= advertised_names:
             raise ValueError("Unchanged-file checks require permitted read_file and write_file tools.")
-        sid = self.store.start(agent, ws.root, capture, parent)
+        sid = self.store.start(agent, ws.root, capture, handoff_parent or parent)
         deadline = time.monotonic() + agent.max_seconds
         started = time.monotonic()
 
@@ -326,6 +330,7 @@ class Runtime:
                                 "profile": ref.profile_id,
                                 "model": ref.model,
                                 "thinking_mode": profiles[ref.profile_id].ollama_thinking,
+                                "sampling": sampling_options(profiles[ref.profile_id]),
                                 "message_count": len(messages),
                                 "context_chars": len(json.dumps(messages)),
                                 "request_chars": request_size(messages, tools),
@@ -494,7 +499,8 @@ class Runtime:
                                 "content": self.credentials.redact(
                                     "Application verification: the original task is unfinished. "
                                     "Use native tools to satisfy these checks within the original permissions. "
-                                    "Read saved outputs back; inspect required sources and compare values, types, boundaries and formatting against the brief. "
+                                    "Repair failing artifacts FIRST, then read_file EACH final artifact AFTER the last change, then finish. "
+                                    "Inspect required sources and compare values, types, boundaries and formatting against the brief. "
                                     "Only correct artifacts that fail acceptance; do not rewrite an already correct output, "
                                     "bypass a denial, change unrelated files, or claim success without evidence. "
                                     + json.dumps({"checks": pending, "remaining": details})
@@ -642,6 +648,25 @@ class Runtime:
                         if key in result:
                             summary[key] = result[key]
                     event("tool.result", summary)
+                    if call.name == "read_file" and status == "succeeded":
+                        key = path_key(ws, call.arguments["path"])
+                        for category, paths in (
+                            ("output", checks.write_targets),
+                            ("source", checks.required_reads),
+                            ("unchanged", checks.unchanged_targets),
+                        ):
+                            for ordinal, target in enumerate(paths, 1):
+                                if str(ws.path(target)) == key:
+                                    event(
+                                        "tool.target_read",
+                                        {
+                                            "category": category,
+                                            "ordinal": ordinal,
+                                            "after_latest_write": task_evidence.readbacks.get(key)
+                                            == task_evidence.writes.get(key)
+                                            and key in task_evidence.writes,
+                                        },
+                                    )
                     emit(
                         {
                             "kind": "tool.output",
@@ -703,6 +728,9 @@ class Runtime:
                     "task_checks": task_result,
                     "completion_feedback_count": completion_feedback_count,
                     "final_response_status": final_response_status,
+                    "terminal_response_status": "accepted"
+                    if state in ("completed", "response_only")
+                    else "not_accepted",
                     "unresolved_tool_errors": max(
                         0,
                         tool_counts["failed"]

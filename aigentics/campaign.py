@@ -29,7 +29,7 @@ from .test_suite import (
 from .tools import Workspace
 from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials
 
-CAMPAIGN_VERSION = "crew-campaign-5"
+CAMPAIGN_VERSION = "crew-campaign-6"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -118,7 +118,9 @@ def role_case(
     budget = {"max_output_tokens": 4096, "request_timeout_seconds": 120, "session_budget_seconds": 180}
     profile = local_profile(store, agent)
     if thinking_override is not None:
-        profile = profile.model_copy(update={"ollama_thinking": thinking_override})
+        profile = profile.model_copy(
+            update={"ollama_thinking": thinking_override, "temperature": 0.2, "top_p": None, "top_k": None}
+        )
     budget["request_timeout_seconds"] = min(profile.timeout_seconds, 120)
     agent.max_seconds = 180
     agent.max_steps = 10
@@ -260,7 +262,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 "profile": local_profile(store, agent).model_dump() if mode != "quick" else None,
                 "role_fingerprints": {
                     role: store.fingerprint(make_agent(role, agent.primary).model_dump())
-                    for role in ("george", "scout", "ada", "vera", "sentinel", "atlas")
+                    for role in ("george", "orion", "scout", "ada", "vera", "sentinel", "atlas")
                 }
                 if mode != "quick"
                 else {},
@@ -369,7 +371,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         started = time.monotonic()
         try:
             trial = MEASUREMENT_TRIALS.get(identity)
-            if trial and trial.arm == "thinking_off" and thinking_skip:
+            if trial and trial.thinking_mode == "off" and thinking_skip:
                 row = {
                     "id": identity,
                     "status": "skipped",
@@ -378,6 +380,10 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     "duration_ms": 0,
                     "evidence": {"thinking_mode": "off", "timing_unknown": True, **trial.budget},
                 }
+            elif trial and trial.case_kind == "workflow":
+                from .team_evaluation import run_trial
+
+                row = run_trial(store, credentials, agent.primary, trial, CampaignCancel(), provider_factory)
             elif trial and trial.case_kind == "role":
                 case = next(c for c in ROLE_CASES if c.id == trial.case_id)
                 row = role_case(

@@ -37,13 +37,13 @@ def report(rows, **changes):
     return {"manifest_id": "a" * 64, "configuration_sha256": "b" * 64, "checks": rows, **changes}
 
 
-def test_plan_has_34_fresh_unique_attempts_covering_all_six_locals():
+def test_plan_has_56_fresh_unique_attempts_covering_all_six_locals():
     plan = measurement_plan()
-    assert len(plan) == len({t.id for t in plan}) == 34
+    assert len(plan) == len({t.id for t in plan}) == 56
     counts = Counter((t.case_kind, t.case_id, t.arm) for t in plan)
-    assert len(counts) == 14
+    assert len(counts) == 22
     assert all(count == (3 if kind == "role" else 2) for (kind, _, _), count in counts.items())
-    assert sum(t.case_kind == "role" for t in plan) == 18
+    assert sum(t.case_kind == "role" for t in plan) == 36
     assert sum(t.case_kind == "baseline" for t in plan) == 16
     assert all(t.max_output_tokens in (1024, 4096) for t in plan)
     assert all(t.request_timeout_seconds <= t.session_budget_seconds <= 180 for t in plan)
@@ -83,8 +83,16 @@ def test_manifest_is_stable_complete_and_excludes_connection_identity():
     assert manifest_id(manifest) == manifest_id(measurement_manifest())
     assert len(manifest_id(manifest)) == 64
     assert manifest["measurement_version"] == MEASUREMENT_VERSION
-    assert len(manifest["trials"]) == 34 and len(manifest["cases"]) == 8
-    assert set(manifest["agent_definitions"]) == {"george", "scout", "ada", "vera", "sentinel", "atlas"}
+    assert len(manifest["trials"]) == 56 and len(manifest["cases"]) == 8
+    assert set(manifest["agent_definitions"]) == {
+        "george",
+        "orion",
+        "scout",
+        "ada",
+        "vera",
+        "sentinel",
+        "atlas",
+    }
     assert all(
         "primary" not in agent and "fallbacks" not in agent
         for agent in manifest["agent_definitions"].values()
@@ -136,7 +144,7 @@ def test_manifest_mapping_order_is_irrelevant_but_trial_order_matters():
 
 def test_empty_run_reports_unrecorded_coverage_without_fake_zeros():
     summary = summarize_trials([])
-    assert len(summary["groups"]) == 14
+    assert len(summary["groups"]) == 22
     for g in summary["groups"]:
         assert g["recorded_repetitions"] == g["eligible_repetitions"] == 0
         assert g["unrecorded"] == g["planned_repetitions"]

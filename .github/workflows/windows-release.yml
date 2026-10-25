@@ -3,15 +3,20 @@ name: Windows installer
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      verified_run_id:
+        description: 'Promote the exact installer from this successful main-branch run; blank runs all build gates'
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || inputs.verified_run_id == ''
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
@@ -125,22 +130,44 @@ jobs:
           if-no-files-found: ignore
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.verified_run_id != ''
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          pattern: Aigentics-Windows-*
-          path: release
-          merge-multiple: true
-      - name: Publish verified Windows release
+      - name: Verify successful source and immutable artifact provenance
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_RUN_ID: ${{ inputs.verified_run_id }}
         run: |
-          gh release create "$RELEASE_TAG" release/Aigentics-Setup-*.exe release/SHA256SUMS.txt \
-            --verify-tag --title "Aigentics Desktop $RELEASE_TAG" --notes-file docs/RELEASE_NOTES.md
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts" > source-artifacts.json
+          python scripts/release_provenance.py source source-run.json source-artifacts.json "$GITHUB_REPOSITORY" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          clean: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: Aigentics-Windows-${{ steps.source.outputs.version }}
+          path: release
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.verified_run_id }}
+      - name: Verify exact installer and publish without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.source.outputs.version }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          python scripts/release_provenance.py verify release
+          python -c 'import os,tomllib; assert tomllib.load(open("pyproject.toml","rb"))["project"]["version"] == os.environ["RELEASE_VERSION"]'
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo 'Release tag already exists; refusing to overwrite it'; exit 1
+          fi
+          gh release create "v$RELEASE_VERSION" release/Aigentics-Setup-*.exe release/SHA256SUMS.txt release/BUILD_PROVENANCE.json \
+            --target "$SOURCE_SHA" --title "Aigentics Desktop v$RELEASE_VERSION" --notes-file docs/RELEASE_NOTES.md

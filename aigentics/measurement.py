@@ -11,11 +11,12 @@ import re
 from math import comb
 from typing import Literal
 
-MEASUREMENT_VERSION = "crew-measurement-2"
+MEASUREMENT_VERSION = "crew-measurement-3"
 ARCHIVED_MANIFESTS = {
-    "crew-measurement-1": "0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d"
+    "crew-measurement-1": "0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d",
+    "crew-measurement-2": "e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e",
 }
-GRADER_VERSION = "strict-contract-3"
+GRADER_VERSION = "strict-contract-4"
 REFERENCE_CASES = (
     ("role", "george_workflow"),
     ("role", "scout_symbol"),
@@ -44,9 +45,9 @@ USAGE_KEYS = ("prompt_eval_count", "eval_count")
 @dataclass(frozen=True)
 class Trial:
     id: str
-    case_kind: Literal["baseline", "role"]
+    case_kind: Literal["baseline", "role", "workflow"]
     case_id: str
-    arm: Literal["reference", "output_only", "coordinated", "thinking_off"]
+    arm: Literal["reference", "output_only", "coordinated", "thinking_off", "direct", "managed"]
     repeat: int
     max_output_tokens: int
     request_timeout_seconds: int
@@ -54,7 +55,7 @@ class Trial:
 
     @property
     def thinking_mode(self):
-        return "off" if self.arm == "thinking_off" else "default"
+        return "off" if self.arm == "thinking_off" or self.case_kind == "workflow" else "default"
 
     @property
     def budget(self):
@@ -123,10 +124,48 @@ def measurement_plan(version=MEASUREMENT_VERSION):
                             180 if arm in ("coordinated", "thinking_off") else 90,
                         )
                     )
-    if version in ARCHIVED_MANIFESTS:
+    if version == "crew-measurement-1":
         return tuple(t for t in trials if t.arm != "thinking_off")
+    if version == "crew-measurement-2":
+        return tuple(trials)
     if version != MEASUREMENT_VERSION:
         raise ValueError("Unknown measurement version")
+    # Short paired calibration first: Scout and Vera expose the recent failure modes.
+    # Preserve all 34 retained comparisons; add 18 per-role off trials and 4 team trials.
+    for repeat in range(1, 4):
+        for _, identity in (item for item in REFERENCE_CASES if item[0] == "role"):
+            trials.append(
+                Trial(
+                    f"measure-{identity}-thinking_off-r{repeat}",
+                    "role",
+                    identity,
+                    "thinking_off",
+                    repeat,
+                    4096,
+                    120,
+                    180,
+                )
+            )
+    for repeat in (1, 2):
+        for arm in ("direct", "managed") if repeat == 1 else ("managed", "direct"):
+            trials.append(
+                Trial(
+                    f"measure-team_build-{arm}-r{repeat}",
+                    "workflow",
+                    "ada_repair",
+                    arm,
+                    repeat,
+                    4096,
+                    120,
+                    180,
+                )
+            )
+    priority = {"scout_symbol": 0, "vera_exclusive": 1}
+    calibration = sorted(
+        (t for t in trials if t.case_id in priority and t.repeat == 1),
+        key=lambda t: (priority[t.case_id], t.arm != "thinking_off"),
+    )
+    trials = calibration + [t for t in trials if t not in calibration]
     return tuple(trials)
 
 
@@ -149,7 +188,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
     configuration fingerprint and run evidence, not this public case definition.
     """
     from .crew import CREW_VERSION, make_agent
-    from .contracts import HINTS, MAX_MISMATCHES, MAX_POINTER, contract_prompt
+    from .contracts import HINTS, MAX_MISMATCHES, MAX_POINTER, PARSE_REASONS, contract_prompt
     from .crew_cases import CASES as ROLE_CASES
     from .models import ModelRef
     from .test_suite import CASES, CASE_OUTPUTS, COMPLEX_CASES, baseline_files
@@ -225,6 +264,14 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
             for key, value in agent.model_dump().items()
             if key not in ("id", "revision", "primary", "fallbacks")
         }
+    coordinator = make_agent("orion", primary)
+    definitions["orion"] = {
+        k: v
+        for k, v in coordinator.model_dump().items()
+        if k not in ("id", "revision", "primary", "fallbacks")
+    }
+    from .coordination import PILOT_VERSION, MAX_CALLS, MAX_OUTPUT_RESERVATION, TOOLS as TEAM_TOOLS
+
     manifest = {
         "measurement_version": MEASUREMENT_VERSION,
         "grader_version": grader_version,
@@ -233,6 +280,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
             "hints": dict(HINTS),
             "max_mismatches": MAX_MISMATCHES,
             "max_pointer": MAX_POINTER,
+            "parse_reasons": sorted(PARSE_REASONS),
         },
         "crew_version": CREW_VERSION,
         "cases": selected,
@@ -241,6 +289,18 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
         "tool_schemas": {name: schema.model_json_schema() for name, schema in sorted(SCHEMAS.items())},
         "task_check_schema": TaskChecks.model_json_schema(),
         "sampling": {"temperature": 0.2, "seed": None, "deterministic_model_outputs": False},
+        "team_pilot": {
+            "version": PILOT_VERSION,
+            "tools": TEAM_TOOLS,
+            "max_dispatches": 2,
+            "max_total_calls": MAX_CALLS,
+            "max_total_output_reservation": MAX_OUTPUT_RESERVATION,
+            "task_case": "ada_repair",
+            "thinking": "off_if_eligible_else_skip",
+            "review": "advisory_and_read_only",
+            "authority": "application_owned_checks",
+            "serial": True,
+        },
         "policy": {
             "track": "measurement",
             "native_calls_only": True,
@@ -361,20 +421,26 @@ def summarize_trials(rows, *, version=MEASUREMENT_VERSION):
         "usage_basis": "Retained traces plus known rejected-response counters; not billing totals",
         "sampling_note": "Observed repetitions only; no deterministic model or pass@k estimate claimed",
     }
-    if version == MEASUREMENT_VERSION:
-        summary["thinking_pairs"] = thinking_pairs(rows)
+    if version in (MEASUREMENT_VERSION, "crew-measurement-2"):
+        summary["thinking_pairs"] = thinking_pairs(rows, version=version)
     return summary
 
 
-def thinking_pairs(rows):
+def thinking_pairs(rows, *, version=MEASUREMENT_VERSION):
     """Matched settings, not a causal or hidden-compute guarantee."""
     from .ollama_settings import public_thinking, thinking_experiment_available
 
     index = {row.get("id"): row for row in rows}
     results = []
-    for case in ("unicode", "noop"):
-        for repeat in (1, 2):
-            left = index.get(f"measure-{case}-coordinated-r{repeat}", {})
+    cases = ("unicode", "noop") + (
+        tuple(identity for kind, identity in REFERENCE_CASES if kind == "role")
+        if version == MEASUREMENT_VERSION
+        else ()
+    )
+    for case in cases:
+        reference_arm = "coordinated" if case in ("unicode", "noop") else "reference"
+        for repeat in (1, 2) if case in ("unicode", "noop") else (1, 2, 3):
+            left = index.get(f"measure-{case}-{reference_arm}-r{repeat}", {})
             right = index.get(f"measure-{case}-thinking_off-r{repeat}", {})
             a, b = left.get("evidence", {}), right.get("evidence", {})
             first, second = _outcome(left), _outcome(right)
@@ -411,7 +477,7 @@ def thinking_pairs(rows):
                 {
                     "case_id": case,
                     "repeat": repeat,
-                    "reference_arm": "coordinated",
+                    "reference_arm": reference_arm,
                     "treatment_arm": "thinking_off",
                     "eligible": eligible,
                     "reference_passed": first,

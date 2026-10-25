@@ -78,6 +78,8 @@ def public_observation(value):
         ("context_length", 2_000_000),
         ("loaded_models", 1024),
         ("observer_duration_ms", 10000),
+        ("model_bytes", 10**12),
+        ("model_vram_bytes", 10**12),
     ):
         number = value.get(key)
         if type(number) is int and 0 <= number <= maximum:

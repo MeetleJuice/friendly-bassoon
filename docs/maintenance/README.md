@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.18 draft Orion/calibration plan](UPGRADE_0180_PLAN.md) and [latest 0.17 result review](RESULTS_0170_REVIEW.md) — planning only.
 - [0.17 verified completion and observable thinking](UPGRADE_0170_PLAN.md), [research](RESEARCH_0170.md) and [source hashes](RESEARCH_SOURCES_0170.json), plus the [verified delivery receipt](RELEASE_0170_VERIFIED.json).
 - [0.16 Midnight Crew interface](UPGRADE_0160_PLAN.md) and [primary-source UI research](../design/UI_RESEARCH_0160.md).
 - [0.15 precise diagnostics and repeated measurement](UPGRADE_0150_PLAN.md).

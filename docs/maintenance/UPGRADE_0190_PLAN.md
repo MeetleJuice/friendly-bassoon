@@ -1,6 +1,8 @@
 # 0.19 — simpler dispatch, checked proposals, focused evidence
 
-User explicitly authorized research and the next update. Implement before release; keep current8B/personal profiles, automatic context, approved writes, strict graders and reviewed local ZIP. No new cloud generation, MCP expansion or weights training.
+**Status:0.19.0published and Windows/public-updater verified; see RELEASE_0190_VERIFIED.json.**
+
+User explicitly authorized research and the next update. Implemented before release; keep current8B/personal profiles, automatic context, approved writes, strict graders and reviewed local ZIP. No new cloud generation, MCP expansion or weights training.
 
 ## Research access and scope
 

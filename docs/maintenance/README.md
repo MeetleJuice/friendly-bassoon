@@ -2,7 +2,7 @@
 
 Latest data: [0.18 completed ZIP analysis](RESULTS_0180_REVIEW.md), including per-role modes, Vera recovery and Orion pre-dispatch failures. App unchanged by review.
 
-[0.19 implementation plan](UPGRADE_0190_PLAN.md), [research and access limits](RESEARCH_0190.md), [source hashes](RESEARCH_SOURCES_0190.json). Implementation authorized; validation/delivery pending.
+[0.19 implementation plan](UPGRADE_0190_PLAN.md), [research and access limits](RESEARCH_0190.md), [source hashes](RESEARCH_SOURCES_0190.json). Delivered0.19.0; [verified installer receipt](RELEASE_0190_VERIFIED.json).
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 

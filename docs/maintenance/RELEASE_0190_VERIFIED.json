@@ -1,0 +1,13 @@
+{
+  "version": "0.19.0",
+  "source": "d398635a22eb2d2307f0f7d65ead7bf3cbf01998",
+  "source_run": 40232969301,
+  "promotion_run": 40233904284,
+  "installer": "Aigentics-Setup-0.19.0.exe",
+  "bytes": 42556172,
+  "sha256": "edb86229b5c8ea7ba21942b0ec6b5093520910b1e13d328ef667e77d383026e0",
+  "production_updater_check_download_verify": "passed",
+  "installer_reused_without_rebuild": true,
+  "artifact_id": 12613854970,
+  "artifact_digest": "sha256:6f1c5b91f7e265af09f23bb1ee3530195df3a8964948024e913537bc30e037ff"
+}

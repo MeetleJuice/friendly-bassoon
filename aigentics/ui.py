@@ -1158,6 +1158,11 @@ class Window(QMainWindow):
         self.require_task_readback.setChecked(True)
         options.addWidget(self.require_task_tools)
         options.addWidget(self.require_task_readback)
+        self.json_object_outputs = QCheckBox("Require JSON object outputs")
+        self.json_object_outputs.setToolTip(
+            "Enable when the declared .json files must contain objects. Invalid JSON or an array root is rejected before a diff is approved. This does not check the requested values."
+        )
+        cl.addWidget(self.json_object_outputs)
         self.required_task_tools = []
         self.required_tools_button = button("Required tools (0)…", self.choose_required_tools, options)
         self.conversation_mode = QComboBox()
@@ -1844,6 +1849,13 @@ class Window(QMainWindow):
                 TaskChecks()
                 if lab
                 else TaskChecks(
+                    json_outputs={
+                        p.strip(): "object"
+                        for p in self.expected_files.text().split(",")
+                        if p.strip().lower().endswith(".json")
+                    }
+                    if self.json_object_outputs.isChecked() and self.task_mode.currentData() != "plan"
+                    else {},
                     write_targets=[]
                     if self.task_mode.currentData() == "plan"
                     else [p.strip() for p in self.expected_files.text().split(",") if p.strip()],
@@ -2044,6 +2056,8 @@ class Window(QMainWindow):
                 text += "\nRequired tools not successful: " + ", ".join(data["unmet_tools"])
         elif kind == "edit.recovered":
             text = "Earlier stale-edit errors recovered after a successful reviewed write."
+        elif kind == "proposal.recovered":
+            text = "Rejected proposal errors resolved by a permitted verified write and current readback. Original failures remain recorded."
         elif kind.startswith("session."):
             text = "Run status: " + kind.split(".", 1)[1].replace("_", " ") + "\n" + data["outcome"]
         elif kind == "provider.fallback":
@@ -2113,6 +2127,7 @@ class Window(QMainWindow):
         self.required_task_tools = []
         self.required_tools_button.setText("Required tools (0)…")
         self.require_task_tools.setChecked(False)
+        self.json_object_outputs.setChecked(False)
         self.suggest_task_files()
         self.work_output.clear()
 

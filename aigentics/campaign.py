@@ -27,9 +27,9 @@ from .test_suite import (
     bounded_tool_timeline,
 )
 from .tools import Workspace
-from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials
+from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials, focused_plan
 
-CAMPAIGN_VERSION = "crew-campaign-6"
+CAMPAIGN_VERSION = "crew-campaign-7"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -60,7 +60,9 @@ ALL_CASE_IDS = (*PLAN_IDS, *MEASUREMENT_TRIALS)
 
 
 def plan(mode):
-    if mode == "measurement":
+    if mode == "focused":
+        return [trial.id for trial in focused_plan()]
+    if mode in ("measurement", "focused"):
         return list(MEASUREMENT_TRIALS)
     if mode not in ("quick", "standard", "deep"):
         raise ValueError("Unknown campaign mode")
@@ -94,7 +96,9 @@ def campaign_scope(store, agent, mode):
             "crew": CREW_VERSION,
             "campaign": CAMPAIGN_VERSION,
             "mode": mode,
-            "manifest_id": manifest_id(measurement_manifest()) if mode == "measurement" else None,
+            "manifest_id": manifest_id(measurement_manifest())
+            if mode in ("measurement", "focused")
+            else None,
         }
     )
 
@@ -171,8 +175,15 @@ def role_case(
                 and any(same(detail.get("path"), p) for p in outputs),
                 cancel,
                 capture=False,
+                actor=case.role,
                 acceptance=lambda ws, text: evaluate_contract(case, ws.root, text),
                 task_checks=TaskChecks(
+                    json_outputs={
+                        name: "object" if isinstance(value, dict) else "array"
+                        for name, value in case.output_json.items()
+                    }
+                    if clarified
+                    else {},
                     write_targets=sorted(outputs),
                     require_tools=True,
                     require_readback=True,
@@ -268,12 +279,12 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 else {},
             },
         )
-    if mode == "measurement":
+    if mode in ("measurement", "focused"):
         report["measurement_manifest"] = measurement_manifest()
         report["manifest_id"] = manifest_id(report["measurement_manifest"])
     thinking_info = {}
     thinking_skip = None
-    if mode == "measurement":
+    if mode in ("measurement", "focused"):
         from .providers import Provider
         from .ollama_settings import public_thinking, thinking_experiment_available
 
@@ -305,7 +316,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
             "eligible": thinking_skip is None,
             "skip_code": thinking_skip,
         }
-    report["track"] = "measurement" if mode == "measurement" else "discovery"
+    report["track"] = "measurement" if mode in ("measurement", "focused") else "discovery"
     if any(r["id"] not in identities for r in report["checks"]):
         raise ValueError("Saved campaign does not match its manifest")
     uncertain_ms = 0
@@ -357,7 +368,10 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
     by_id = {f"{c.role}-{c.id}": c for c in ROLE_CASES}
     integrity_ok = True
     for identity in identities:
-        if mode == "measurement" and manifest_id(measurement_manifest()) != report["manifest_id"]:
+        if (
+            mode in ("measurement", "focused")
+            and manifest_id(measurement_manifest()) != report["manifest_id"]
+        ):
             integrity_ok = False
             break
         if identity in done or bounded_cancel.is_set():
@@ -469,9 +483,9 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         emit({"kind": "campaign.result", "data": row})
     report["duration_ms"] = prior_ms + round((time.monotonic() - before) * 1000)
     report["budget_used_ms"] = prior_budget_ms + round((time.monotonic() - before) * 1000)
-    if mode == "measurement":
+    if mode in ("measurement", "focused"):
         integrity_ok = integrity_ok and manifest_id(measurement_manifest()) == report["manifest_id"]
-    report["manifest_verified"] = integrity_ok if mode == "measurement" else None
+    report["manifest_verified"] = integrity_ok if mode in ("measurement", "focused") else None
     report["stop_reason"] = (
         "benchmark_changed"
         if not integrity_ok
@@ -501,8 +515,8 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         )
         else "needs_attention"
     )
-    if mode == "measurement":
-        report["measurement_summary"] = summarize_trials(report["checks"])
+    if mode in ("measurement", "focused"):
+        report["measurement_summary"] = summarize_trials(report["checks"], mode=mode)
     if provider_factory is None and mode != "quick" and not cancel.is_set():
         from .providers import Provider
 

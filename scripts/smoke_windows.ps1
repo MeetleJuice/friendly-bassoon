@@ -29,12 +29,12 @@ Write-Output "Windows installer, desktop shortcut, packaged GUI, SQLite and shut
 $diagnostics = Start-Process -FilePath $executablePath -ArgumentList '--diagnostic-smoke-test' -PassThru
 if (-not $diagnostics.WaitForExit(60000)) { $diagnostics.Kill(); throw "Packaged diagnostic suite timed out" }
 if ($diagnostics.ExitCode -ne 0) { throw "Packaged diagnostic suite failed: exit $($diagnostics.ExitCode)" }
-Write-Output "All 28 built-in packaged diagnostic checks passed. No support report was submitted."
+Write-Output "All 29 built-in packaged diagnostic checks passed. No support report was submitted."
 
-# Verify migration from the public 0.17.0 installer, using its previously verified immutable checksum.
-$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.17.0.exe'
-Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.17.0/Aigentics-Setup-0.17.0.exe' -OutFile $previousInstaller
-$expectedPreviousHash = '1b8740aaf190efb21bcac84a7c8eb1bf539a4bccd689ce5e63f42519a5df61a7'
+# Verify migration from the public 0.18.0 installer, using its previously verified immutable checksum.
+$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.18.0.exe'
+Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.18.0/Aigentics-Setup-0.18.0.exe' -OutFile $previousInstaller
+$expectedPreviousHash = '68264b4064d758530ed0e18dcded9a574bedb8d97251bf71c9f828f3886951ce'
 if ((Get-FileHash $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedPreviousHash) {
     throw 'Previous release failed its pinned checksum; refusing upgrade test'
 }
@@ -56,7 +56,7 @@ if ($newApp.ExitCode -ne 0) { throw 'Upgraded app startup failed' }
 python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
 if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not preserve data' }
 if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }
-Write-Output 'Real 0.17.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
+Write-Output 'Real 0.18.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
 
 
 # Prove the in-app update contract: silent setup must actually restart its GUI.

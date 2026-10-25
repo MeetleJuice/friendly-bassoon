@@ -14,6 +14,7 @@ from .tools import validation_feedback, validation_recovery_arguments
 from .harness import request_size
 from .task_checks import TaskChecks, TaskEvidence, path_key
 from .inference import sampling_options
+from .json_proposals import JsonProposalError
 
 
 class NoProgressError(RuntimeError):
@@ -45,7 +46,7 @@ def looks_like_text_tool_call(text):
     return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
-RUNTIME_POLICY_VERSION = "verified-completion-3"
+RUNTIME_POLICY_VERSION = "verified-completion-4"
 
 
 class RunTimeout(TimeoutError):
@@ -94,7 +95,10 @@ class Runtime:
         task_checks=None,
         acceptance=None,
         handoff_parent=None,
+        actor=None,
     ):
+        if actor not in (None, "george", "ada", "sentinel", "scout", "vera", "atlas"):
+            raise ValueError("Unknown worker actor")
         if agent.kind != "worker":
             raise ValueError("Use the bounded team pilot for a coordinator")
         cancel = cancel or threading.Event()
@@ -253,7 +257,32 @@ class Runtime:
         chain, route = [agent.primary, *agent.fallbacks], 0
         checked = set()
         route_capabilities = {}
-        tool_runner = ToolRunner(ws, agent, approval, cancel, checks.write_targets)
+        tool_runner = ToolRunner(ws, agent, approval, cancel, checks.write_targets, checks.json_outputs)
+        json_keys = {path_key(ws, path) for path in checks.json_outputs}
+        missing_json = {path_key(ws, path) for path in checks.json_outputs if not ws.path(path).exists()}
+        proposal_errors = {}
+
+        def proposal_key(call):
+            try:
+                key = path_key(ws, call.arguments.get("path", ""))
+                return key if key in json_keys else None
+            except (ValueError, OSError, PermissionError, TypeError):
+                return None
+
+        def remember_proposal(call, category):
+            key = proposal_key(call)
+            if key:
+                proposal_errors[(key, category)] = proposal_errors.get((key, category), 0) + 1
+
+        def unresolved_errors():
+            return max(
+                0,
+                tool_counts["failed"]
+                - tool_counts["recovered_edit_errors"]
+                - tool_counts["recovered_validation_errors"]
+                - tool_counts["recovered_proposal_errors"],
+            )
+
         state, outcome = "failed", "Runtime did not complete"
         tools = tool_definitions(agent)
         protocol_retries = 0
@@ -265,6 +294,7 @@ class Runtime:
             "commands_passed": 0,
             "recovered_edit_errors": 0,
             "recovered_validation_errors": 0,
+            "recovered_proposal_errors": 0,
             "python_checks_passed": 0,
             "python_checks_failed": 0,
             "unchanged_writes": 0,
@@ -330,6 +360,7 @@ class Runtime:
                                 "profile": ref.profile_id,
                                 "model": ref.model,
                                 "thinking_mode": profiles[ref.profile_id].ollama_thinking,
+                                "actor": actor,
                                 "sampling": sampling_options(profiles[ref.profile_id]),
                                 "message_count": len(messages),
                                 "context_chars": len(json.dumps(messages)),
@@ -465,11 +496,7 @@ class Runtime:
                         "completion.evaluated",
                         {"checks": pending, "acceptance": acceptance_result, "mismatches": mismatches},
                     )
-                    unresolved = (
-                        tool_counts["failed"]
-                        - tool_counts["recovered_edit_errors"]
-                        - tool_counts["recovered_validation_errors"]
-                    )
+                    unresolved = unresolved_errors()
                     if (
                         checks.completion_feedback
                         and (checks.configured or acceptance is not None)
@@ -514,9 +541,7 @@ class Runtime:
                             "response_only",
                             "The model replied without executing tools. No filesystem operation was recorded.",
                         )
-                    elif tool_counts["failed"] > tool_counts["recovered_edit_errors"] + tool_counts[
-                        "recovered_validation_errors"
-                    ] or any(value != "passed" for value in python_checks.values()):
+                    elif unresolved_errors() or any(value != "passed" for value in python_checks.values()):
                         state, outcome = (
                             "needs_review",
                             "Execution ended with failed or denied tools. Review the actual results before accepting the task.",
@@ -567,6 +592,14 @@ class Runtime:
                         raise
                     except ValidationError as exc:
                         result, status = validation_feedback(call.name, exc), "failed"
+                        problems = exc.errors(include_input=False, include_url=False)
+                        if (
+                            call.name == "write_file"
+                            and len(problems) == 1
+                            and problems[0].get("type") == "missing"
+                            and problems[0].get("loc") == ("expected_sha256",)
+                        ):
+                            remember_proposal(call, "missing_revision_argument")
                         recovery_arguments = validation_recovery_arguments(call)
                         if recovery_arguments is not None:
                             recovery_key = (call.name, self.store.fingerprint(recovery_arguments))
@@ -584,6 +617,24 @@ class Runtime:
                             "failed",
                         )
                         tool_counts["write_target_mismatches"] += 1
+                    except JsonProposalError as exc:
+                        result, status = (
+                            {
+                                "error": str(exc),
+                                "type": "JsonProposalError",
+                                "code": exc.code,
+                                "reason": exc.reason,
+                            },
+                            "failed",
+                        )
+                        remember_proposal(call, "json_contract")
+                    except FileNotFoundError as exc:
+                        result, status = (
+                            {"error": self.credentials.redact(str(exc)), "type": "FileNotFoundError"},
+                            "failed",
+                        )
+                        if call.name == "read_file" and proposal_key(call) in missing_json:
+                            remember_proposal(call, "missing_new_output")
                     except Exception as exc:
                         result, status = (
                             {"error": self.credentials.redact(str(exc)), "type": type(exc).__name__},
@@ -605,6 +656,30 @@ class Runtime:
                         failed_signatures[signature] = failed_signatures.get(signature, 0) + 1
                     tool_counts[status] += 1
                     task_evidence.record(call, result, status)
+                    key = proposal_key(call)
+                    if (
+                        status == "succeeded"
+                        and call.name == "read_file"
+                        and key in task_evidence.writes
+                        and task_evidence.readbacks.get(key) == task_evidence.writes[key]
+                    ):
+                        recovered = 0
+                        categories = {}
+                        for identity in list(proposal_errors):
+                            if identity[0] == key:
+                                count = proposal_errors.pop(identity)
+                                recovered += count
+                                categories[identity[1]] = count
+                        tool_counts["recovered_proposal_errors"] += recovered
+                        if recovered:
+                            event(
+                                "proposal.recovered",
+                                {
+                                    "failures_recovered": recovered,
+                                    "categories": categories,
+                                    "proof": "permitted_verified_write_and_current_readback",
+                                },
+                            )
                     if result.get("unchanged"):
                         tool_counts["unchanged_writes"] += 1
                     if result.get("verified") is True and not result.get("unchanged"):
@@ -656,7 +731,7 @@ class Runtime:
                             ("unchanged", checks.unchanged_targets),
                         ):
                             for ordinal, target in enumerate(paths, 1):
-                                if str(ws.path(target)) == key:
+                                if path_key(ws, target) == key:
                                     event(
                                         "tool.target_read",
                                         {
@@ -731,12 +806,7 @@ class Runtime:
                     "terminal_response_status": "accepted"
                     if state in ("completed", "response_only")
                     else "not_accepted",
-                    "unresolved_tool_errors": max(
-                        0,
-                        tool_counts["failed"]
-                        - tool_counts["recovered_edit_errors"]
-                        - tool_counts["recovered_validation_errors"],
-                    ),
+                    "unresolved_tool_errors": unresolved_errors(),
                     "python_files_needing_attention": sum(
                         value != "passed" for value in python_checks.values()
                     ),

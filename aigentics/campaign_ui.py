@@ -43,8 +43,8 @@ class CampaignDialog(QDialog):
         layout.addWidget(text_label("TEST · OBSERVE · IMPROVE", "eyebrow"))
         layout.addWidget(text_label("Put the Midnight Crew to the test.", "pageTitle"))
         label = text_label(
-            f"{OFFLINE_CHECK_COUNT} offline app checks + 56 local trials: retained comparisons, every role with thinking off, and a bounded Orion pilot. "
-            "Scout and Vera calibration runs first. One selected local model, serial work, disposable files. Up to 2 hours; stop safely at any time. "
+            f"{OFFLINE_CHECK_COUNT} offline app checks + 24 focused trials by default. Orion and Vera first, then source-grounding and file canaries. "
+            "Full 56-trial measurement remains available. One selected local model, serial work, disposable files. Two-hour safety ceiling; stop safely at any time. "
             "No API checks. Saved personal agents stay unchanged."
         )
         layout.addWidget(label)
@@ -60,7 +60,8 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Recommended • 56 measured trials + app checks", "measurement")
+        self.mode.addItem("Recommended • 24 focused trials + app checks", "focused")
+        self.mode.addItem("Full measurement • 56 trials + app checks", "measurement")
         self.mode.addItem("Discovery • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
@@ -453,7 +454,7 @@ class CampaignDialog(QDialog):
             f"Finished • Passed immediately: {passed - repaired} • After correction: {repaired} • "
             f"Failed: {failed} • Not completed: {campaign['planned_cases'] - len(rows) + incomplete} • saved locally."
         )
-        if campaign.get("mode") == "measurement":
+        if campaign.get("mode") in ("measurement", "focused"):
             self.output.appendPlainText("Thinking controls: " + str(campaign.get("thinking_comparison", {})))
             self.output.appendPlainText(
                 "Server observation (end of run): " + str(campaign.get("ollama_observation", {}))
@@ -462,7 +463,7 @@ class CampaignDialog(QDialog):
 
             self.output.appendPlainText(
                 "Repeated measurement (unknown attempts excluded from failures): "
-                + str(summarize_trials(campaign["checks"]))
+                + str(summarize_trials(campaign["checks"], mode=campaign.get("mode", "measurement")))
             )
         if campaign.get("manifest_verified") is False:
             self.status.setText(
@@ -479,7 +480,7 @@ class CampaignDialog(QDialog):
             ),
             None,
         )
-        if previous and campaign.get("mode") == "measurement":
+        if previous and campaign.get("mode") in ("measurement", "focused"):
             from .measurement import paired_diff
 
             self.output.appendPlainText("Paired comparison: " + str(paired_diff(previous, campaign)))

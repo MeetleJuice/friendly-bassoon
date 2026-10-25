@@ -17,6 +17,7 @@ TYPE_NAMES = frozenset(("null", "boolean", "integer", "number", "string", "array
 ERROR_TYPES = frozenset(
     (
         "ValidationError",
+        "JsonProposalError",
         "ValueError",
         "FileNotFoundError",
         "PermissionError",
@@ -33,7 +34,9 @@ ERROR_TYPES = frozenset(
         "OtherError",
     )
 )
-ERROR_CODES = frozenset(("TOOL_ARGUMENT_VALIDATION", "STALE_FILE", "WRITE_TARGET_MISMATCH", "UNKNOWN_ERROR"))
+ERROR_CODES = frozenset(
+    ("TOOL_ARGUMENT_VALIDATION", "STALE_FILE", "WRITE_TARGET_MISMATCH", "JSON_PROPOSAL", "UNKNOWN_ERROR")
+)
 
 
 def schema_fingerprint(tool):

@@ -11,12 +11,13 @@ import re
 from math import comb
 from typing import Literal
 
-MEASUREMENT_VERSION = "crew-measurement-3"
+MEASUREMENT_VERSION = "crew-measurement-4"
 ARCHIVED_MANIFESTS = {
     "crew-measurement-1": "0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d",
     "crew-measurement-2": "e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e",
+    "crew-measurement-3": "2e90f43b81731250ffe9d77c4a17256ebdcb45bafa6d2109c9f33f1ba8749142",
 }
-GRADER_VERSION = "strict-contract-4"
+GRADER_VERSION = "strict-contract-5"
 REFERENCE_CASES = (
     ("role", "george_workflow"),
     ("role", "scout_symbol"),
@@ -128,7 +129,7 @@ def measurement_plan(version=MEASUREMENT_VERSION):
         return tuple(t for t in trials if t.arm != "thinking_off")
     if version == "crew-measurement-2":
         return tuple(trials)
-    if version != MEASUREMENT_VERSION:
+    if version not in (MEASUREMENT_VERSION, "crew-measurement-3"):
         raise ValueError("Unknown measurement version")
     # Short paired calibration first: Scout and Vera expose the recent failure modes.
     # Preserve all 34 retained comparisons; add 18 per-role off trials and 4 team trials.
@@ -167,6 +168,33 @@ def measurement_plan(version=MEASUREMENT_VERSION):
     )
     trials = calibration + [t for t in trials if t not in calibration]
     return tuple(trials)
+
+
+def focused_plan(version=MEASUREMENT_VERSION):
+    """24 declared trials: changed failure paths first, retained canaries after."""
+    if version != "crew-measurement-4":
+        raise ValueError("Focused mode was introduced with measurement4")
+    full = measurement_plan(version)
+
+    def select(trial):
+        return (
+            trial.case_id == "vera_exclusive"
+            or trial.case_kind == "workflow"
+            or trial.case_id in ("scout_symbol", "sentinel_bug")
+            and trial.repeat <= 2
+            or trial.case_id == "unicode"
+            and trial.arm in ("coordinated", "thinking_off")
+            or trial.case_id == "noop"
+            and trial.arm == "thinking_off"
+        )
+
+    selected = [trial for trial in full if select(trial)]
+    return tuple(
+        sorted(
+            selected,
+            key=lambda t: 0 if t.case_kind == "workflow" else 1 if t.case_id == "vera_exclusive" else 2,
+        )
+    )
 
 
 def manifest_id(manifest):
@@ -249,6 +277,10 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
                 "max_steps": 10,
                 "context_chars": agent.context_chars,
                 "task_checks": {
+                    "json_outputs": {
+                        name: "object" if isinstance(value, dict) else "array"
+                        for name, value in case.output_json.items()
+                    },
                     "completion_feedback": True,
                     "write_targets": sorted({*case.outputs, *case.output_json}),
                     "require_readback": True,
@@ -271,6 +303,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
         if k not in ("id", "revision", "primary", "fallbacks")
     }
     from .coordination import PILOT_VERSION, MAX_CALLS, MAX_OUTPUT_RESERVATION, TOOLS as TEAM_TOOLS
+    from .json_proposals import PROPOSAL_POLICY_VERSION, JSON_TYPES, MAX_JSON_DEPTH, MAX_JSON_NODES
 
     manifest = {
         "measurement_version": MEASUREMENT_VERSION,
@@ -285,14 +318,27 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
         "crew_version": CREW_VERSION,
         "cases": selected,
         "trials": [{**asdict(trial), "thinking_mode": trial.thinking_mode} for trial in measurement_plan()],
+        "recommended_trial_ids": [trial.id for trial in focused_plan()],
         "agent_definitions": definitions,
         "tool_schemas": {name: schema.model_json_schema() for name, schema in sorted(SCHEMAS.items())},
         "task_check_schema": TaskChecks.model_json_schema(),
         "sampling": {"temperature": 0.2, "seed": None, "deterministic_model_outputs": False},
+        "proposal_policy": {
+            "version": PROPOSAL_POLICY_VERSION,
+            "root_types": sorted(JSON_TYPES),
+            "max_depth": MAX_JSON_DEPTH,
+            "max_nodes": MAX_JSON_NODES,
+            "recovery": "only_declared_json_outputs_no_effect_error_then_permitted_verified_write_and_current_readback",
+            "historical_errors": "retained",
+            "semantic_values": "independent_strict_checker_unchanged",
+        },
         "team_pilot": {
             "version": PILOT_VERSION,
             "tools": TEAM_TOOLS,
             "max_dispatches": 2,
+            "format_feedback_limit": 1,
+            "handoff_binding": "current_run_stage_and_snapshot_rechecked_before_dispatch",
+            "max_declared_paths": 16,
             "max_total_calls": MAX_CALLS,
             "max_total_output_reservation": MAX_OUTPUT_RESERVATION,
             "task_case": "ada_repair",
@@ -352,9 +398,9 @@ def _outcome(row):
     return row["status"] == "passed"
 
 
-def summarize_trials(rows, *, version=MEASUREMENT_VERSION):
+def summarize_trials(rows, *, version=MEASUREMENT_VERSION, mode="measurement"):
     """Repeated outcomes, not pass@k; unknown attempts never become model failures."""
-    planned = measurement_plan(version)
+    planned = focused_plan(version) if mode == "focused" else measurement_plan(version)
     known_ids = {trial.id for trial in planned}
     selected = {}
     for row in rows:
@@ -421,8 +467,18 @@ def summarize_trials(rows, *, version=MEASUREMENT_VERSION):
         "usage_basis": "Retained traces plus known rejected-response counters; not billing totals",
         "sampling_note": "Observed repetitions only; no deterministic model or pass@k estimate claimed",
     }
-    if version in (MEASUREMENT_VERSION, "crew-measurement-2"):
-        summary["thinking_pairs"] = thinking_pairs(rows, version=version)
+    if version in (MEASUREMENT_VERSION, "crew-measurement-3", "crew-measurement-2"):
+        pairs = thinking_pairs(rows, version=version)
+        if mode == "focused":
+            planned_ids = {trial.id for trial in planned}
+            pairs = [
+                p
+                for p in pairs
+                if f"measure-{p['case_id']}-{p['reference_arm']}-r{p['repeat']}" in planned_ids
+                and f"measure-{p['case_id']}-thinking_off-r{p['repeat']}" in planned_ids
+            ]
+            summary["plan_scope"] = "focused"
+        summary["thinking_pairs"] = pairs
     return summary
 
 
@@ -434,7 +490,7 @@ def thinking_pairs(rows, *, version=MEASUREMENT_VERSION):
     results = []
     cases = ("unicode", "noop") + (
         tuple(identity for kind, identity in REFERENCE_CASES if kind == "role")
-        if version == MEASUREMENT_VERSION
+        if version in (MEASUREMENT_VERSION, "crew-measurement-3")
         else ()
     )
     for case in cases:

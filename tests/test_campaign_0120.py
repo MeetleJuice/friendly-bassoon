@@ -36,7 +36,7 @@ class CrewScripted(Scripted):
                             name="dispatch_worker",
                             arguments={
                                 "role": "ada" if not status["evidence"] else "sentinel",
-                                "revision": status["revision"],
+                                "handoff": status["handoff"],
                             },
                         )
                     ]

@@ -130,7 +130,9 @@ def test_archived_manifests_keep_original_bytes_and_identities():
         root = Path(__file__).resolve().parents[1]
         data = json.loads((root / "docs/benchmarks" / (version + ".json")).read_text(encoding="utf-8"))
         assert manifest_id(data) == digest
-        assert len(measurement_plan(version)) == (30 if version.endswith("1") else 34)
+        assert len(measurement_plan(version)) == (
+            30 if version.endswith("1") else 34 if version.endswith("2") else 56
+        )
 
 
 def test_bundle_preserves_new_diagnostics_and_old_benchmark(store, credentials):
@@ -138,7 +140,7 @@ def test_bundle_preserves_new_diagnostics_and_old_benchmark(store, credentials):
     from aigentics.bundles import build_bundle
     from pathlib import Path
 
-    for version in ("crew-measurement-2", "crew-measurement-3"):
+    for version in ("crew-measurement-2", "crew-measurement-3", "crew-measurement-4"):
         manifest = json.loads(
             (Path(__file__).resolve().parents[1] / "docs/benchmarks" / (version + ".json")).read_text(
                 encoding="utf-8"

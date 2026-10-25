@@ -69,10 +69,158 @@ def public_run_details(value):
         safe["team_metrics"] = {
             k: v
             for k, v in metrics.items()
-            if k in ("dispatches", "total_calls", "call_limit", "output_limit", "stages_verified")
+            if k
+            in (
+                "dispatches",
+                "total_calls",
+                "call_limit",
+                "output_limit",
+                "output_reserved",
+                "format_feedback_count",
+                "stages_verified",
+            )
             and type(v) is int
             and 0 <= v <= 100000
         }
         if type(metrics.get("managed")) is bool:
             safe["team_metrics"]["managed"] = metrics["managed"]
+    safe.update(public_team_evidence(value))
+    return safe
+
+
+ACTORS = frozenset(("worker", "orion", "george", "scout", "ada", "vera", "sentinel", "atlas"))
+TEAM_CODES = frozenset(
+    (
+        "NONE",
+        "ARGUMENT_VALIDATION",
+        "ROUTE_REJECTED",
+        "WORKER_UNVERIFIED",
+        "EMPTY_FINAL",
+        "NO_WORKER_EVIDENCE",
+        "ACCEPTANCE_FAILED",
+        "STALE_HANDOFF",
+        "STALE_FINAL_REVISION",
+        "UNKNOWN_TOOL",
+        "MULTIPLE_CALLS",
+        "TEAM_REJECTED",
+        "TEAM_BUDGET",
+        "TIMEOUT",
+        "OUTPUT_LIMIT",
+        "TOOLS_UNSUPPORTED",
+        "THINKING_CONTROL_UNAVAILABLE",
+        "HTTP_ERROR",
+        "CONNECTION_ERROR",
+    )
+)
+
+
+def actor_statistics(events):
+    """All recorded responses, independent of the bounded trace preview."""
+    requests = {
+        event["data"]["request_id"]: event["data"] for event in events if event["kind"] == "model.requested"
+    }
+    result = {}
+
+    def actor_row(actor):
+        actor = actor if isinstance(actor, str) and actor in ACTORS else "worker"
+        return result.setdefault(
+            actor,
+            {
+                "actor": actor,
+                "requests": 0,
+                "responses": 0,
+                "native_calls": 0,
+                "eval_count": None,
+                "eval_samples": 0,
+                "prompt_eval_count": None,
+                "prompt_samples": 0,
+            },
+        )
+
+    for request in requests.values():
+        actor_row(request.get("actor"))["requests"] += 1
+    for event in events:
+        if event["kind"] != "model.responded":
+            continue
+        data = event["data"]
+        request = requests.get(data.get("request_id"), {})
+        row = actor_row(request.get("actor"))
+        row["responses"] += 1
+        row["native_calls"] += data.get("tool_calls", 0)
+        for key, samples in (("eval_count", "eval_samples"), ("prompt_eval_count", "prompt_samples")):
+            value = data.get("usage", {}).get(key)
+            if type(value) is int and value >= 0:
+                row[key] = (row[key] or 0) + value
+                row[samples] += 1
+    return list(result.values())
+
+
+def public_team_evidence(value):
+    if not isinstance(value, dict):
+        return {}
+    safe = {}
+    code = value.get("team_error_code")
+    if isinstance(code, str):
+        safe["team_error_code"] = code if code in TEAM_CODES else "TEAM_REJECTED"
+    diagnostics = []
+    for row in (
+        value.get("team_diagnostics", [])[:16] if isinstance(value.get("team_diagnostics"), list) else []
+    ):
+        if not isinstance(row, dict):
+            continue
+        if (
+            row.get("tool") not in ("dispatch_worker", "team_status", "inspect_evidence", "unknown")
+            or row.get("stage") not in ("build", "review", "summarize")
+            or row.get("status") not in ("requested", "succeeded", "failed")
+        ):
+            continue
+        item = {k: row[k] for k in ("tool", "stage", "status")}
+        if "code" in row:
+            item["code"] = (
+                row["code"] if isinstance(row["code"], str) and row["code"] in TEAM_CODES else "TEAM_REJECTED"
+            )
+        if type(row.get("unexpected_arguments")) is int and 0 <= row["unexpected_arguments"] <= 1000:
+            item["unexpected_arguments"] = row["unexpected_arguments"]
+        types = row.get("argument_types")
+        if isinstance(types, dict):
+            item["argument_types"] = {
+                k: v
+                for k, v in types.items()
+                if k in ("role", "handoff")
+                and v in ("str", "int", "float", "bool", "dict", "list", "NoneType", "other")
+            }
+        diagnostics.append(item)
+    if "team_diagnostics" in value:
+        safe["team_diagnostics"] = diagnostics
+    actors = []
+    for row in (
+        value.get("actor_statistics", [])[:8] if isinstance(value.get("actor_statistics"), list) else []
+    ):
+        if not isinstance(row, dict) or not isinstance(row.get("actor"), str) or row["actor"] not in ACTORS:
+            continue
+        item = {"actor": row["actor"]}
+        for key in (
+            "requests",
+            "responses",
+            "native_calls",
+            "eval_count",
+            "eval_samples",
+            "prompt_eval_count",
+            "prompt_samples",
+        ):
+            number = row.get(key)
+            if type(number) is int and 0 <= number <= 10**15:
+                item[key] = number
+            elif key in ("eval_count", "prompt_eval_count") and number is None:
+                item[key] = None
+        actors.append(item)
+    if "actor_statistics" in value:
+        safe["actor_statistics"] = actors
+    coverage = value.get("trace_coverage")
+    if isinstance(coverage, dict):
+        safe["trace_coverage"] = {
+            k: v
+            for k, v in coverage.items()
+            if k in ("responses_recorded", "traces_retained") and type(v) is int and 0 <= v <= 1000
+        }
     return safe

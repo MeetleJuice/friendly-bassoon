@@ -126,3 +126,8 @@ Final0.17 adds native deferred-close failure suppression/new-task refusal, alway
 - JSON parser position/reason privacy, ordinal source/readback and terminal status; old benchmark1/2identities and complete reviewed ZIP export.
 - Frozen56slotmeasurement3plan, eligible per-role default/off pairs, matched TOTAL direct/managed caps and explicit26conditional skips. Actual local-model comparisons run on the user's PC; scripted checks do not prove model improvement.
 - Release promotion rejects failed/non-main/foreign/PR/untrusted workflow runs, expired/ambiguous artifacts and corrupted installers. Actual Windows source gate remains mandatory and pins0.17upgrade.
+
+
+## 0.19 regressions
+
+Observed Vera sequence(badJSONroot, missing output read, valid approved write+read) and no-effect missing revision argument; deny/unrelated-input/no-read/semantic-failure negative controls. JSONsyntax/duplicates/nonfinite/wrongroot are rejected before filesystem effects. Windows-normalized ordinal evidence. One malformed manager dispatch may correct within total12calls; persistent malformed, stale handle and self route stop without unauthorized dispatch. Actor-level totals and chronological trace truncation/unknown usage are explicit. Focused24scope/export covers only planned cases; canonical alias approvals are equal for direct/managed; old benchmark1/2/3and actual0.18ZIProundtrip retained. Existing shared UI-approval deadline/fresh-parent/Qt shutdown tests remain.

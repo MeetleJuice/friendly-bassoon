@@ -126,6 +126,7 @@ def clean_report(report, credentials):
                 "completion_order_fixture",
                 "thinking_control_fixture",
                 "team_pilot_fixture",
+                "json_proposal_fixture",
                 "update_connection",
                 "selected_local_model",
             }
@@ -164,6 +165,10 @@ def clean_report(report, credentials):
                 entry["thinking_mode"] = trace["thinking_mode"]
             if "sampling" in trace:
                 entry["sampling"] = public_sampling(trace["sampling"])
+            from .inference import ACTORS
+
+            if isinstance(trace.get("actor"), str) and trace["actor"] in ACTORS:
+                entry["actor"] = trace["actor"]
             entry["response_shape"] = public_shape(trace.get("response_shape", {}))
             entry["usage"] = {
                 k: min(v, 10**15)
@@ -173,7 +178,7 @@ def clean_report(report, credentials):
             traces.append(entry)
         row["evidence"]["request_traces"] = traces
         row["evidence"]["tool_timeline"] = bounded_tool_timeline(original.get("tool_timeline", []))
-    if report.get("mode") == "measurement":
+    if report.get("mode") in ("measurement", "focused"):
         from .measurement import (
             measurement_manifest,
             manifest_id,
@@ -194,7 +199,9 @@ def clean_report(report, credentials):
                     version = stored.get("measurement_version", MEASUREMENT_VERSION)
             except (ValueError, TypeError, RecursionError):
                 pass
-        safe["measurement_summary"] = summarize_trials(safe["checks"], version=version)
+        safe["measurement_summary"] = summarize_trials(
+            safe["checks"], version=version, mode=report.get("mode", "measurement")
+        )
     return credentials.scrub(safe)
 
 

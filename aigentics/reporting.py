@@ -53,6 +53,7 @@ RECENT_ERROR_TYPES = frozenset(
         "ToolFailure",
         "OtherError",
         "StaleFileError",
+        "JsonProposalError",
         "WriteTargetError",
         "EmptyFinalResponse",
     )
@@ -61,6 +62,7 @@ RECENT_ERROR_CODES = frozenset(
     (
         "NO_PROGRESS",
         "TOOL_ARGUMENT_VALIDATION",
+        "JSON_PROPOSAL",
         "PROVIDER_ERROR",
         "HTTP_ERROR",
         "TIMEOUT",
@@ -223,7 +225,7 @@ def public_report(report, include_model=False):
         from .campaign import ALL_CASE_IDS as PLAN_IDS
         from .crew import CREW_VERSION
 
-        if report.get("mode") in ("quick", "standard", "deep", "measurement"):
+        if report.get("mode") in ("quick", "standard", "deep", "measurement", "focused"):
             result["mode"] = report["mode"]
         if report.get("crew_version") in ("midnight-crew-1", "midnight-crew-2", CREW_VERSION):
             result["crew_version"] = report["crew_version"]
@@ -326,6 +328,7 @@ def public_report(report, include_model=False):
         "task_checks_fixture_verified",
         "empty_final_fixture_verified",
         "team_pilot_fixture_verified",
+        "json_proposal_fixture_verified",
     }
     if include_model:
         allowed.add("model")

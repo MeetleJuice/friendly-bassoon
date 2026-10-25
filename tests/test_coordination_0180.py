@@ -41,18 +41,18 @@ class PilotModel:
             if self.fault == "prose":
                 return Reply(content="Everything passed!")
             if self.fault == "recursion":
-                return call("dispatch_worker", role="orion", revision="a" * 64)
+                return call("dispatch_worker", role="orion", handoff="h99")
             if not previous:
                 return call("team_status")
             status = json.loads(previous[-1]["content"])
             if self.fault == "stale":
-                return call("dispatch_worker", role="ada", revision="a" * 64)
+                return call("dispatch_worker", role="ada", handoff="h99")
             if not status["evidence"]:
-                return call("dispatch_worker", role="ada", revision=status["revision"])
+                return call("dispatch_worker", role="ada", handoff=status["handoff"])
             if self.fault == "duplicate":
-                return call("dispatch_worker", role="ada", revision=status["revision"])
+                return call("dispatch_worker", role="ada", handoff=status["handoff"])
             if self.review and len(status["evidence"]) == 1 and status["evidence"][0]["verified"]:
-                return call("dispatch_worker", role="sentinel", revision=status["revision"])
+                return call("dispatch_worker", role="sentinel", handoff=status["handoff"])
             return Reply(content="Recorded work completed. Review is advisory.", usage={"eval_count": 1})
         reviewer = "Your agent name is Sentinel" in messages[0]["content"]
         actions = [("read_file", {"path": "brief.txt"})]

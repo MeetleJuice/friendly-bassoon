@@ -28,7 +28,7 @@ def team_pilot_check(credentials):
                 elif not json.loads(previous[-1]["content"])["evidence"]:
                     name, args = (
                         "dispatch_worker",
-                        {"role": "ada", "revision": json.loads(previous[-1]["content"])["revision"]},
+                        {"role": "ada", "handoff": json.loads(previous[-1]["content"])["handoff"]},
                     )
                 else:
                     return Reply(content="Recorded evidence only.")

@@ -443,10 +443,11 @@ def run_command(root, args, cancel):
 
 
 class ToolRunner:
-    def __init__(self, workspace, agent, approve, cancel, write_targets=None):
+    def __init__(self, workspace, agent, approve, cancel, write_targets=None, json_outputs=None):
         self.workspace, self.agent, self.approve, self.cancel = workspace, agent, approve, cancel
         self._read_revisions = {}
         self.write_targets = {path_key(workspace, path) for path in write_targets} if write_targets else None
+        self.json_outputs = {path_key(workspace, path): kind for path, kind in (json_outputs or {}).items()}
 
     def execute(self, call):
         if call.name not in self.agent.tools or call.name not in EXECUTORS:
@@ -464,9 +465,18 @@ class ToolRunner:
             raise PermissionError("Writes disabled for this agent")
         if self.write_targets is not None and path_key(self.workspace, args.path) not in self.write_targets:
             raise WriteTargetError("Write blocked: this file is not in the task's expected output files")
+        contract = self.json_outputs.get(path_key(self.workspace, args.path))
+        if contract:
+            from .json_proposals import validate_proposal
+
+            validate_proposal(args.content, contract)
         if args.expected_sha256 == "last_read":
             revision = self._read_revisions.get(str(self.workspace.path(args.path)))
             if not revision:
+                if not self.workspace.path(args.path).exists():
+                    raise StaleFileError(
+                        "Target does not exist. Propose creation with expected_sha256='new'; 'last_read' cannot refer to an absent file."
+                    )
                 raise StaleFileError("Read this file in the current run before using 'last_read'")
             args = args.model_copy(update={"expected_sha256": revision})
         diff = self.workspace.prepare_write(args)

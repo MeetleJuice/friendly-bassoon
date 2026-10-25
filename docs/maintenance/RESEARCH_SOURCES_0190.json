@@ -1,0 +1,74 @@
+[
+  {
+    "name": "keyhole",
+    "requested": "https://keyholesoftware.com/agentic-harness/",
+    "error": "ProxyError"
+  },
+  {
+    "name": "anthropic",
+    "requested": "https://www.anthropic.com/research/harness-design-long-running-apps",
+    "error": "ProxyError"
+  },
+  {
+    "name": "arxiv",
+    "requested": "https://arxiv.org/abs/2603.24768",
+    "error": "ProxyError"
+  },
+  {
+    "name": "openai",
+    "requested": "https://openai.com/index/how-agents-are-transforming-work/",
+    "error": "ProxyError"
+  },
+  {
+    "name": "anthropic_canonical",
+    "url": "https://www.anthropic.com/engineering/harness-design-long-running-apps",
+    "error": "ProxyError"
+  },
+  {
+    "name": "arxiv_html",
+    "url": "https://arxiv.org/html/2603.24768",
+    "error": "ProxyError"
+  },
+  {
+    "name": "openai_sdk_orchestration",
+    "url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/docs/multi_agent.md",
+    "status": 200,
+    "bytes": 5005,
+    "sha256": "b1def8168d4860caf521a63c0050b9304fbded8eb5e67dbfc2a234b1623d36d9"
+  },
+  {
+    "name": "anthropic_long_running",
+    "url": "https://raw.githubusercontent.com/anthropics/claude-quickstarts/main/autonomous-coding/README.md",
+    "status": 200,
+    "bytes": 5788,
+    "sha256": "46886061c3558c864e6ce42d229038d220bc5dea10735f2a552ec5d50bb6ef83"
+  },
+  {
+    "name": "openai_sdk_tools",
+    "url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/docs/tools.md",
+    "status": 200,
+    "bytes": 53426,
+    "sha256": "762d91079338475d3935af8e36ca8a958a6f476ac1b0ecfb81536a573c6cdbeb"
+  },
+  {
+    "name": "arxiv_metadata_mirror.json",
+    "url": "https://github.com/LIHUA919/AI-Agents-Daily-Research/blob/9394c62c0777f4df37b6e019a998ee368f790988/data/2026-03-28.jsonl",
+    "evidence_type": "secondary_metadata_abstract_only",
+    "bytes": 1945,
+    "sha256": "f73fde3bb804d420ff562472c777b99779b522a711456b67c868e40ce6d02869"
+  },
+  {
+    "name": "anthropic_third_party_analysis.md",
+    "url": "https://github.com/charleshall888/cortex-command/blob/0bf727b9d6905af53667176ec2102e2d725e0ae1/cortex/research/archive/harness-design-long-running-apps/research.md",
+    "evidence_type": "secondary_analysis_not_original_article",
+    "bytes": 22763,
+    "sha256": "03020e90421e32686954e0f436904952176490e446ba76833b260c5f5ea7ed9d"
+  },
+  {
+    "name": "anthropic_article_mirror.md",
+    "url": "https://github.com/QianJinGuo/wiki-book/blob/717600bffced20d09e2a341849bc4ceeac3b0a2b/docs/raw/articles/harness-design-long-running-apps.md",
+    "evidence_type": "source_card_only_no_article_body",
+    "bytes": 723,
+    "sha256": "5a72470f76c9c68c930889e6e68f86611dd77ab3debb9bbde9d7a8c05e50dcb5"
+  }
+]

@@ -29,15 +29,15 @@ from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
 from .ollama_settings import OLLAMA_USAGE_FIELDS, public_thinking
 
-SUITE_VERSION = "10"
-OFFLINE_CHECK_COUNT = 28
+SUITE_VERSION = "11"
+OFFLINE_CHECK_COUNT = 29
 
 
 def model_evidence(events):
     """Bounded protocol structure only, never raw synthetic/model/provider text."""
     from .tool_diagnostics import tool_diagnostics
 
-    from .inference import public_sampling, public_model_details
+    from .inference import public_sampling, public_model_details, actor_statistics
 
     metadata, traces = {}, []
     requests = {e["data"]["request_id"]: e["data"] for e in events if e["kind"] == "model.requested"}
@@ -69,6 +69,7 @@ def model_evidence(events):
                     "step": request.get("step"),
                     "thinking_mode": request.get("thinking_mode", "default"),
                     "sampling": public_sampling(request.get("sampling", {})),
+                    "actor": request.get("actor", "worker"),
                     "duration_ms": data["duration_ms"],
                     "native_call_count": data["tool_calls"],
                     "content_chars": data["content_chars"],
@@ -86,6 +87,15 @@ def model_evidence(events):
                 }
             )
     return {
+        "team_error_code": next(
+            (e["data"].get("code", "TEAM_REJECTED") for e in reversed(events) if e["kind"] == "team.error"),
+            "NONE",
+        ),
+        "team_diagnostics": next(
+            (e["data"].get("diagnostics", []) for e in reversed(events) if e["kind"] == "team.summary"), []
+        ),
+        "actor_statistics": actor_statistics(events),
+        "trace_coverage": {"responses_recorded": len(traces), "traces_retained": min(len(traces), 8)},
         "terminal_response_status": next(
             (
                 e["data"].get("terminal_response_status", "not_recorded")
@@ -343,6 +353,11 @@ class DiagnosticRunner:
         from .self_checks_0180 import team_pilot_check
 
         return team_pilot_check(self.credentials)
+
+    def json_proposal_fixture(self):
+        from .self_checks_0190 import json_proposal_check
+
+        return json_proposal_check(self.credentials)
 
     def __init__(self, store, credentials, provider_factory=Provider, updater=None):
         self.store, self.credentials = store, credentials
@@ -845,6 +860,7 @@ class DiagnosticRunner:
                 ("completion_order_fixture", lambda: self.completion_order_fixture()),
                 ("thinking_control_fixture", lambda: self.thinking_control_fixture()),
                 ("team_pilot_fixture", self.team_pilot_fixture),
+                ("json_proposal_fixture", self.json_proposal_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

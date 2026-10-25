@@ -2,12 +2,16 @@
 
 import os
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 from pydantic import Field, field_validator
 from .models import Strict, TOOLS
 
 
 class TaskChecks(Strict):
+    json_outputs: dict[
+        Annotated[str, Field(min_length=1, max_length=1000)],
+        Literal["object", "array", "string", "number", "boolean", "null"],
+    ] = Field(default_factory=dict, max_length=16)
     write_targets: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
         default_factory=list, max_length=16
     )
@@ -49,6 +53,12 @@ class TaskChecks(Strict):
                 parts.append(
                     "After the LAST saved change, call read_file on EACH output. A write_file verification result is not that read_file call."
                 )
+        if self.json_outputs:
+            parts.append(
+                "Declared JSON root contracts (validated before saving): "
+                + "; ".join(path + "=" + kind for path, kind in self.json_outputs.items())
+                + ". A rejected proposal changed no file; correct its shape, use 'new' for creation and read the final saved output."
+            )
         if self.unchanged_targets:
             parts.append(
                 "For EACH unchanged-file target: read_file, request exactly ONE identical write_file with its current revision, then read_file AGAIN after that request. Do not make any actual content change."
@@ -90,6 +100,8 @@ class TaskEvidence:
     def __init__(self, workspace, checks):
         self.workspace, self.checks = workspace, checks
         self.targets = {path_key(workspace, path): path for path in checks.write_targets}
+        if any(path_key(workspace, path) not in self.targets for path in checks.json_outputs):
+            raise ValueError("JSON contracts must refer to declared output files")
         self.writes, self.readbacks, self.tools = {}, {}, set()
         self.sources = {path_key(workspace, path): path for path in checks.required_reads}
         self.read_sources = set()

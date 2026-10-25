@@ -55,7 +55,11 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
                 agent,
                 root,
                 contract_prompt(case),
-                lambda kind, details: kind == "write_file" and details.get("path") in case.outputs,
+                lambda kind, details: kind == "write_file"
+                and any(
+                    Workspace(root).path(details.get("path")) == Workspace(root).path(target)
+                    for target in case.outputs
+                ),
                 cancel,
                 task_checks=checks,
                 acceptance=lambda ws, content: evaluate_contract(case, ws.root, content),
@@ -67,7 +71,7 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
             passed = state == "completed" and all(evaluate_contract(case, root, "")["checks"].values())
             children = summary.get("children", [])
             child_events = [event for child in children for event in db.events(child)]
-            evidence = model_evidence(events + child_events)
+            evidence = model_evidence(sorted(events + child_events, key=lambda e: e["sequence"]))
             evidence.update(
                 runtime_state=state,
                 terminal_response_status="accepted" if state == "completed" else "not_accepted",
@@ -81,6 +85,8 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
                     ),
                     "call_limit": MAX_CALLS,
                     "output_limit": MAX_OUTPUT_RESERVATION,
+                    "output_reserved": summary.get("budget", {}).get("output_reserved", 0),
+                    "format_feedback_count": summary.get("format_feedback_count", 0),
                     "stages_verified": sum(stage["verified"] for stage in summary.get("stages", [])),
                     "managed": trial.arm == "managed",
                 },

@@ -15,6 +15,7 @@ EXECUTION_KEYS = frozenset(
         "commands_passed",
         "recovered_edit_errors",
         "recovered_validation_errors",
+        "recovered_proposal_errors",
         "python_checks_passed",
         "python_checks_failed",
         "unresolved_tool_errors",

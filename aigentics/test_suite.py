@@ -251,6 +251,7 @@ def run_suite(
     completion_feedback=False,
     output_cap=None,
     budget_override=None,
+    thinking_override=None,
 ):
     from .providers import Provider
 
@@ -269,6 +270,10 @@ def run_suite(
         ):
             raise ValueError("Measurement budget outside limits")
     profile = local_profile(store, agent)
+    if thinking_override not in (None, "default", "on", "off"):
+        raise ValueError("Unknown thinking override")
+    if thinking_override is not None:
+        profile = profile.model_copy(update={"ollama_thinking": thinking_override})
     cases = CASES
     if case_ids is not None:
         selected = tuple(case_ids)
@@ -429,6 +434,7 @@ def run_suite(
                                 write_targets=targets if identity != "denial" else ["output.txt"],
                                 require_readback=writing and identity not in ("denial", "noop"),
                                 required_tools=["read_file", "write_file"] if identity == "noop" else [],
+                                unchanged_targets=["output.txt"] if identity == "noop" else [],
                             ),
                         )
                         events = trial.events(sid)

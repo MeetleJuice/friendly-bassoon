@@ -29,7 +29,7 @@ from .test_suite import (
 from .tools import Workspace
 from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials
 
-CAMPAIGN_VERSION = "crew-campaign-4"
+CAMPAIGN_VERSION = "crew-campaign-5"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -99,7 +99,17 @@ def campaign_scope(store, agent, mode):
     )
 
 
-def role_case(store, credentials, primary, case, cancel, provider_factory=None, *, clarified=False):
+def role_case(
+    store,
+    credentials,
+    primary,
+    case,
+    cancel,
+    provider_factory=None,
+    *,
+    clarified=False,
+    thinking_override=None,
+):
     """Run native tools; grade structured data, never execute generated model code."""
     from .providers import Provider
 
@@ -107,6 +117,8 @@ def role_case(store, credentials, primary, case, cancel, provider_factory=None, 
     observed, replies = [], []
     budget = {"max_output_tokens": 4096, "request_timeout_seconds": 120, "session_budget_seconds": 180}
     profile = local_profile(store, agent)
+    if thinking_override is not None:
+        profile = profile.model_copy(update={"ollama_thinking": thinking_override})
     budget["request_timeout_seconds"] = min(profile.timeout_seconds, 120)
     agent.max_seconds = 180
     agent.max_steps = 10
@@ -257,6 +269,40 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
     if mode == "measurement":
         report["measurement_manifest"] = measurement_manifest()
         report["manifest_id"] = manifest_id(report["measurement_manifest"])
+    thinking_info = {}
+    thinking_skip = None
+    if mode == "measurement":
+        from .providers import Provider
+        from .ollama_settings import public_thinking, thinking_experiment_available
+
+        profile = local_profile(store, agent)
+        if profile.ollama_api != "native":
+            thinking_skip = "THINKING_ROUTE_UNSUPPORTED"
+        else:
+            try:
+                probe = (provider_factory or Provider)(
+                    profile.model_copy(
+                        update={
+                            "timeout_seconds": min(3, profile.timeout_seconds),
+                            "ollama_thinking": "default",
+                        }
+                    ),
+                    credentials,
+                )
+                thinking_info = public_thinking(probe.capabilities(agent.primary.model))
+            except Exception:
+                thinking_info = {"thinking_support": "unavailable"}
+            if not thinking_experiment_available(thinking_info):
+                thinking_skip = (
+                    "THINKING_NOT_APPLICABLE"
+                    if thinking_info.get("thinking_values") == [False]
+                    else "THINKING_CONTROL_UNAVAILABLE"
+                )
+        report["thinking_comparison"] = {
+            **thinking_info,
+            "eligible": thinking_skip is None,
+            "skip_code": thinking_skip,
+        }
     report["track"] = "measurement" if mode == "measurement" else "discovery"
     if any(r["id"] not in identities for r in report["checks"]):
         raise ValueError("Saved campaign does not match its manifest")
@@ -322,7 +368,16 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         started = time.monotonic()
         try:
             trial = MEASUREMENT_TRIALS.get(identity)
-            if trial and trial.case_kind == "role":
+            if trial and trial.arm == "thinking_off" and thinking_skip:
+                row = {
+                    "id": identity,
+                    "status": "skipped",
+                    "code": thinking_skip,
+                    "message": "Thinking-off comparison skipped; explicit native controls unavailable or not applicable.",
+                    "duration_ms": 0,
+                    "evidence": {"thinking_mode": "off", "timing_unknown": True, **trial.budget},
+                }
+            elif trial and trial.case_kind == "role":
                 case = next(c for c in ROLE_CASES if c.id == trial.case_id)
                 row = role_case(
                     store,
@@ -332,6 +387,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     CampaignCancel(),
                     provider_factory,
                     clarified=True,
+                    thinking_override=trial.thinking_mode,
                 )
             elif trial or identity.startswith(("baseline-", "repeat-", "experiment-")):
                 name, output_cap = (
@@ -351,6 +407,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     completion_feedback=True,
                     output_cap=output_cap,
                     budget_override=trial.budget if trial else None,
+                    thinking_override=trial.thinking_mode if trial else None,
                 )
                 if not baseline["checks"]:
                     break
@@ -384,6 +441,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 arm=trial.arm,
                 repeat=trial.repeat,
                 track="measurement",
+                thinking_mode=trial.thinking_mode,
                 attempt=trial.repeat,
             )
         row.setdefault("evidence", {})["group"] = (
@@ -426,11 +484,25 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         else "needs_attention"
         if bounded_cancel.is_set() or not integrity_ok
         else "passed"
-        if report["summary"]["passed"] == len(identities)
+        if len(report["checks"]) == len(identities)
+        and all(
+            row["status"] == "passed"
+            or row["status"] == "skipped"
+            and row["code"]
+            in ("THINKING_CONTROL_UNAVAILABLE", "THINKING_NOT_APPLICABLE", "THINKING_ROUTE_UNSUPPORTED")
+            for row in report["checks"]
+        )
         else "needs_attention"
     )
     if mode == "measurement":
         report["measurement_summary"] = summarize_trials(report["checks"])
+    if provider_factory is None and mode != "quick" and not cancel.is_set():
+        from .providers import Provider
+
+        profile = local_profile(store, agent)
+        report["ollama_observation"] = Provider(
+            profile.model_copy(update={"timeout_seconds": min(3, profile.timeout_seconds)}), credentials
+        ).observe_server(agent.primary.model)
     store.save_diagnostic(report, refresh_retention=True)
     store.prune()
     return [health, report]

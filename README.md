@@ -1,5 +1,11 @@
 # Aigentics Desktop
 
+## Verified completion and thinking measurements (0.17.0)
+
+Keeps the improved interface and your selected model. Fixes unchanged-file completion ordering and clarifies strict test JSON schemas. Native Ollama thinking controls are verified before use; context stays automatic. Default tests record **27 offline app checks +34 trial slots**, including four conditional thinking-off comparisons that skip if unsupported. No API generation checks run.
+
+After Update/install/restart, let the queued tests finish once, then **Review / save diagnostic ZIP** → inspect → approve local saving → Save → drag the ZIP into chat. Nothing uploads automatically. See the [plan](docs/maintenance/UPGRADE_0170_PLAN.md) and [research](docs/maintenance/RESEARCH_0170.md). A new benchmark identity prevents silently comparing changed conditions as a controlled improvement.
+
 ## Midnight Crew interface (0.16.0)
 
 The new sidebar keeps **Projects**, **Workbench**, **Agents**, **Test center**, **Diagnostics**, **Local data**, **Connections** and **Settings** together. Workbench gives your conversation more room; **Files** and **History** reveal optional panels. **Task options** contains checks, session-memory capture and context; output write scope stays visible. Agent forms scroll while Save stays visible.
@@ -45,7 +51,7 @@ After source installation, `Start-Aigentics.cmd` is an alternative launch shortc
 
 ## Diagnose and share without dragging files
 
-Click **Diagnose** at the top, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 21 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
+Click **Diagnose** at the top, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 27 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
 
 Review the exact public report preview and approve it before sharing. **Browser draft** needs no token; finish with Create (or Submit new issue) on GitHub. **Direct submission** uses an existing `GITHUB_TOKEN` with Issues write access and records the confirmed issue URL. No report is uploaded by merely running diagnostics. Support reports go to **GitHub Issues**, not permanent source commits. Model names are optional; keys, project text, paths and conversations are excluded from the generated public report. See [diagnostic details](docs/DIAGNOSTICS.md).
 

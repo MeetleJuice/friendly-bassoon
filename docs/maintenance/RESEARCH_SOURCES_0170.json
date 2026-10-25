@@ -1,0 +1,123 @@
+[
+  {
+    "name": "ollama-think",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/docs/capabilities/thinking.mdx",
+    "bytes": 4616,
+    "sha256": "8bcd3b59f17c8efc43f0f5998baac5659862a2ad07f9767dde20d2f4ee3f2b38",
+    "ok": true
+  },
+  {
+    "name": "ollama-context",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/docs/context-length.mdx",
+    "bytes": 1413,
+    "sha256": "8414ca2ad9c67fbd9bd1497bf352fb60993b2b5b69531118f456f9b31af87aa7",
+    "ok": true
+  },
+  {
+    "name": "ollama-faq",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/docs/faq.mdx",
+    "bytes": 18143,
+    "sha256": "e3630684676a21219abc7cb6c17db53993412c194ba9c108c8dbae2f30318e0c",
+    "ok": true
+  },
+  {
+    "name": "ollama-api-types",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/api/types.go",
+    "bytes": 44623,
+    "sha256": "8e54520d34c312bb6adfccb652b0d1e18bb5c4cdb8ac2eb2eab0c065a508effa",
+    "ok": true
+  },
+  {
+    "name": "ollama-routes",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/server/routes.go",
+    "bytes": 108156,
+    "sha256": "28034a9f11df5d5c3ce8d3d4786d62d2efd78feb5fc3c7d4a7a5231ec17f12b3",
+    "ok": true
+  },
+  {
+    "name": "ollama-env",
+    "url": "https://raw.githubusercontent.com/ollama/ollama/main/envconfig/config.go",
+    "bytes": 16343,
+    "sha256": "0b0ea669b31cfe2b54313427257326a2b7a909bbc7bf8a671035efc446fb1895",
+    "ok": true
+  },
+  {
+    "name": "ollama-docs-thinking",
+    "url": "https://raw.githubusercontent.com/ollama/docs/main/capabilities/thinking.mdx",
+    "ok": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "name": "ollama-docs-context",
+    "url": "https://raw.githubusercontent.com/ollama/docs/main/context-length.mdx",
+    "ok": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "name": "ollama-docs-faq",
+    "url": "https://raw.githubusercontent.com/ollama/docs/main/faq.mdx",
+    "ok": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "name": "ollama-docs-tools",
+    "url": "https://raw.githubusercontent.com/ollama/docs/main/capabilities/tool-calling.mdx",
+    "ok": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "name": "ollama-docs-structured",
+    "url": "https://raw.githubusercontent.com/ollama/docs/main/capabilities/structured-outputs.mdx",
+    "ok": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "name": "anthropic-agent-patterns",
+    "url": "https://raw.githubusercontent.com/anthropics/anthropic-cookbook/main/patterns/agents/README.md",
+    "bytes": 848,
+    "sha256": "2425d60f34e1b071ac958d187a54e76b126bbd08517ba9f4377ec3304191c3db",
+    "ok": true
+  },
+  {
+    "name": "codex-agents",
+    "url": "https://raw.githubusercontent.com/openai/codex/main/docs/agents_md.md",
+    "bytes": 126,
+    "sha256": "56f5b6026b15fad40fe8b1f6f8910b9fccdf66da3b39dd943c91877e2299619e",
+    "ok": true
+  },
+  {
+    "name": "codex-app-server",
+    "url": "https://raw.githubusercontent.com/openai/codex/main/codex-rs/app-server/README.md",
+    "bytes": 40129,
+    "sha256": "b4a92cfab25bd7b96a16b8f9503a8aeae71fad9bad786ee0662efb2cddd1aeb6",
+    "ok": true
+  },
+  {
+    "name": "anthropic-evaluator",
+    "url": "https://raw.githubusercontent.com/anthropics/anthropic-cookbook/main/patterns/agents/evaluator_optimizer.ipynb",
+    "ok": true,
+    "bytes": 10815,
+    "sha256": "3d50881c3d7974ae30c27535f4ea0b344740c7b4c3efbd2acfa9e6e4a875493c"
+  },
+  {
+    "name": "anthropic-basic",
+    "url": "https://raw.githubusercontent.com/anthropics/anthropic-cookbook/main/patterns/agents/basic_workflows.ipynb",
+    "ok": true,
+    "bytes": 32982,
+    "sha256": "afa06eb29b3409f66069510dbdfbb8c97f52e8860e74eba93f95d6fb29faa56a"
+  },
+  {
+    "name": "openai-running",
+    "url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/docs/running_agents.md",
+    "ok": true,
+    "bytes": 36463,
+    "sha256": "881e6986fde7e8143bbb722577a04ed169f49a5bdf3c64f29124a5ffc42fb7bf"
+  },
+  {
+    "name": "openai-tools",
+    "url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/docs/tools.md",
+    "ok": true,
+    "bytes": 53426,
+    "sha256": "762d91079338475d3935af8e36ca8a958a6f476ac1b0ecfb81536a573c6cdbeb"
+  }
+]

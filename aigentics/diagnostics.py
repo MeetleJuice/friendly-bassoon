@@ -27,8 +27,10 @@ from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "8"
-OFFLINE_CHECK_COUNT = 25
+from .ollama_settings import OLLAMA_USAGE_FIELDS, public_thinking
+
+SUITE_VERSION = "9"
+OFFLINE_CHECK_COUNT = 27
 
 
 def model_evidence(events):
@@ -56,11 +58,13 @@ def model_evidence(events):
                 )
                 if key in data
             }
+            metadata.update(public_thinking(data))
         if event["kind"] == "model.responded":
             request = requests.get(data["request_id"], {})
             traces.append(
                 {
                     "step": request.get("step"),
+                    "thinking_mode": request.get("thinking_mode", "default"),
                     "duration_ms": data["duration_ms"],
                     "native_call_count": data["tool_calls"],
                     "content_chars": data["content_chars"],
@@ -73,12 +77,15 @@ def model_evidence(events):
                     "usage": {
                         key: value
                         for key, value in data.get("usage", {}).items()
-                        if key in ("prompt_eval_count", "eval_count", "total_duration")
-                        and isinstance(value, (int, float))
+                        if key in OLLAMA_USAGE_FIELDS and isinstance(value, (int, float))
                     },
                 }
             )
     return {
+        "thinking_mode": next(
+            (e["data"].get("thinking_mode", "default") for e in events if e["kind"] == "model.requested"),
+            "default",
+        ),
         "tool_diagnostics": tool_diagnostics(events),
         "mismatches": next(
             (e["data"].get("mismatches", []) for e in reversed(events) if e["kind"] == "run.summary"), []
@@ -305,6 +312,16 @@ def safe_recent_summary(store):
 
 
 class DiagnosticRunner:
+    def completion_order_fixture(self):
+        from .self_checks_0170 import completion_order_check
+
+        return completion_order_check(self.credentials)
+
+    def thinking_control_fixture(self):
+        from .self_checks_0170 import thinking_control_check
+
+        return thinking_control_check(self.credentials)
+
     def __init__(self, store, credentials, provider_factory=Provider, updater=None):
         self.store, self.credentials = store, credentials
         self.provider_factory, self.updater = provider_factory, updater
@@ -803,6 +820,8 @@ class DiagnosticRunner:
                 ("checkpoint_recovery_fixture", lambda: checkpoint_recovery_check(self.credentials)),
                 ("crew_evaluation_fixture", lambda: crew_evaluation_check(self.credentials)),
                 ("correctness_fixture", lambda: correctness_check(self.credentials)),
+                ("completion_order_fixture", lambda: self.completion_order_fixture()),
+                ("thinking_control_fixture", lambda: self.thinking_control_fixture()),
             ]
             for identity, function in cases:
                 if cancel.is_set():

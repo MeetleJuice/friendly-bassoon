@@ -58,3 +58,8 @@ Issues9–12 reviewed:9 repeats old Qwen14b failure;10 passes all21 health check
 ## Approved ZIP ea5d5fe33596 — 0.15 response
 
 Full manifest hashes validated.66 campaign rows=36passed,28evaluatedfailures,2unknown; health25/25. Rich exported counters expose token/time limits and verification-only repairs, but absent actual artifacts prevent semantic diagnosis. Add safe mismatch types/schema pointers and per-call argument/type/schema evidence. Freeze repeated measurement separately from discovery; do not expand scenarios and call the resulting score a controlled improvement. Synthetic contract calibration found strict formatting/key/citation ambiguity and one real numeric grader crash, now covered. Raw ZIP and transcripts remain outsideGit. See UPGRADE_0150_PLAN.md.
+
+
+## Latest reviewed ZIP → 0.17
+
+30 completed model trials,17pass/13fail; health25pass. Confirmed harness missing post-noop readback despite completed state; synthetic regression reproduces and correction is required. Vera prompt lacked explicit object wrapper; schemas now clarify rather than relaxing grading/regrading earlier results. Output-limit evidence suggests a capability-verified thinking-off comparison, not an assumed model fix. Separate terminal9B experiment did not overlap8B campaign; no shared-load attribution. New benchmark identity, conditional trials and safe observations support the next diagnosis. Raw reports remain outsideGit.

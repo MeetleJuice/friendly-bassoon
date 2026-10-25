@@ -11,8 +11,11 @@ import re
 from math import comb
 from typing import Literal
 
-MEASUREMENT_VERSION = "crew-measurement-1"
-GRADER_VERSION = "strict-contract-2"
+MEASUREMENT_VERSION = "crew-measurement-2"
+ARCHIVED_MANIFESTS = {
+    "crew-measurement-1": "0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d"
+}
+GRADER_VERSION = "strict-contract-3"
 REFERENCE_CASES = (
     ("role", "george_workflow"),
     ("role", "scout_symbol"),
@@ -25,7 +28,15 @@ REFERENCE_CASES = (
 )
 
 UNKNOWN_CODES = frozenset(
-    ("INTERRUPTED_CASE_NOT_REPLAYED", "CANCELLED", "CAMPAIGN_BUDGET_EXHAUSTED", "TOOL_DISABLED")
+    (
+        "INTERRUPTED_CASE_NOT_REPLAYED",
+        "CANCELLED",
+        "CAMPAIGN_BUDGET_EXHAUSTED",
+        "TOOL_DISABLED",
+        "THINKING_CONTROL_UNAVAILABLE",
+        "THINKING_NOT_APPLICABLE",
+        "THINKING_ROUTE_UNSUPPORTED",
+    )
 )
 USAGE_KEYS = ("prompt_eval_count", "eval_count")
 
@@ -35,11 +46,15 @@ class Trial:
     id: str
     case_kind: Literal["baseline", "role"]
     case_id: str
-    arm: Literal["reference", "output_only", "coordinated"]
+    arm: Literal["reference", "output_only", "coordinated", "thinking_off"]
     repeat: int
     max_output_tokens: int
     request_timeout_seconds: int
     session_budget_seconds: int
+
+    @property
+    def thinking_mode(self):
+        return "off" if self.arm == "thinking_off" else "default"
 
     @property
     def budget(self):
@@ -63,8 +78,8 @@ class Trial:
         }
 
 
-def measurement_plan():
-    """30 fresh attempts covering all six locals and two budget-sensitive cases.
+def measurement_plan(version=MEASUREMENT_VERSION):
+    """34 fresh attempts covering all six locals and two budget-sensitive cases.
 
     Each role receives three reference repeats. Unicode/no-op each receive two
     repeats of reference, output-only and coordinated budgets. Round order is
@@ -90,9 +105,9 @@ def measurement_plan():
             )
         if repeat <= 2:
             arms = (
-                ("reference", "output_only", "coordinated")
+                ("reference", "output_only", "coordinated", "thinking_off")
                 if repeat == 1
-                else ("coordinated", "output_only", "reference")
+                else ("thinking_off", "coordinated", "output_only", "reference")
             )
             for identity in ("unicode", "noop"):
                 for arm in arms:
@@ -104,10 +119,14 @@ def measurement_plan():
                             arm,
                             repeat,
                             1024 if arm == "reference" else 4096,
-                            120 if arm == "coordinated" else 85,
-                            180 if arm == "coordinated" else 90,
+                            120 if arm in ("coordinated", "thinking_off") else 85,
+                            180 if arm in ("coordinated", "thinking_off") else 90,
                         )
                     )
+    if version in ARCHIVED_MANIFESTS:
+        return tuple(t for t in trials if t.arm != "thinking_off")
+    if version != MEASUREMENT_VERSION:
+        raise ValueError("Unknown measurement version")
     return tuple(trials)
 
 
@@ -168,6 +187,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
                     "write_targets": sorted(outputs) if identity != "noop" else [],
                     "require_readback": writing and identity != "noop",
                     "required_tools": ["read_file", "write_file"] if identity == "noop" else [],
+                    "unchanged_targets": ["output.txt"] if identity == "noop" else [],
                 },
             }
             agents["george"] = agent
@@ -216,7 +236,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
         },
         "crew_version": CREW_VERSION,
         "cases": selected,
-        "trials": [asdict(trial) for trial in measurement_plan()],
+        "trials": [{**asdict(trial), "thinking_mode": trial.thinking_mode} for trial in measurement_plan()],
         "agent_definitions": definitions,
         "tool_schemas": {name: schema.model_json_schema() for name, schema in sorted(SCHEMAS.items())},
         "task_check_schema": TaskChecks.model_json_schema(),
@@ -228,7 +248,12 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
             "cloud_fallback": False,
             "fresh_workspace_each_attempt": True,
             "completion_feedback_limit": 1,
-            "reasoning_control": "unchanged_no_toggle",
+            "reasoning_control": "native_boolean_off_only_when_api_show_explicitly_advertises_support_and_active_default",
+            "reference_thinking": "model_default_omitted_request_field",
+            "temperature": 0.2,
+            "context_policy": "no_num_ctx_override",
+            "server_environment": "unchanged",
+            "unchanged_workflow": "read_identical_write_read_exactly_once_no_actual_write",
             "budget_ceilings": "clamp_to_profile_and_agent_limits",
             "comparison": "output_only isolates allowance; coordinated changes allowance_and_time",
             "interrupted_runtime": "unknown_not_model_failure",
@@ -267,9 +292,9 @@ def _outcome(row):
     return row["status"] == "passed"
 
 
-def summarize_trials(rows):
+def summarize_trials(rows, *, version=MEASUREMENT_VERSION):
     """Repeated outcomes, not pass@k; unknown attempts never become model failures."""
-    planned = measurement_plan()
+    planned = measurement_plan(version)
     known_ids = {trial.id for trial in planned}
     selected = {}
     for row in rows:
@@ -330,18 +355,95 @@ def summarize_trials(rows):
                 },
             }
         )
-    return {
-        "measurement_version": MEASUREMENT_VERSION,
+    summary = {
+        "measurement_version": version,
         "groups": result,
         "usage_basis": "Retained traces plus known rejected-response counters; not billing totals",
         "sampling_note": "Observed repetitions only; no deterministic model or pass@k estimate claimed",
     }
+    if version == MEASUREMENT_VERSION:
+        summary["thinking_pairs"] = thinking_pairs(rows)
+    return summary
+
+
+def thinking_pairs(rows):
+    """Matched settings, not a causal or hidden-compute guarantee."""
+    from .ollama_settings import public_thinking, thinking_experiment_available
+
+    index = {row.get("id"): row for row in rows}
+    results = []
+    for case in ("unicode", "noop"):
+        for repeat in (1, 2):
+            left = index.get(f"measure-{case}-coordinated-r{repeat}", {})
+            right = index.get(f"measure-{case}-thinking_off-r{repeat}", {})
+            a, b = left.get("evidence", {}), right.get("evidence", {})
+            first, second = _outcome(left), _outcome(right)
+            controls = public_thinking(a.get("model_metadata", {}))
+            matched = bool(
+                controls
+                and controls == public_thinking(b.get("model_metadata", {}))
+                and thinking_experiment_available(controls)
+            )
+            budgets_match = all(
+                type(a.get(k)) is int and a[k] == b.get(k)
+                for k in ("max_output_tokens", "request_timeout_seconds", "session_budget_seconds")
+            )
+            eligible = (
+                first is not None
+                and second is not None
+                and matched
+                and budgets_match
+                and a.get("thinking_mode") == "default"
+                and b.get("thinking_mode") == "off"
+            )
+            delta = None
+            if (
+                eligible
+                and first
+                and second
+                and a.get("timing_unknown") is not True
+                and b.get("timing_unknown") is not True
+            ):
+                da, db = _number(left.get("duration_ms")), _number(right.get("duration_ms"))
+                if da is not None and db is not None:
+                    delta = db - da
+            results.append(
+                {
+                    "case_id": case,
+                    "repeat": repeat,
+                    "reference_arm": "coordinated",
+                    "treatment_arm": "thinking_off",
+                    "eligible": eligible,
+                    "reference_passed": first,
+                    "off_passed": second,
+                    "both_passed_duration_delta_ms": delta,
+                    "note": "Matched observed settings; no seed control or hidden-compute guarantee"
+                    if eligible
+                    else "Missing, skipped or mismatched controls/budgets",
+                }
+            )
+    return results
 
 
 def paired_diff(previous, current):
     """Compare only identical benchmark and local configuration identities."""
     if previous.get("manifest_verified") is False or current.get("manifest_verified") is False:
         return {"comparable": False, "reason": "manifest_integrity_failed"}
+    for key in ("thinking_comparison", "ollama_observation"):
+        before, after = previous.get(key), current.get(key)
+        if key == "ollama_observation":
+            before = (
+                {k: v for k, v in (before or {}).items() if k not in ("observer_duration_ms",)}
+                if isinstance(before, dict)
+                else before
+            )
+            after = (
+                {k: v for k, v in (after or {}).items() if k not in ("observer_duration_ms",)}
+                if isinstance(after, dict)
+                else after
+            )
+        if before != after:
+            return {"comparable": False, "reason": "observed_settings_mismatch"}
     manifest = current.get("manifest_id")
     configuration = current.get("configuration_sha256", current.get("local_scope"))
     previous_configuration = previous.get("configuration_sha256", previous.get("local_scope"))

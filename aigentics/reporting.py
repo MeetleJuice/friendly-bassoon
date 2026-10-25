@@ -6,8 +6,10 @@ import re
 from urllib.parse import urlencode, urlsplit
 import httpx
 from .updates import REPOSITORY
+from .ollama_settings import OLLAMA_USAGE_FIELDS, public_thinking, public_observation, THINKING_MODES
 
 ISSUES_URL = f"https://github.com/{REPOSITORY}/issues"
+
 MAX_BODY = 45000
 
 # Counter keys come only from application-owned classifications. A valid-looking identifier
@@ -71,6 +73,7 @@ RECENT_ERROR_CODES = frozenset(
         "STREAM_PROTOCOL_ERROR",
         "TOOLS_UNSUPPORTED",
         "NATIVE_TOOL_PROTOCOL",
+        "THINKING_CONTROL_UNAVAILABLE",
         "UNKNOWN_ERROR",
         "STALE_FILE",
         "WRITE_TARGET_MISMATCH",
@@ -209,7 +212,7 @@ def public_report(report, include_model=False):
     }
     planned = report.get("planned_cases")
     if type(planned) is int and (0 if report.get("kind") == "crew_campaign" else 1) <= planned <= (
-        96 if report.get("kind") == "crew_campaign" else 32
+        66 if report.get("kind") == "crew_campaign" else 32
     ):
         result["planned_cases"] = planned
     result["environment"] = {
@@ -230,6 +233,20 @@ def public_report(report, include_model=False):
         if type(value) is int and value >= 0:
             result["budget_used_ms"] = min(value, 7_380_000)
 
+    if campaign:
+        if isinstance(report.get("ollama_observation"), dict):
+            result["ollama_observation"] = public_observation(report["ollama_observation"])
+        comparison = report.get("thinking_comparison")
+        if isinstance(comparison, dict):
+            result["thinking_comparison"] = public_thinking(comparison)
+            if type(comparison.get("eligible")) is bool:
+                result["thinking_comparison"]["eligible"] = comparison["eligible"]
+            if comparison.get("skip_code") in (
+                "THINKING_CONTROL_UNAVAILABLE",
+                "THINKING_NOT_APPLICABLE",
+                "THINKING_ROUTE_UNSUPPORTED",
+            ):
+                result["thinking_comparison"]["skip_code"] = comparison["skip_code"]
     if campaign:
         digest = report.get("manifest_id")
         if isinstance(digest, str) and re.fullmatch(r"[a-f0-9]{64}", digest):
@@ -379,9 +396,7 @@ def public_report(report, include_model=False):
                 {
                     k: min(v, 10**15)
                     for k, v in values.items()
-                    if k in ("prompt_eval_count", "eval_count", "total_duration")
-                    and type(v) is int
-                    and v >= 0
+                    if k in OLLAMA_USAGE_FIELDS and type(v) is int and v >= 0
                 }
                 if isinstance(values, dict)
                 else {}
@@ -420,6 +435,8 @@ def public_report(report, include_model=False):
                 if isinstance(values, dict)
                 else {}
             )
+        if isinstance(evidence.get("thinking_mode"), str) and evidence.get("thinking_mode") in THINKING_MODES:
+            check["evidence"]["thinking_mode"] = evidence["thinking_mode"]
         if "model_metadata" in evidence:
             check["evidence"]["model_metadata"] = {
                 key: value
@@ -436,6 +453,7 @@ def public_report(report, include_model=False):
                     "template_source",
                 )
             }
+            check["evidence"]["model_metadata"].update(public_thinking(evidence["model_metadata"]))
         if "request_traces" in evidence:
             traces = []
             for trace in evidence["request_traces"][:8]:
@@ -454,6 +472,11 @@ def public_report(report, include_model=False):
                     )
                     if key in trace
                 }
+                if (
+                    isinstance(trace.get("thinking_mode"), str)
+                    and trace.get("thinking_mode") in THINKING_MODES
+                ):
+                    safe["thinking_mode"] = trace["thinking_mode"]
                 safe["response_shape"] = {
                     key: value
                     for key, value in trace.get("response_shape", {}).items()
@@ -467,9 +490,7 @@ def public_report(report, include_model=False):
                     )
                 }
                 safe["usage"] = {
-                    key: value
-                    for key, value in trace.get("usage", {}).items()
-                    if key in ("prompt_eval_count", "eval_count", "total_duration")
+                    key: value for key, value in trace.get("usage", {}).items() if key in OLLAMA_USAGE_FIELDS
                 }
                 traces.append(safe)
             check["evidence"]["request_traces"] = traces
@@ -557,11 +578,7 @@ def compact_suite_body(payload):
         counts = e.get("execution_counts", {})
         traces = e.get("request_traces", [])
         rejected = e.get("failure_usage", {})
-        reject = (
-            "/".join(number(rejected.get(k)) for k in ("prompt_eval_count", "eval_count", "total_duration"))
-            if rejected
-            else "-"
-        )
+        reject = "/".join(number(rejected.get(k)) for k in OLLAMA_USAGE_FIELDS) if rejected else "-"
         task = e.get("task_checks", {})
         missing = (
             "/".join(
@@ -841,6 +858,9 @@ CAMPAIGN_CODES = frozenset(
         "TOOL_DISABLED",
         "INTERRUPTED_CASE_NOT_REPLAYED",
         "CAMPAIGN_BUDGET_EXHAUSTED",
+        "THINKING_CONTROL_UNAVAILABLE",
+        "THINKING_NOT_APPLICABLE",
+        "THINKING_ROUTE_UNSUPPORTED",
         "ROLE_REQUIREMENTS_NOT_MET",
         "CANCELLED",
         "UNKNOWN",
@@ -898,6 +918,8 @@ def safe_campaign_row(check, original):
     trial = MEASUREMENT_TRIALS.get(check["id"])
     if trial:
         safe.update(case_id=trial.case_id, arm=trial.arm, repeat=trial.repeat, track="measurement")
+    if isinstance(original.get("thinking_mode"), str) and original.get("thinking_mode") in THINKING_MODES:
+        safe["thinking_mode"] = original["thinking_mode"]
     final = evidence.get("final_response_status")
     if final in ("present", "missing", "not_reached", "not_recorded"):
         safe["final_response_status"] = final
@@ -905,6 +927,8 @@ def safe_campaign_row(check, original):
     digest = metadata.get("template_sha256")
     if isinstance(digest, str) and re.fullmatch(r"[a-f0-9]{64}", digest):
         safe["model_metadata"] = {"template_sha256": digest}
+    if public_thinking(metadata):
+        safe.setdefault("model_metadata", {}).update(public_thinking(metadata))
     if isinstance(evidence.get("model"), str) and len(evidence["model"]) <= 200:
         safe["model"] = evidence["model"]
     if type(original.get("timing_unknown")) is bool:
@@ -920,9 +944,7 @@ def safe_campaign_row(check, original):
             "usage": {
                 key: min(value, 10**15)
                 for key, value in trace.get("usage", {}).items()
-                if key in ("prompt_eval_count", "eval_count", "total_duration")
-                and type(value) is int
-                and value >= 0
+                if key in OLLAMA_USAGE_FIELDS and type(value) is int and value >= 0
             }
         }
         for trace in evidence.get("request_traces", [])[:8]
@@ -960,7 +982,7 @@ def compact_campaign_body(payload):
             known.append(rejected)
         return number(sum(known)) if known else "?"
 
-    modern = payload.get("suite_version") in ("crew-campaign-3", "crew-campaign-4")
+    modern = payload.get("suite_version") in ("crew-campaign-3", "crew-campaign-4", "crew-campaign-5")
 
     def case_name(identity):
         if not modern:

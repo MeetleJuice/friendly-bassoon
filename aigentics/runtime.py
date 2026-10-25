@@ -44,7 +44,7 @@ def looks_like_text_tool_call(text):
     return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
-RUNTIME_POLICY_VERSION = "native-diagnostics-1"
+RUNTIME_POLICY_VERSION = "verified-completion-2"
 
 
 class RunTimeout(TimeoutError):
@@ -147,6 +147,8 @@ class Runtime:
             raise ValueError("Expected output files require the write tool and write permission.")
         if checks.write_targets and checks.require_readback and "read_file" not in advertised_names:
             raise ValueError("Read-back checks require the read_file tool.")
+        if checks.unchanged_targets and not {"read_file", "write_file"} <= advertised_names:
+            raise ValueError("Unchanged-file checks require permitted read_file and write_file tools.")
         sid = self.store.start(agent, ws.root, capture, parent)
         deadline = time.monotonic() + agent.max_seconds
         started = time.monotonic()
@@ -217,6 +219,8 @@ class Runtime:
                     ". Writes may only target the expected files when listed. Complete the required native tool operations. "
                     "Read back each expected file after its latest write when required. These checks override historical task targets."
                 )
+                + " "
+                + self.credentials.redact(checks.instructions())
             )
         event(
             "task.context",
@@ -244,6 +248,7 @@ class Runtime:
         profiles = {p.id: p for p in self.store.profiles()}
         chain, route = [agent.primary, *agent.fallbacks], 0
         checked = set()
+        route_capabilities = {}
         tool_runner = ToolRunner(ws, agent, approval, cancel, checks.write_targets)
         state, outcome = "failed", "Runtime did not complete"
         tools = tool_definitions(agent)
@@ -284,7 +289,9 @@ class Runtime:
                         raise ValueError(f"Provider profile '{ref.profile_id}' is missing")
                     provider = self.provider_factory(profiles[ref.profile_id], self.credentials)
                     try:
-                        if tools and route not in checked:
+                        if (
+                            tools or profiles[ref.profile_id].ollama_thinking != "default"
+                        ) and route not in checked:
                             capabilities = cancellable_call(
                                 lambda: provider.capabilities(ref.model), cancel, deadline
                             )
@@ -292,12 +299,24 @@ class Runtime:
                                 "model.capabilities",
                                 {"profile": ref.profile_id, "model": ref.model, **capabilities},
                             )
-                            if not capabilities["tools"]:
+                            from .ollama_settings import permits_thinking
+
+                            if not permits_thinking(capabilities, profiles[ref.profile_id].ollama_thinking):
+                                raise ProviderError(
+                                    "Ollama did not advertise support for the requested thinking setting; use model default or verify your model/server controls.",
+                                    code="THINKING_CONTROL_UNAVAILABLE",
+                                )
+                            if tools and not capabilities["tools"]:
                                 raise ProviderError(
                                     "Selected model/profile does not support native tools",
                                     code="TOOLS_UNSUPPORTED",
                                 )
+                            route_capabilities[route] = capabilities
                             checked.add(route)
+                        if profiles[ref.profile_id].ollama_thinking != "default" and hasattr(
+                            provider, "remember_capabilities"
+                        ):
+                            provider.remember_capabilities(ref.model, route_capabilities.get(route, {}))
                         request_id = str(uuid4())
                         event(
                             "model.requested",
@@ -306,6 +325,7 @@ class Runtime:
                                 "step": step,
                                 "profile": ref.profile_id,
                                 "model": ref.model,
+                                "thinking_mode": profiles[ref.profile_id].ollama_thinking,
                                 "message_count": len(messages),
                                 "context_chars": len(json.dumps(messages)),
                                 "request_chars": request_size(messages, tools),

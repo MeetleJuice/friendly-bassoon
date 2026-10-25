@@ -1,5 +1,10 @@
 # Verification
 
+## 0.17 validation in progress
+
+Research/plan: maintenance/RESEARCH_0170.md and UPGRADE_0170_PLAN.md. Implemented completion-order proof, structural test schemas, verified native thinking controls,34trial measurement/27offline checks and safe diagnostic metadata. Selected models/server settings/UI remain. Local1104tests passed/1optional live-model skipped;45final focused tests, Ruff lint/format, source startup/27offline diagnostics, dependency consistency and wheel/source fidelity passed. Actual Qt Test center/Connections previews inspected. Frozen measurement2 SHA256 e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e; archived1 unchanged. Windows actual installation/released0.16upgrade/restart and public-updater verification must finish before claiming delivery. No live user model/key or support upload used.
+
+
 ## 0.16.0 verified delivery
 
 Published [0.16.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.16.0) from immutable `e1d742fad7f274a21083b309eae3ac57891079a0`. Source Windows run40177480849 and tag/release run40178128741 attempt2 passed tests/lint, packaging, actual installer/shortcut/startup,25offline diagnostics, pinned released0.15upgrade/data preservation and silent restart. Local1062passed/1optional live model skipped; final27focused UI/campaign/ZIP checks, Ruff, source smokes, dependencies and wheel/source fidelity passed. Production Updater(current_version=0.15.0) discovered/downloaded/reverified the public installer: **42489920bytes**, SHA256 `d33101ae45e7b1ed4129c1836e32495f182bce4b165a19e6e0c164d3ae59e952`. No live user model/key or support POST used.

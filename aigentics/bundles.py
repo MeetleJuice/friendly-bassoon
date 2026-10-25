@@ -13,6 +13,7 @@ from uuid import UUID
 from . import __version__
 from .reporting import public_report, public_shape
 from .test_suite import bounded_tool_timeline
+from .ollama_settings import OLLAMA_USAGE_FIELDS, THINKING_MODES
 
 MAX_BUNDLE_BYTES = 3_000_000
 MAX_BUNDLE_UNCOMPRESSED_BYTES = 8_000_000
@@ -48,6 +49,8 @@ def clean_report(report, credentials):
             "manifest_id",
             "manifest_verified",
             "track",
+            "thinking_comparison",
+            "ollama_observation",
         )
     }
     safe["schema_version"] = 1
@@ -120,6 +123,8 @@ def clean_report(report, credentials):
                 "checkpoint_recovery_fixture",
                 "crew_evaluation_fixture",
                 "correctness_fixture",
+                "completion_order_fixture",
+                "thinking_control_fixture",
                 "update_connection",
                 "selected_local_model",
             }
@@ -151,24 +156,39 @@ def clean_report(report, credentials):
                 and type(v) is int
                 and v >= 0
             }
+            if isinstance(trace.get("thinking_mode"), str) and trace.get("thinking_mode") in THINKING_MODES:
+                entry["thinking_mode"] = trace["thinking_mode"]
             entry["response_shape"] = public_shape(trace.get("response_shape", {}))
             entry["usage"] = {
                 k: min(v, 10**15)
                 for k, v in trace.get("usage", {}).items()
-                if k in ("prompt_eval_count", "eval_count", "total_duration") and type(v) is int and v >= 0
+                if k in OLLAMA_USAGE_FIELDS and type(v) is int and v >= 0
             }
             traces.append(entry)
         row["evidence"]["request_traces"] = traces
         row["evidence"]["tool_timeline"] = bounded_tool_timeline(original.get("tool_timeline", []))
     if report.get("mode") == "measurement":
-        from .measurement import measurement_manifest, manifest_id, summarize_trials
+        from .measurement import (
+            measurement_manifest,
+            manifest_id,
+            summarize_trials,
+            ARCHIVED_MANIFESTS,
+            MEASUREMENT_VERSION,
+        )
 
         expected = measurement_manifest()
-        if report.get("measurement_manifest") == expected and report.get("manifest_id") == manifest_id(
-            expected
-        ):
-            safe["measurement_manifest"] = expected
-        safe["measurement_summary"] = summarize_trials(safe["checks"])
+        stored = report.get("measurement_manifest")
+        digest = report.get("manifest_id")
+        version = MEASUREMENT_VERSION
+        if isinstance(stored, dict):
+            try:
+                trusted = digest == manifest_id(expected) or digest in ARCHIVED_MANIFESTS.values()
+                if trusted and manifest_id(stored) == digest:
+                    safe["measurement_manifest"] = json.loads(json.dumps(stored))
+                    version = stored.get("measurement_version", MEASUREMENT_VERSION)
+            except (ValueError, TypeError, RecursionError):
+                pass
+        safe["measurement_summary"] = summarize_trials(safe["checks"], version=version)
     return credentials.scrub(safe)
 
 

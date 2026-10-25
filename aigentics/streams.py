@@ -3,6 +3,7 @@
 import json
 import math
 import time
+from .ollama_settings import OLLAMA_USAGE_FIELDS
 
 
 MAX_BYTES = 2_000_000
@@ -163,7 +164,7 @@ def _native(response, deadline):
                 for key in keys:
                     identities[key] = len(calls)
                 calls.append(normalized)
-        for key in ("prompt_eval_count", "eval_count", "total_duration"):
+        for key in OLLAMA_USAGE_FIELDS:
             if key in chunk:
                 if type(chunk[key]) is not int or chunk[key] < 0:
                     _fail()

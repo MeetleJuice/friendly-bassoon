@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.17 verified completion and observable thinking](UPGRADE_0170_PLAN.md), [research](RESEARCH_0170.md) and [source hashes](RESEARCH_SOURCES_0170.json).
 - [0.16 Midnight Crew interface](UPGRADE_0160_PLAN.md) and [primary-source UI research](../design/UI_RESEARCH_0160.md).
 - [0.15 precise diagnostics and repeated measurement](UPGRADE_0150_PLAN.md).
 - [Diagnostic ZIP workflow](DIAGNOSTIC_BUNDLES_PLAN.md) — local review/export in0.14.1; direct upload remains future work.

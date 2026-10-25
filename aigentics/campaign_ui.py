@@ -43,7 +43,7 @@ class CampaignDialog(QDialog):
         layout.addWidget(text_label("TEST · OBSERVE · IMPROVE", "eyebrow"))
         layout.addWidget(text_label("Put the Midnight Crew to the test.", "pageTitle"))
         label = text_label(
-            f"{OFFLINE_CHECK_COUNT} offline app checks + 30 repeated local trials by default. "
+            f"{OFFLINE_CHECK_COUNT} offline app checks + 34 local trials by default (30 completion trials + 4 conditional thinking-off trials). "
             "One model, six independent roles, disposable files. Up to 2 hours. "
             "No API checks. Saved personal agents stay unchanged."
         )
@@ -60,7 +60,7 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Measurement • 30 repeated attempts + app checks", "measurement")
+        self.mode.addItem("Measurement • 34 trials + app checks", "measurement")
         self.mode.addItem("Discovery • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
@@ -226,6 +226,7 @@ class CampaignDialog(QDialog):
                 "reference": "reference",
                 "output_only": "output allowance",
                 "coordinated": "output + time",
+                "thinking_off": "thinking off (conditional)",
             }[trial.arm]
             total = 3 if trial.case_kind == "role" else 2
             titles[trial.id] = f"{role} • {scenario} • {arm} • {trial.repeat}/{total}"
@@ -400,6 +401,7 @@ class CampaignDialog(QDialog):
                 "The saved content or final answer failed an explicit acceptance requirement; a readback alone cannot prove correctness."
             )
         text.append("Mismatch diagnosis: " + str(e.get("mismatches", [])))
+        text.append("Thinking request: " + str(e.get("thinking_mode", "default")))
         text.append("Per-call schema evidence: " + str(e.get("tool_diagnostics", [])))
         text.append("Initial content acceptance: " + str(e.get("initial_acceptance_checks", {})))
         text.append("Content acceptance: " + str(e.get("acceptance_checks", {})))
@@ -414,6 +416,13 @@ class CampaignDialog(QDialog):
         self.current_case.setText("Results saved locally. Review the ZIP and share it when you choose.")
         self.update_dashboard()
         rows = campaign["checks"]
+        skipped_thinking = sum(
+            r.get("status") == "skipped" and r.get("code", "").startswith("THINKING_") for r in rows
+        )
+        if skipped_thinking:
+            self.current_case.setText(
+                f"Results saved. {skipped_thinking} conditional thinking trials were skipped because the required control was unavailable or not applicable."
+            )
         repaired = sum(
             r["status"] == "passed" and bool(r.get("evidence", {}).get("completion_feedback_count"))
             for r in rows
@@ -434,6 +443,10 @@ class CampaignDialog(QDialog):
             f"Failed: {failed} • Not completed: {campaign['planned_cases'] - len(rows) + incomplete} • saved locally."
         )
         if campaign.get("mode") == "measurement":
+            self.output.appendPlainText("Thinking controls: " + str(campaign.get("thinking_comparison", {})))
+            self.output.appendPlainText(
+                "Server observation (end of run): " + str(campaign.get("ollama_observation", {}))
+            )
             from .measurement import summarize_trials
 
             self.output.appendPlainText(

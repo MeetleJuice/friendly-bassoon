@@ -105,3 +105,10 @@ Schema5 and storage locations are retained. Python tool results add fixed status
 Schema5 and existing locations/retention are unchanged. Local events add task.context, task.checks and task.checks_evaluated; configured target paths/unmet names stay local. run.summary adds typed task-operation status/counts and final_response_status; counters distinguish actual versus unchanged writes, target mismatches and empty finals. There is no raw thinking collection or automatic extra model call. model.responded now retains actual HTTP status when available.
 
 run-review-2 rebuilds safe task summaries from fixed enums/count keys, excluding target paths, source, tasks, agent names and assessment notes. Recent20 coverage counts which sessions recorded task checks/final status/current-version summaries, so older omissions are not treated as measured zero. Native tool/approval/stale/path guards remain; separately approved commands are not an OS sandbox.
+
+
+## 0.17 observable controls and completion proof
+
+Schema5, folders, report/ZIP/global retention bounds remain. Profile `ollama_thinking` defaults to default; off/on is native-only and requires explicit advertised boolean support. Local required unchanged-file paths remain private. Shared task counters add expected/verified/missing unchanged files. Reports retain only safe enum controls/default/values, requested modes and bounded native load/prompt/evaluation durations; no raw thinking/arguments/content. One campaign-end metadata observation may include server version, loaded-model count, selected loaded context and observer duration, never model names/endpoints. It is not per-turn telemetry.
+
+Campaign5/measurement2/grader3/runtime verified-completion-2 uses34resultslots. Trusted archived measurement1 hash/bytes remain exportable. New and old benchmarks are not silently comparable. Missing/redundant thinking treatments skip without generation; eligible pair summaries require equal known controls/budgets, and latency deltas require both passes. ZIPs remain reviewed local files with no automatic upload.

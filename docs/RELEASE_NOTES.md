@@ -1,3 +1,16 @@
+# 0.17.0 — verify completion and measure thinking controls
+
+- Fixes a harness false pass for unchanged files: the requested read → one identical write request → final read must be proven. Missing evidence can use the existing single bounded correction; strict graders and approvals remain.
+- Clarifies test artifact/final JSON structure before execution, including Vera's required object wrapper. Provides schema without expected answer values. Existing results are not regraded.
+- Connections adds model-default/off/on thinking for native Ollama. Explicit settings require advertised support; default preserves behavior. Your saved models/agents, automatic context and server configuration remain.
+- Default Measurement records 27 token-free app checks plus 34 trial slots: all six local roles, repeated output/time arms, and four conditional matched thinking-off trials. Unsupported, unknown or already-off models skip the new controls without a generation probe. No API-key generation checks.
+- Reviewed diagnostic ZIP includes requested control, safe advertised metadata, native load/prompt/evaluation counters, unchanged-file proof counts and one end-of-campaign context/server observation. Matched outcomes/latency and comparison guards distinguish evidence from assumptions. Existing bounded retention/privacy and local-only saving remain.
+- Keeps the 0.16 interface. This is a new benchmark version; differences from older scores do not establish a controlled performance improvement. No model training, model switch, MCP or orchestration is claimed.
+
+Keep Ollama running. Update → install/restart → let Measurement finish once → Review / save diagnostic ZIP → inspect and approve local saving → Save → drag the ZIP into support chat. Expect 61 outcomes, with up to four legitimate control skips. No token, GitHub issue or automatic upload is needed. Actual model improvement awaits your local run.
+
+Windows install/shortcut, packaged offline diagnostics, released0.16 upgrade/data-preservation/restart and production public-updater verification gate delivery. Old reports remain exportable; incompatible partial benchmark campaigns start a new matching version rather than silently mixing conditions.
+
 # 0.16.0 — a calmer Midnight Crew desktop
 
 - New sidebar navigation, clearer page headings, consistent dark theme, original role emblems, improved spacing and keyboard/hover focus states.

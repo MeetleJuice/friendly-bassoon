@@ -990,7 +990,19 @@ class Window(QMainWindow):
         self.profile_select = QComboBox()
         self.profile_select.currentIndexChanged.connect(self.load_profile)
         pl.addWidget(self.profile_select)
+        pl.addWidget(text_label("Thinking control · native Ollama only"))
+        self.thinking_selector = QComboBox()
+        self.thinking_selector.setAccessibleName("Ollama thinking setting")
+        self.thinking_selector.addItem("Model default (recommended)", "default")
+        self.thinking_selector.addItem("Request thinking off", "off")
+        self.thinking_selector.addItem("Request thinking on", "on")
+        self.thinking_selector.setToolTip(
+            "Ollama must advertise support before an explicit request can run. Context sizing stays automatic. Controlled tests use separate reference/off requests without changing your saved setting."
+        )
+        self.thinking_selector.currentIndexChanged.connect(self.change_thinking_setting)
+        pl.addWidget(self.thinking_selector)
         self.profile_json = QPlainTextEdit()
+        self.profile_json.textChanged.connect(self.sync_thinking_selector)
         pl.addWidget(self.profile_json, 1)
         row = QHBoxLayout()
         pl.addLayout(row)
@@ -1443,6 +1455,32 @@ class Window(QMainWindow):
             self.agent_profile.setCurrentIndex(index)
         self.load_profile()
         self.refresh_model_choices()
+
+    def sync_thinking_selector(self):
+        try:
+            data = json.loads(self.profile_json.toPlainText())
+            native = (
+                isinstance(data, dict)
+                and data.get("kind", "ollama") == "ollama"
+                and data.get("ollama_api", "native") == "native"
+            )
+            mode = data.get("ollama_thinking", "default") if isinstance(data, dict) else "default"
+        except (ValueError, TypeError):
+            native, mode = False, "default"
+        self.thinking_selector.blockSignals(True)
+        self.thinking_selector.setEnabled(native)
+        index = self.thinking_selector.findData(mode) if isinstance(mode, str) else -1
+        self.thinking_selector.setCurrentIndex(max(0, index))
+        self.thinking_selector.blockSignals(False)
+
+    def change_thinking_setting(self):
+        try:
+            data = json.loads(self.profile_json.toPlainText())
+            if isinstance(data, dict):
+                data["ollama_thinking"] = self.thinking_selector.currentData()
+                self.profile_json.setPlainText(json.dumps(data, indent=2))
+        except (ValueError, TypeError):
+            pass
 
     def load_profile(self, *_):
         profile = next((p for p in self.store.profiles() if p.id == self.profile_select.currentData()), None)

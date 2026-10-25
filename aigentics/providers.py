@@ -6,6 +6,7 @@ import re
 import time
 import httpx
 from .models import Reply, ToolCall
+from .ollama_settings import OLLAMA_USAGE_FIELDS, thinking_metadata, public_observation, permits_thinking
 
 
 def response_shape(message, reason, streaming=False):
@@ -36,7 +37,7 @@ class ProviderError(RuntimeError):
         self.usage = {
             k: min(v, 10**15)
             for k, v in (usage or {}).items()
-            if k in ("prompt_eval_count", "eval_count", "total_duration") and type(v) is int and v >= 0
+            if k in OLLAMA_USAGE_FIELDS and type(v) is int and v >= 0
         }
         self.evidence = evidence or {}
         self.retryable = retryable
@@ -50,6 +51,7 @@ class Provider:
         self.transport = transport
         self.last_http_status = None
         self.chat_requests = 0
+        self._thinking_controls = {}
 
     def request(self, method, endpoint, **kwargs):
         self.last_http_status = None
@@ -136,6 +138,8 @@ class Provider:
                 value = data.get(key)
                 if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]{0,64}", value):
                     metadata[key] = value
+            metadata.update(thinking_metadata(data.get("thinking")))
+            self.remember_capabilities(model, metadata)
             capabilities = data.get("capabilities")
             if capabilities is not None:
                 if not isinstance(capabilities, list) or any(not isinstance(c, str) for c in capabilities):
@@ -143,6 +147,36 @@ class Provider:
                 return {"tools": "tools" in capabilities, "source": "ollama.show", **metadata}
             return {"tools": True, "source": "profile; older Ollama cannot report capabilities", **metadata}
         return {"tools": True, "source": "profile declaration; verify selected cloud model"}
+
+    def remember_capabilities(self, model, capabilities):
+        from .ollama_settings import public_thinking
+
+        self._thinking_controls[model] = public_thinking(capabilities)
+
+    def observe_server(self, model):
+        """Two bounded read-only observations; never alter server or load a model."""
+        began = time.monotonic()
+        safe = {"status": "unavailable"}
+        try:
+            version = self.request("GET", "/api/version")
+            if isinstance(version, dict):
+                safe["server_version"] = version.get("version")
+        except ProviderError:
+            pass
+        try:
+            data = self.request("GET", "/api/ps")
+            models = data.get("models") if isinstance(data, dict) else None
+            if isinstance(models, list) and len(models) <= 1024:
+                safe.update(loaded_models=len(models), status="not_loaded")
+                target = model if ":" in model else model + ":latest"
+                for row in models:
+                    if isinstance(row, dict) and target in (row.get("name"), row.get("model")):
+                        safe.update(context_length=row.get("context_length"), status="observed")
+                        break
+        except ProviderError:
+            pass
+        safe["observer_duration_ms"] = round((time.monotonic() - began) * 1000)
+        return public_observation(safe)
 
     def chat_stream(self, endpoint, body, native):
         from .streams import consume_chat_stream, StreamProtocolError
@@ -194,9 +228,22 @@ class Provider:
             if self.profile.kind == "ollama"
             else False
         )
+        if self.profile.ollama_thinking != "default" and not native:
+            raise ProviderError(
+                "Explicit thinking controls require the native Ollama route",
+                code="THINKING_CONTROL_UNAVAILABLE",
+            )
         if tools and not self.profile.supports_tools:
             raise ProviderError("Selected profile disables native tool calling")
         if native:
+            if self.profile.ollama_thinking != "default":
+                info = self._thinking_controls.get(model)
+                if info is None:
+                    info = self.capabilities(model)
+                if not permits_thinking(info, self.profile.ollama_thinking):
+                    raise ProviderError(
+                        "Ollama did not advertise this thinking control", code="THINKING_CONTROL_UNAVAILABLE"
+                    )
             converted = []
             for message in messages:
                 m = dict(message)
@@ -220,6 +267,8 @@ class Provider:
                 "stream": streaming,
                 "options": {"temperature": 0.2, "num_predict": max_output_tokens},
             }
+            if self.profile.ollama_thinking != "default":
+                body["think"] = self.profile.ollama_thinking == "on"
             if tools:
                 body["tools"] = tools
             data = (
@@ -229,7 +278,7 @@ class Provider:
             )
             if not isinstance(data, dict):
                 raise ProviderError("Unexpected chat response", code="INVALID_CHAT_RESPONSE")
-            usage = {k: data[k] for k in ("prompt_eval_count", "eval_count", "total_duration") if k in data}
+            usage = {k: data[k] for k in OLLAMA_USAGE_FIELDS if k in data}
             if data.get("done_reason") == "length":
                 raise ProviderError(
                     "Provider stopped before a complete response; reduce context or change model",

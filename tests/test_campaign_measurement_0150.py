@@ -18,13 +18,13 @@ def test_all_six_roles_repeated_measurement_and_zip(store, credentials):
         mode="measurement",
         provider_factory=CrewScripted,
     )
-    assert len(r["checks"]) == r["planned_cases"] == 30
-    assert r["summary"]["passed"] == 30, [
+    assert len(r["checks"]) == r["planned_cases"] == 34
+    assert r["summary"]["passed"] == 34, [
         (x["id"], x["code"]) for x in r["checks"] if x["status"] != "passed"
     ]
     assert r["track"] == "measurement" and r["manifest_verified"] is True
     assert r["manifest_id"] == manifest_id(measurement_manifest())
-    assert len(r["measurement_summary"]["groups"]) == 12
+    assert len(r["measurement_summary"]["groups"]) == 14
     trials = {t.id: t for t in measurement_plan()}
     for row in r["checks"]:
         t = trials[row["id"]]
@@ -37,7 +37,7 @@ def test_all_six_roles_repeated_measurement_and_zip(store, credentials):
     assert plan("measurement") == list(trials)
 
 
-@pytest.mark.parametrize("trigger", [1, 30])
+@pytest.mark.parametrize("trigger", [1, 34])
 def test_benchmark_change_stops_before_next_attempt(store, credentials, monkeypatch, trigger):
     import aigentics.campaign as campaign
 
@@ -96,4 +96,4 @@ def test_measurement_quick_stop_preserves_unknown_without_replay(store, credenti
         provider_factory=CrewScripted,
     )[1]
     assert second["id"] == first["id"] and second["checks"][0] == first["checks"][0]
-    assert second["summary"]["passed"] == 30
+    assert second["summary"]["passed"] == 34

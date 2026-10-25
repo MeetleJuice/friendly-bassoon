@@ -19,13 +19,13 @@ def test_default_measurement_worker_review_and_local_zip(qtbot, store, credentia
     dialog = CampaignDialog(window)
     qtbot.addWidget(dialog)
     assert dialog.mode.currentData() == "measurement"
-    assert dialog.results.rowCount() == 30 and dialog.progress.maximum() == 55
+    assert dialog.results.rowCount() == 34 and dialog.progress.maximum() == 61
     opened = []
     monkeypatch.setattr("aigentics.campaign_ui.webbrowser.open", lambda u: opened.append(u))
     dialog.start()
     finish(qtbot, dialog)
     assert not errors and not opened
-    assert len(dialog.rows) == 30 and dialog.progress.value() == 55
+    assert len(dialog.rows) == 34 and dialog.progress.value() == 61
     assert "Repeated measurement" in dialog.output.toPlainText()
     dialog.inspect(0, 0)
     assert "Per-call schema evidence:" in dialog.output.toPlainText()
@@ -41,7 +41,7 @@ def test_default_measurement_worker_review_and_local_zip(qtbot, store, credentia
     assert destination.read_bytes() == bundle.data
     with zipfile.ZipFile(io.BytesIO(bundle.data)) as archive:
         report = json.loads(archive.read("reports/01.json"))
-        assert len(report["checks"]) == 30
+        assert len(report["checks"]) == 34
         assert report["manifest_verified"] is True
         assert report["manifest_id"] == manifest_id(report["measurement_manifest"])
         for entry in json.loads(archive.read("manifest.json"))["files"]:
@@ -69,6 +69,6 @@ def test_committed_measurement_definition_matches_runtime():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    frozen = json.loads((root / "docs/benchmarks/crew-measurement-1.json").read_text())
+    frozen = json.loads((root / "docs/benchmarks/crew-measurement-2.json").read_text())
     assert frozen == measurement_manifest()
-    assert (root / "docs/benchmarks/crew-measurement-1.sha256").read_text().strip() == manifest_id(frozen)
+    assert (root / "docs/benchmarks/crew-measurement-2.sha256").read_text().strip() == manifest_id(frozen)

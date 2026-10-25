@@ -15,6 +15,9 @@ class TaskChecks(Strict):
     required_reads: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
         default_factory=list, max_length=16
     )
+    unchanged_targets: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(
+        default_factory=list, max_length=16
+    )
     completion_feedback: bool = False
     require_tools: bool = False
     require_readback: bool = True
@@ -28,7 +31,29 @@ class TaskChecks(Strict):
 
     @property
     def configured(self):
-        return bool(self.write_targets or self.required_tools or self.require_tools or self.required_reads)
+        return bool(
+            self.write_targets
+            or self.required_tools
+            or self.require_tools
+            or self.required_reads
+            or self.unchanged_targets
+        )
+
+    def instructions(self):
+        parts = ["Before the final response, complete every configured check using native tools."]
+        if self.required_reads:
+            parts.append("Inspect the required source files: " + ", ".join(self.required_reads) + ".")
+        if self.write_targets:
+            parts.append("Produce the declared outputs and compare them with the requested contract.")
+            if self.require_readback:
+                parts.append(
+                    "After the LAST saved change, call read_file on EACH output. A write_file verification result is not that read_file call."
+                )
+        if self.unchanged_targets:
+            parts.append(
+                "For EACH unchanged-file target: read_file, request exactly ONE identical write_file with its current revision, then read_file AGAIN after that request. Do not make any actual content change."
+            )
+        return " ".join(parts)
 
 
 def path_key(workspace, path):
@@ -68,6 +93,9 @@ class TaskEvidence:
         self.writes, self.readbacks, self.tools = {}, {}, set()
         self.sources = {path_key(workspace, path): path for path in checks.required_reads}
         self.read_sources = set()
+        self.unchanged = {path_key(workspace, path): path for path in checks.unchanged_targets}
+        self.unchanged_reads, self.unchanged_results, self.unchanged_readbacks = {}, {}, {}
+        self.unchanged_counts, self.changed_unchanged = {}, set()
 
     def record(self, call, result, status):
         if status != "succeeded":
@@ -76,6 +104,20 @@ class TaskEvidence:
         if call.name not in ("read_file", "write_file"):
             return
         key = path_key(self.workspace, call.arguments["path"])
+        if key in self.unchanged:
+            digest = result.get("sha256")
+            if call.name == "read_file":
+                self.unchanged_reads[key] = digest
+                previous = self.unchanged_results.get(key)
+                if previous and previous[0] == digest and previous[1]:
+                    self.unchanged_readbacks[key] = digest
+            elif result.get("verified") is True:
+                self.unchanged_readbacks.pop(key, None)
+                if result.get("unchanged") is True:
+                    self.unchanged_counts[key] = self.unchanged_counts.get(key, 0) + 1
+                    self.unchanged_results[key] = (digest, self.unchanged_reads.get(key) == digest)
+                else:
+                    self.changed_unchanged.add(key)
         if call.name == "read_file":
             self.read_sources.add(key)
         if call.name == "write_file" and result.get("verified") is True and not result.get("unchanged"):
@@ -104,11 +146,32 @@ class TaskEvidence:
                 missing.append(relative)
         missing_sources = set(self.sources) - self.read_sources
         missing_tools = set(self.checks.required_tools) - self.tools
+        missing_unchanged = []
+        for key, relative in self.unchanged.items():
+            result = self.unchanged_results.get(key)
+            valid = False
+            if (
+                result
+                and result[1]
+                and self.unchanged_counts.get(key) == 1
+                and key not in self.changed_unchanged
+            ):
+                try:
+                    valid = (
+                        self.unchanged_readbacks.get(key)
+                        == result[0]
+                        == self.workspace.read(relative)["sha256"]
+                    )
+                except (OSError, ValueError, UnicodeError):
+                    pass
+            if not valid:
+                missing_unchanged.append(relative)
         passed = (
             written == len(self.targets)
             and (not self.checks.require_readback or readback == len(self.targets))
             and not missing_sources
             and not missing_tools
+            and not missing_unchanged
             and (not self.checks.require_tools or bool(self.tools))
         )
         return {
@@ -130,10 +193,14 @@ class TaskEvidence:
             "require_tools": self.checks.require_tools,
             "any_tool_succeeded": bool(self.tools),
             "require_readback": self.checks.require_readback,
+            "expected_unchanged_files": len(self.unchanged),
+            "verified_unchanged_files": len(self.unchanged) - len(missing_unchanged),
+            "missing_unchanged_files": len(missing_unchanged),
         }, {
             "unmet_targets": missing,
             "unmet_tools": sorted(missing_tools),
             "unread_sources": [self.sources[key] for key in sorted(missing_sources)],
+            "unmet_unchanged_targets": missing_unchanged,
         }
 
 
@@ -150,6 +217,9 @@ TASK_COUNT_KEYS = frozenset(
         "missing_sources",
         "content_failures",
         "revision_mismatches",
+        "expected_unchanged_files",
+        "verified_unchanged_files",
+        "missing_unchanged_files",
     )
 )
 TASK_BOOL_KEYS = frozenset(("require_tools", "any_tool_succeeded", "require_readback"))

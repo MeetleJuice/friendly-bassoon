@@ -2,7 +2,7 @@
 
 from typing import Literal
 from uuid import uuid4
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .registry import TOOLS
 
@@ -52,7 +52,14 @@ class Profile(Strict):
     supports_tools: bool = True
     ollama_api: Literal["native", "compatible"] = "native"
     ollama_stream: bool = False
+    ollama_thinking: Literal["default", "off", "on"] = "default"
     timeout_seconds: int = Field(default=120, ge=1, le=300)
+
+    @model_validator(mode="after")
+    def native_thinking_only(self):
+        if self.ollama_thinking != "default" and (self.kind != "ollama" or self.ollama_api != "native"):
+            raise ValueError("Explicit thinking controls require native Ollama")
+        return self
 
     @field_validator("base_url")
     @classmethod

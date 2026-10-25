@@ -104,3 +104,8 @@ Future Update clicks download/verify, ask to install, then run this workflow onc
 For a read-only audit, leave output files empty and use Require real tools/Required tools. Plan mode blocks writes/commands. Continue conversation and Resume explicitly supply historical conversation text; writing “new execution” in a prompt does not change that setting.
 
 Diagnose runs 21 built-in checks in disposable folders, plus optional update/local model checks. Test APIs remains generation-free metadata only. Cloud generation remains explicit; no hidden retries, model switching, automatic uploads or OS command sandbox were added. Syntax/static checking does not launch or certify the program. Keys stay on your computer.
+
+
+## Current 0.17 acceptance
+
+Keep Ollama running and the selected local model unchanged. Click Update, install/restart and let the queued Measurement finish once. Expected61outcomes:27offline checks and34trial slots. Four thinking-off comparisons may skip when unsupported, metadata is unavailable or default is already off; this is useful information, not a request to change models. Review / save diagnostic ZIP → inspect → approve local saving → Save → attach ZIP in support chat. No API key/token or GitHub issue required. Partial ZIPs after Stop safely are useful. Do not rerun just to get green. Tell us only about UI/confusing controls and known separate workload changes; never send keys.

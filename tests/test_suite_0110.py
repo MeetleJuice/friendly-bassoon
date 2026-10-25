@@ -75,8 +75,9 @@ def test_noop_requires_correct_file_reads_before_and_after(
     ]
     row = exercise(monkeypatch, store, credentials, "noop", scripted(replies))
     assert row["evidence"]["execution_counts"]["unchanged_writes"] == 1
-    assert row["evidence"]["runtime_state"] == "completed"
-    assert row["status"] == "failed"  # Correct bytes/no-op alone cannot stand in for ordered read-back.
+    assert row["evidence"]["runtime_state"] == "needs_review"
+    assert row["evidence"]["task_checks"]["missing_unchanged_files"] == 1
+    assert row["status"] == "failed"  # Live checks now agree with the independent ordering requirement.
 
 
 @pytest.mark.parametrize("incorrect_mode", ["no_first_read", "no_reread", "wrong_hash"])

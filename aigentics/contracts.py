@@ -6,6 +6,7 @@ No generated code is executed or imported.
 """
 
 import ast
+import json
 import re
 from pathlib import Path
 
@@ -217,7 +218,12 @@ def evaluate_contract(case, root: Path, finaltext: str):
         try:
             return workspace.read(name)["content"].encode("utf-8")
         except FileNotFoundError:
-            add("MISSING_OUTPUT", name, expected_type="string", actual_type="missing")
+            add(
+                "MISSING_OUTPUT",
+                name,
+                expected_type=_type(case.output_json[name]) if name in case.output_json else "string",
+                actual_type="missing",
+            )
         except (OSError, ValueError, UnicodeError):
             add("UNREADABLE_OUTPUT", name)
         return None
@@ -273,6 +279,37 @@ def evaluate_contract(case, root: Path, finaltext: str):
     return {"checks": checks, "mismatches": public_mismatches(mismatches, targets)}
 
 
+def structural_schema(value):
+    """Advertise the shape of an application-owned contract without solution values."""
+    if isinstance(value, dict):
+        return {
+            "type": "object",
+            "properties": {key: structural_schema(item) for key, item in value.items()},
+            "required": list(value),
+            "additionalProperties": False,
+        }
+    if isinstance(value, list):
+        schemas = []
+        for item in value:
+            schema = structural_schema(item)
+            if schema not in schemas:
+                schemas.append(schema)
+        return {
+            "type": "array",
+            "items": {} if not schemas else schemas[0] if len(schemas) == 1 else {"anyOf": schemas},
+        }
+    kind = (
+        "null"
+        if value is None
+        else "boolean"
+        if type(value) is bool
+        else "number"
+        if type(value) in (int, float)
+        else "string"
+    )
+    return {"type": kind}
+
+
 def contract_prompt(case):
     """Clarify machine contracts for a separately versioned measurement track.
 
@@ -296,5 +333,17 @@ def contract_prompt(case):
         notes.append(
             "Return the requested JSON object only, without extra keys or prose. Use canonical relative "
             "filename spelling for citations, without a leading './'."
+        )
+    if case.output_json:
+        notes.append(
+            "Artifact JSON schemas (structure only; calculate values from the task): "
+            + json.dumps(
+                {name: structural_schema(value) for name, value in case.output_json.items()}, sort_keys=True
+            )
+        )
+    if case.answer is not None:
+        notes.append(
+            "Final-answer JSON schema (structure only): "
+            + json.dumps(structural_schema(case.answer), sort_keys=True)
         )
     return case.prompt + ("\nExplicit acceptance contract: " + " ".join(notes) if notes else "")

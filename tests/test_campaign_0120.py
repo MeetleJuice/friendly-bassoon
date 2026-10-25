@@ -12,6 +12,15 @@ from test_suite_080 import Scripted
 
 
 class CrewScripted(Scripted):
+    def capabilities(self, *args):
+        return {
+            "tools": True,
+            "source": "fixture",
+            "thinking_support": "reported",
+            "thinking_values": [False, True],
+            "thinking_default": True,
+        }
+
     def chat(self, model, messages, tools):
         prompt = next(m["content"] for m in messages if m["role"] == "user")
         from aigentics.contracts import contract_prompt

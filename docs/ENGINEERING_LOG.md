@@ -322,3 +322,13 @@ Research and actual native screenshots are in design/UI_RESEARCH_0160.md; source
 Next: let the user's existing0.15run finish and save/review its diagnostic ZIP before updating when convenient. Update/install/restart, use sidebar Test center for the queued matching continuation or new campaign, then Review / save diagnostic ZIP. Projects/Workbench/Agents are sidebar routes; Files/History expose extra panes, Task options holds checks/capture/context, Settings retains setup/update. Ask for ZIP plus any clipped/unreadable/confusing control and display resolution/scaling if known; never keys. No automatic sharing.
 
 Unchanged attempt2 completed successfully: [{"completed_at": "2026-10-25T09:12:43Z", "conclusion": "success", "name": "Validate tests and code", "started_at": "2026-10-25T09:03:40Z"}]. Actual installation/upgrade/restart and production public-updater verification passed. First timeout cause remains unproven; no tag/time/test/checksum gate was weakened or overwritten.
+
+
+## 0.17 research and implementation
+
+User authorized research/plan/update based on reviewed ZIP and separate terminal9B opinion. See maintenance/RESEARCH_0170.md and source hashes. Thinking-off is a valid capability-dependent request, not an increase in context. Automatic8192 is not universal; server env1loaded/10mkeepalive are tradeoffs and unchanged. Kept current model/temp0.2, contextauto and0.16UI.
+
+Reproduced two initial failing synthetic regressions: runtime no-op missing final read and ambiguous Vera wrapper. Added explicit unchanged-target proof/checklist and structural-only contract schemas, existing one bounded feedback intact. Native boolean thinking controls require advertised metadata, cached per route; manualdefault unchanged. Campaign5/measurement2/grader3/runtime2:30retained IDs plus4conditional default/off matched trials, old1manifest bytes preserved. New17code paths cover refusal/streaming/body placement/profile preservation/schema/privacy/known-only comparisons. Safe end-observation and native duration counters,27offlinefixtures and reviewedZIP retain evidence within existing limits. CI-only progress/slow-phase notices aid runner diagnosis without changing ceilings. Final validation/delivery pending; no real user generation/key/supportPOST.
+
+
+Local0.17validation:1104passed/1optional live-model skipped in93.68s;45final focused tests, Ruff lint/format, source startup/27offline diagnostic smoke, pipcheck and wheel/source fidelity passed. Native Test center/Connections previews inspected. Frozen measurement2digest e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e; archived1bytes unchanged. Windows/public delivery gates pending.

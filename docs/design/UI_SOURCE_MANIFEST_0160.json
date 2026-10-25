@@ -1,0 +1,102 @@
+{
+  "research_date": "2026-10-25",
+  "note": "Hashes identify downloaded public research evidence; sources themselves are not vendored. Branch URLs can change. This is not a live desktop-binary audit.",
+  "sources": [
+    {
+      "name": "codex-readme",
+      "url": "https://raw.githubusercontent.com/openai/codex/main/README.md",
+      "bytes": 3334,
+      "sha256": "ba4e1f69ff48386e72a9c5e1edaf76aad64a475c2d51af79ccba6d1128261ba7"
+    },
+    {
+      "name": "codex-app-server",
+      "url": "https://raw.githubusercontent.com/openai/codex/main/codex-rs/app-server/README.md",
+      "bytes": 40129,
+      "sha256": "b4a92cfab25bd7b96a16b8f9503a8aeae71fad9bad786ee0662efb2cddd1aeb6"
+    },
+    {
+      "name": "claude-readme",
+      "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/README.md",
+      "bytes": 2873,
+      "sha256": "aa0d8b80ac083e1591be0789273f447058cc9187b4331634a5614155da27778d"
+    },
+    {
+      "name": "claude-changelog",
+      "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+      "bytes": 1085784,
+      "sha256": "27d7a0e1d5c1b98cce5153a4c9e467e8a361550c4cfe9d0aa471f46b8dc0ed83"
+    },
+    {
+      "name": "opencode-shell",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/src/shell/state/layout.tsx",
+      "bytes": 24960,
+      "sha256": "4cc687ca9894894fccc0e08871b66f4204632b25e6e59f3f551a76232453b421"
+    },
+    {
+      "name": "opencode-desktop",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/desktop/README.md",
+      "bytes": 5134,
+      "sha256": "70e708d66a96913c2a21551c35eb186ba6c01d3d99d76281908a8f4c6cbd2034"
+    },
+    {
+      "name": "opencode-docs",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/web/src/content/docs/index.mdx",
+      "bytes": 8440,
+      "sha256": "d0e47562392876b0d7482156685c781dc9ce79404cf4d559cf485025618eb0e1"
+    },
+    {
+      "name": "opencode-webdocs",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/web/src/content/docs/web.mdx",
+      "bytes": 3280,
+      "sha256": "6a7501225b5ed7118dd756540e9e7430b54480522a2a3193ca4a55bc4ad0a30e"
+    },
+    {
+      "name": "opencode-providers-docs",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/web/src/content/docs/providers.mdx",
+      "bytes": 66903,
+      "sha256": "8c72ab58b340f0158836f97c3b86b7db31a3f4362b57e0faade740a9105b727c"
+    },
+    {
+      "name": "deepseek-integrations",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/awesome-deepseek-integration/main/README.md",
+      "bytes": 104292,
+      "sha256": "c5918abc282aedde38979acace98c1b3902801057d1fef513e2387bfd566666d"
+    },
+    {
+      "name": "deepseek-cline",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/awesome-deepseek-integration/main/docs/cline/README.md",
+      "bytes": 2895,
+      "sha256": "94c08625d046cbb6b2b300b8374a46bd389679ca99f745579bb93680402111e1"
+    },
+    {
+      "name": "deepseek-chatbox",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/awesome-deepseek-integration/main/docs/chatbox/README.md",
+      "bytes": 576,
+      "sha256": "ecb815acaf1d369953d461a229325263a12af63ca501c8a1801e1f54e5cb25e9"
+    },
+    {
+      "name": "deepseek-cherry",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/awesome-deepseek-integration/main/docs/cherrystudio/README.md",
+      "bytes": 778,
+      "sha256": "ffdea27644a6ac30fdb449120e266da361b09a54be8a4774c92332fcc2fbcf3d"
+    },
+    {
+      "name": "opencode-menu.png",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/app/e2e/screenshots/session-project-menu.png",
+      "bytes": 22610,
+      "sha256": "40b1047d7306a6cc349b5c172ee78e4a12545190ceae087d5f8b9495866cf038"
+    },
+    {
+      "name": "opencode-screen.png",
+      "url": "https://raw.githubusercontent.com/anomalyco/opencode/dev/packages/console/app/src/asset/lander/screenshot.png",
+      "bytes": 139488,
+      "sha256": "8faf79bef163b1b334c88226f1f47a1ff68c84912d108eb050585f6665a3bd27"
+    },
+    {
+      "name": "deepseek-cline.png",
+      "url": "https://raw.githubusercontent.com/deepseek-ai/awesome-deepseek-integration/main/docs/cline/assets/cline-01.png",
+      "bytes": 137736,
+      "sha256": "6716f56c77ecf4916c88d8075cf39a083da47a95cecd7876b0105df3a05282db"
+    }
+  ]
+}

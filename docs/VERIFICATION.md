@@ -1,8 +1,12 @@
 # Verification
 
-## 0.16.0 UI validation in progress
+## 0.16.0 verified delivery
 
-Research/implementation and local tests are complete; Windows/public delivery gates follow. Read maintenance/UPGRADE_0160_PLAN.md and design/UI_RESEARCH_0160.md. Local1062passed/1optional live model skipped; actual Qt navigation/forms/approval/campaign/ZIP and constrained geometry are covered. Benchmark digest remains0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d. No remote interaction with the user's currently running0.15campaign or live model/key was performed. A published installer is not claimed until verified.
+Published [0.16.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.16.0) from immutable `e1d742fad7f274a21083b309eae3ac57891079a0`. Source Windows run40177480849 and tag/release run40178128741 attempt2 passed tests/lint, packaging, actual installer/shortcut/startup,25offline diagnostics, pinned released0.15upgrade/data preservation and silent restart. Local1062passed/1optional live model skipped; final27focused UI/campaign/ZIP checks, Ruff, source smokes, dependencies and wheel/source fidelity passed. Production Updater(current_version=0.15.0) discovered/downloaded/reverified the public installer: **42489920bytes**, SHA256 `d33101ae45e7b1ed4129c1836e32495f182bce4b165a19e6e0c164d3ae59e952`. No live user model/key or support POST used.
+
+Research and actual native screenshots are in design/UI_RESEARCH_0160.md; source access limits and DeepSeek/third-party client distinctions are explicit. New Midnight Crew sidebar/theme/original emblems, navigation-only CtrlK search, conversation-first Workbench with optional remembered panels and value-preserving Task options, scrollable agent editor with sticky Save, actionable project empty state and readable Test center outcomes/progress/ZIP flow are implemented. Existing model/harness/crew/benchmark/storage/permission rules remain; frozen digest0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d is unchanged. Partial0.15campaigns remain scope-compatible; no hidden retries or additional model calls. New UI preferences are local booleans. Original character binaries remain unavailable; no claim of packaging them or competitors' assets. A UI release does not demonstrate model improvement or verify the user's exact Windows10 GPU/font/scaling behavior.
+
+Next: let the user's existing0.15run finish and save/review its diagnostic ZIP before updating when convenient. Update/install/restart, use sidebar Test center for the queued matching continuation or new campaign, then Review / save diagnostic ZIP. Projects/Workbench/Agents are sidebar routes; Files/History expose extra panes, Task options holds checks/capture/context, Settings retains setup/update. Ask for ZIP plus any clipped/unreadable/confusing control and display resolution/scaling if known; never keys. No automatic sharing.
 
 ## 0.15.0 verified delivery
 

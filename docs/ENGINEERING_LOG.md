@@ -304,3 +304,21 @@ Visual/native geometry review reproduced/fixed current-nav deselection and small
 
 
 Final0.16local validation:1062passed/1optional live model skipped, followed by27focused UI/campaign/ZIP tests after final presentation-only labels/control states. Ruff lint/format, dependency check, wheel/source fidelity, source startup and25offline diagnostics passed. Actual synthetic renders at900×650,1000×740,1440×900 were inspected and included in design notes. Frozen benchmark unchanged. Windows source/release and production-updater delivery gates follow.
+
+
+### 0.16 immutable release retry
+
+Source e1d742fad7f274a21083b309eae3ac57891079a0 passed Windows40177480849, including actual installation/0.15upgrade/restart. Tagv0.16.0points to that source. Tagged run40178128741attempt1hit the unchanged12minute test-phase ceiling (08:49:54–09:01:55UTC); last-started breadcrumb tests/test_suite_080.py::test_disabled_tools_skip_and_cancel_does_not_pass. This is not a proven assertion failure/cause. Packaging/publish did not run. Signed detailed-log endpoint returnedHTTP403. Unchanged failed-job retryattempt2started on a fresh runner; no checks/time limits/permissions/tag/checksums altered. Publication and production updater verification remain pending.
+
+The last-started timeout breadcrumb node passed an isolated Linux check in0.03seconds (1passed/0.12seconds total). This does not reproduce or explain the Windows timeout. Public research source-byte hashes recorded separately in design/UI_SOURCE_MANIFEST_0160.json; no third-party screenshots or source bodies vendored.
+
+
+## 0.16.0 verified delivery
+
+Published [0.16.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.16.0) from immutable `e1d742fad7f274a21083b309eae3ac57891079a0`. Source Windows run40177480849 and tag/release run40178128741 attempt2 passed tests/lint, packaging, actual installer/shortcut/startup,25offline diagnostics, pinned released0.15upgrade/data preservation and silent restart. Local1062passed/1optional live model skipped; final27focused UI/campaign/ZIP checks, Ruff, source smokes, dependencies and wheel/source fidelity passed. Production Updater(current_version=0.15.0) discovered/downloaded/reverified the public installer: **42489920bytes**, SHA256 `d33101ae45e7b1ed4129c1836e32495f182bce4b165a19e6e0c164d3ae59e952`. No live user model/key or support POST used.
+
+Research and actual native screenshots are in design/UI_RESEARCH_0160.md; source access limits and DeepSeek/third-party client distinctions are explicit. New Midnight Crew sidebar/theme/original emblems, navigation-only CtrlK search, conversation-first Workbench with optional remembered panels and value-preserving Task options, scrollable agent editor with sticky Save, actionable project empty state and readable Test center outcomes/progress/ZIP flow are implemented. Existing model/harness/crew/benchmark/storage/permission rules remain; frozen digest0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d is unchanged. Partial0.15campaigns remain scope-compatible; no hidden retries or additional model calls. New UI preferences are local booleans. Original character binaries remain unavailable; no claim of packaging them or competitors' assets. A UI release does not demonstrate model improvement or verify the user's exact Windows10 GPU/font/scaling behavior.
+
+Next: let the user's existing0.15run finish and save/review its diagnostic ZIP before updating when convenient. Update/install/restart, use sidebar Test center for the queued matching continuation or new campaign, then Review / save diagnostic ZIP. Projects/Workbench/Agents are sidebar routes; Files/History expose extra panes, Task options holds checks/capture/context, Settings retains setup/update. Ask for ZIP plus any clipped/unreadable/confusing control and display resolution/scaling if known; never keys. No automatic sharing.
+
+Unchanged attempt2 completed successfully: [{"completed_at": "2026-10-25T09:12:43Z", "conclusion": "success", "name": "Validate tests and code", "started_at": "2026-10-25T09:03:40Z"}]. Actual installation/upgrade/restart and production public-updater verification passed. First timeout cause remains unproven; no tag/time/test/checksum gate was weakened or overwritten.

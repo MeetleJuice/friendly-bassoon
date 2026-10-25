@@ -32,6 +32,8 @@ Official product websites for Claude Code, Codex app, OpenCode docs, DeepSeek AP
 - https://github.com/deepseek-ai/awesome-deepseek-integration/blob/main/docs/chatbox/README.md
 - https://github.com/deepseek-ai/awesome-deepseek-integration/blob/main/docs/cherrystudio/README.md
 
+Downloaded source-byte hashes are recorded in [the evidence manifest](UI_SOURCE_MANIFEST_0160.json).
+
 These are moving public branches; the research date and concrete inspected paths establish scope, not a permanent claim about later product versions.
 
 ## Apply to Aigentics

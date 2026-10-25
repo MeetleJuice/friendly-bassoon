@@ -1,0 +1,13 @@
+{
+  "version": "0.18.0",
+  "source": "ac20964f31c1ff18a8fde2617c462f67b4739716",
+  "source_run": 40225012646,
+  "promotion_run": 40226156569,
+  "installer": "Aigentics-Setup-0.18.0.exe",
+  "bytes": 42541991,
+  "sha256": "68264b4064d758530ed0e18dcded9a574bedb8d97251bf71c9f828f3886951ce",
+  "production_updater_check_download_verify": "passed",
+  "installer_reused_without_rebuild": true,
+  "artifact_id": 12610928498,
+  "artifact_digest": "sha256:a0d98b370ba616082e78a04fb6c7b70b7bd7344282f72d9f7a1424b1542d1294"
+}

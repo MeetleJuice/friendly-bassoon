@@ -1,6 +1,6 @@
 # 0.18 draft — Orion coordination and measured model profiles
 
-**Status: user authorized implementation. Source implementation and validation in progress; no release claim yet.** User accepted Orion's name and manager role and requested a plan based on the new ZIP. The installed app remains0.17.0 until verified release delivery. See RESULTS_0170_REVIEW.md; user confirmed the ZIP uses the same8Bmodel as before; exact tag/quantization remain omitted. Keep the praised UI and existing Update/restart/reviewedZIP flow.
+**Status: implemented and published as0.18.0; actual Windows and public-updater verification passed. See RELEASE_0180_VERIFIED.json.** User accepted Orion's name and manager role and requested a plan based on the new ZIP. Public installer0.18.0is available; the user upgrades through Update. See RESULTS_0170_REVIEW.md; user confirmed the ZIP uses the same8Bmodel as before; exact tag/quantization remain omitted. Keep the praised UI and existing Update/restart/reviewedZIP flow.
 
 ## Outcome
 

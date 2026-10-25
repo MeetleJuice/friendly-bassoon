@@ -287,3 +287,26 @@ def test_experimental_preset_edits_preview_without_changing_saved_profile(qtbot,
     window.save_profile()
     assert store.profiles()[0] == preview
     cleanup(window)
+
+
+def test_workbench_continue_cannot_silently_restart_a_team(qtbot, store, credentials, pilot, monkeypatch):
+    from aigentics.ui import Window
+    from test_campaign_ui_0120 import cleanup
+
+    store.save_agent(pilot[0])
+    window = Window(store, credentials)
+    qtbot.addWidget(window, before_close_func=cleanup)
+    window.store.close = lambda: None
+    errors = []
+    monkeypatch.setattr(window, "error", errors.append)
+    window.select_workspace(pilot[1])
+    window.run_agent.setCurrentIndex(window.run_agent.findData(pilot[0].id))
+    window.conversation_mode.setCurrentIndex(window.conversation_mode.findData("continue"))
+    window.parent_session = "previous-team"
+    window.task.setPlainText("Create answer.txt from brief.txt")
+    window.expected_files.setText("answer.txt")
+    window.start_run()
+    assert errors and "fresh" in str(errors[0])
+    assert window.worker is None and not store.sessions()
+    assert not (pilot[1] / "answer.txt").exists()
+    cleanup(window)

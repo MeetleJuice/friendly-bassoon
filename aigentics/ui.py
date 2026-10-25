@@ -1815,6 +1815,10 @@ class Window(QMainWindow):
                 raise ValueError(
                     "Use Orion in Workbench with explicit output filenames. Use Scout or Sentinel for direct read-only work."
                 )
+            if agent.kind == "coordinator" and self.conversation_mode.currentData() != "fresh":
+                raise ValueError(
+                    "Team pilots require New task / fresh context. Saved worker actions are retained and never replayed by Continue conversation."
+                )
             if not lab and self.task_mode.currentData() == "plan":
                 agent = agent.model_copy(
                     update={

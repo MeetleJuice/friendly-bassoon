@@ -31,10 +31,10 @@ if (-not $diagnostics.WaitForExit(60000)) { $diagnostics.Kill(); throw "Packaged
 if ($diagnostics.ExitCode -ne 0) { throw "Packaged diagnostic suite failed: exit $($diagnostics.ExitCode)" }
 Write-Output "All 24 built-in packaged diagnostic checks passed. No support report was submitted."
 
-# Verify migration from the public 0.13.0 installer, using its previously verified immutable checksum.
-$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.13.0.exe'
-Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.13.0/Aigentics-Setup-0.13.0.exe' -OutFile $previousInstaller
-$expectedPreviousHash = '7d823956862338bd5ce07bc585e76bc52c533c118f7852fdd18c2767c51fbb00'
+# Verify migration from the public 0.14.0 installer, using its previously verified immutable checksum.
+$previousInstaller = Join-Path $temporaryRoot 'Aigentics-Setup-0.14.0.exe'
+Invoke-WebRequest -Uri 'https://github.com/MeetleJuice/friendly-bassoon/releases/download/v0.14.0/Aigentics-Setup-0.14.0.exe' -OutFile $previousInstaller
+$expectedPreviousHash = 'c14a900e252ab23c0e71add22d9c5ac7fcb7b5f30233d41762583348824db1c8'
 if ((Get-FileHash $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedPreviousHash) {
     throw 'Previous release failed its pinned checksum; refusing upgrade test'
 }
@@ -56,7 +56,7 @@ if ($newApp.ExitCode -ne 0) { throw 'Upgraded app startup failed' }
 python scripts/upgrade_probe.py verify $env:AIGENTICS_DATA_DIR
 if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not preserve data' }
 if (Test-Path $shortcutPath) { Remove-Item $shortcutPath }
-Write-Output 'Real 0.13.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
+Write-Output 'Real 0.14.0-to-current upgrade preserved agents, settings and session history; schema and project/assessment preservation passed.'
 
 
 # Prove the in-app update contract: silent setup must actually restart its GUI.

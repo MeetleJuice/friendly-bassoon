@@ -239,3 +239,10 @@ Campaign3Deep has66local attempts (42retained tasks/repeats,18specialist variati
 
 
 Release timeout diagnosis: unchanged attempt2 completed its test phase in4m28s (00:43:25–00:47:53UTC), compared with4m47s for the successful source run and the first attempt's8minute timeout. Both successful runs passed actual installation/upgrade/restart; the production updater accepted the public installer. The immediate publication blocker was the test-phase timeout, not an observed installer or updater failure. The exact cause of the first run's slowdown remains unproven: detailed attempt1logs were unavailable because the signed GitHub log endpoint returned HTTP403; accessible check annotations identify the timeout and last-started node only. Do not label that node a failing assertion or infer a deterministic Unicode defect. No test/time/permission/checksum gate or published tag was weakened or overwritten.
+
+
+## 0.14.1 report-capacity hotfix in progress
+
+User storage-limit exception traced to250KBgeneric cap applied to66case real-model evidence. Read maintenance/HOTFIX_0141.md. Compact lossless JSON, bounded1MB/66casecampaign capacity, unchanged250KBother/global retention, and queued matching-campaign continuation implemented. New growing-report/restart/recovery/oversize-replacement/queued-resume regressions preserve all payload evidence. Earlier committed rows remain; last unsaved/in-flight result cannot be reconstructed and must not replay. No user data accessed remotely. Local/Windows/public-updater validation follows; no release claim yet.
+
+Local0.14.1:876passed/1optional live model skipped; Ruff lint/format, dependency consistency, source startup and25offline smoke pass. Real long-report prefix/restart/recovery and queued-resume behavior covered. Windows/release gate pending.

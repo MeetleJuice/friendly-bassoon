@@ -190,3 +190,14 @@ def test_test_cleanup_stops_active_worker_after_assertion_failure(qtbot, store, 
             cleanup(window)
     assert not dialog.worker.isRunning()
     assert dialog.worker.cancel.is_set()
+
+
+@pytest.mark.parametrize("available", [False, True])
+def test_queued_update_uses_matching_interrupted_campaign(qtbot, store, credentials, monkeypatch, available):
+    window, dialog, personal, errors = setup_dialog(qtbot, store, credentials, monkeypatch)
+    monkeypatch.setattr(campaign_ui, "latest_resumable", lambda *args: {"id": "saved"} if available else None)
+    observed = []
+    monkeypatch.setattr(dialog, "start", lambda resume=False: observed.append(resume))
+    dialog.start_queued()
+    assert observed == [available]
+    assert not errors

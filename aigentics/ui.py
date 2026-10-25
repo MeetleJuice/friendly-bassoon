@@ -382,7 +382,7 @@ class Window(QMainWindow):
         self.suite_dialog.show()
         self.suite_dialog.raise_()
         if autorun:
-            QTimer.singleShot(0, self.suite_dialog.start)
+            QTimer.singleShot(0, self.suite_dialog.start_queued)
 
     def guided_next(self):
         if not getattr(self, "guided_update", False):

@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.14.1 storage hotfix pending validation
+
+Read maintenance/HOTFIX_0141.md. User real66case campaign exceeded250KBreport cap. Lossless compact JSON plus bounded1MBcampaign capacity (66casebound; other reports/globalretentionunchanged) and automatic matching interrupted-campaign continuation are implemented. Last unsaved results remain unknown, never replayed. Full tests/Windows0.14upgrade/public updater verification precede publication.
+
 ## 0.14.0 verified delivery
 
 Published [0.14.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.14.0) from immutable `b9dde2768961ae72a1da47693d4a8c839589af9d`. Source Windows run 40146622078 and release run 40147100352 attempt2 passed the complete test set, lint, packaging, actual installer/shortcut/startup,25offline diagnostics, pinned0.13upgrade/data preservation and silent automatic GUI restart. The first tagged run timed out at its8minute test bound; last started test was test_suite_0110 Unicode acceptance. The same immutable source had already passed Windows; an unchanged fresh-runner retry preserved all gates. Timeout cause is unproven. Local full865passed/1optional live model skipped plus5additional native HTTP-budget/denial/step-bound regressions pass; final57GUI/correctness focused tests and source smokes/dependencies/wheel/lint/format pass. Windows runs validate the entire871collected-test set, with optional platform/live skips as applicable. Production Updater(current_version=0.13.0) discovered/downloaded/reverified the public installer: **42412800bytes**, SHA256 `c14a900e252ab23c0e71add22d9c5ac7fcb7b5f30233d41762583348824db1c8`. No live user model/key or support POST was used in development.

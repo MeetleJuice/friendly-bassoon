@@ -95,6 +95,15 @@ class CampaignDialog(QDialog):
         self.rows = {}
         self.refresh()
 
+    def start_queued(self):
+        """Recover a matching saved campaign; never repeat an uncertain attempt."""
+        try:
+            scope = campaign_scope(self.window.store, self.agent(), self.mode.currentData())
+            resume = latest_resumable(self.window.store, scope) is not None
+        except (ValueError, AttributeError):
+            resume = False
+        self.start(resume=resume)
+
     def agent(self):
         return next((a for a in self.window.store.agents() if a.id == self.agents.currentData()), None)
 

@@ -1,0 +1,9 @@
+# 0.14.1 — preserve long campaign evidence
+
+User reports ValueError: Diagnostic report exceeds the storage limit during the0.14campaign. Store.save_diagnostic rejected every kind above250000UTF8bytes. The66case success fixture uses short, few-turn model traces; a real campaign retains up to8request traces per attempt plus first/final acceptance and failure evidence. A new66case synthetic report with8realistic numeric traces per row reproduces exceeding250KB without any raw model content.
+
+Fix: serialize credential-scrubbed JSON compactly (lossless; same schema), give crew_campaign a distinct1000000bytehardcap and66casebound, retain250000bytecap for all other kinds, and preserve existing global report-count/age/byte retention. No trace dropping, compression envelope, schema migration, token changes or model call retries. An oversize replacement leaves the previous committed payload intact. A database-close/reopen regression saves every growing prefix, recovers running to interrupted and checks all66rows/traces unchanged.
+
+Post-update queued tests now choose continuation when a matching interrupted/cancelled campaign exists. Existing scope/manifest checks still reject incompatible continuation and mark an unknown in-flight attempt INTERRUPTED_CASE_NOT_REPLAYED. A failed save cannot recover the last unsaved case from the user's former process; earlier committed rows remain. No claim that all user results were saved or that user data was remotely inspected. New/cross-version-incompatible campaigns still start fresh. Campaign3/crew2definitions and budgets remain unchanged for compatible0.14continuation.
+
+Validate full local suite, source/25offline smokes, all actualWindows installation/shortcut/0.14upgrade/data-preservation/silent-restart gates and public updater check/download/checksum before publishing. Test report bounds and queued resume, not just green short transcripts. No live user model/key or real support POST used.

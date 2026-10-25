@@ -150,8 +150,14 @@ class Store:
     def save_diagnostic(self, report, *, refresh_retention=False):
         # The row timestamp is the retention activity clock. Only an explicit refresh
         # advances it; payload["created"] remains the original report creation time.
-        raw = self.credentials.json(report)
-        if len(raw.encode("utf-8")) > 250000:
+        raw = self.credentials.json(report, separators=(",", ":"))
+        # Multi-attempt campaigns retain bounded per-request evidence across 66 cases.
+        # Other report kinds keep their original cap; total retained bytes stay bounded.
+        campaign = report.get("kind") == "crew_campaign"
+        if campaign and (not isinstance(report.get("checks"), list) or len(report["checks"]) > 66):
+            raise ValueError("Campaign report exceeds the case limit")
+        limit = 1_000_000 if campaign else 250_000
+        if len(raw.encode("utf-8")) > limit:
             raise ValueError("Diagnostic report exceeds the storage limit")
         with self.lock, self.db:
             self.db.execute(

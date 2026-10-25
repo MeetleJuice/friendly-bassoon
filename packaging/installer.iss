@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.14.0"
+  #define AppVersion "0.14.1"
 #endif
 #define AppName "Aigentics Desktop"
 

@@ -1,0 +1,11 @@
+{
+  "version": "0.17.0",
+  "source": "ec4c06fede1e998bc22fb1afeea9e03e4af297b7",
+  "source_run": 40208559425,
+  "release_run": 40209357532,
+  "release_attempt": 1,
+  "installer": "Aigentics-Setup-0.17.0.exe",
+  "bytes": 42512798,
+  "sha256": "1b8740aaf190efb21bcac84a7c8eb1bf539a4bccd689ce5e63f42519a5df61a7",
+  "production_updater_check_download_verify": "passed"
+}

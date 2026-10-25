@@ -51,7 +51,7 @@ After source installation, `Start-Aigentics.cmd` is an alternative launch shortc
 
 ## Diagnose and share without dragging files
 
-Click **Diagnose** at the top, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 27 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
+Open **Diagnostics** from the sidebar, choose your saved test agent and optional local-model test, then click **Run diagnostics**. The installed app runs 27 built-in checks in temporary folders, optionally tests the selected local Ollama model against a real file-create/read-back task, saves a local report, requests a completion sound, and offers a sharing review. It does not run arbitrary project test commands or call cloud models automatically.
 
 Review the exact public report preview and approve it before sharing. **Browser draft** needs no token; finish with Create (or Submit new issue) on GitHub. **Direct submission** uses an existing `GITHUB_TOKEN` with Issues write access and records the confirmed issue URL. No report is uploaded by merely running diagnostics. Support reports go to **GitHub Issues**, not permanent source commits. Model names are optional; keys, project text, paths and conversations are excluded from the generated public report. See [diagnostic details](docs/DIAGNOSTICS.md).
 

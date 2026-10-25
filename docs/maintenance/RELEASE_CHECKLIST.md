@@ -15,3 +15,5 @@ Cloud Git authorization is separate from the installed app. A future Connect Git
 ## 0.17 specific gates
 
 Freeze measurement2 JSON/hash and preserve trusted archived1 bytes. Full tests/lint/format, dependency/wheel fidelity, source startup/27offline smoke. Windows pinned previous installer0.16.0 SHA256 d33101ae45e7b1ed4129c1836e32495f182bce4b165a19e6e0c164d3ae59e952; actual installation/shortcut, packaged27checks, data preservation and silent restart. Publish only passing exact source/tag and verify public download via productionUpdater current_version0.16.0. Record attempts/limitations honestly; no gate weakening.
+
+Completed0.17: immutableec4c06fede1e998bc22fb1afeea9e03e4af297b7; source40208559425, release40209357532attempt1, productionUpdater verification passed. Installer42512798bytes, SHA2561b8740aaf190efb21bcac84a7c8eb1bf539a4bccd689ce5e63f42519a5df61a7. Use this released checksum for a future pinned upgrade gate, not an unverified build artifact.

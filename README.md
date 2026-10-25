@@ -1,5 +1,13 @@
 # Aigentics Desktop
 
+## Midnight Crew interface (0.16.0)
+
+The new sidebar keeps **Projects**, **Workbench**, **Agents**, **Test center**, **Diagnostics**, **Local data**, **Connections** and **Settings** together. Workbench gives your conversation more room; **Files** and **History** reveal optional panels. **Task options** contains checks, session-memory capture and context; output write scope stays visible. Agent forms scroll while Save stays visible.
+
+**Ctrl K** finds navigation/settings actions. **Ctrl1/2/3** opens Projects/Workbench/Agents; **Ctrl B** toggles files and **Ctrl Shift I** toggles history. **Ctrl Enter** runs only while typing in the Workbench task field. Test center separates passes, corrections, failures and incomplete attempts, with reviewed ZIP export up front. The0.15benchmark, model budgets, permission rules and stored evidence remain unchanged.
+
+See the [native screenshots and source research](docs/design/UI_RESEARCH_0160.md) and [upgrade plan](docs/maintenance/UPGRADE_0160_PLAN.md). Existing setup/update functions are under **Settings**. Finish/save your current test ZIP before updating when convenient; older reports remain available.
+
 A native Python / PySide6 desktop coding-agent application. Agents and Workbench use the same bounded runtime. Ollama runs locally; no paid API is required. This is an early functional release, not the full long-term product described in the original brief.
 
 ## Repeated measurement and precise diagnostics (0.15.0)
@@ -18,10 +26,10 @@ On first launch:
 
 1. The app looks for local Ollama and fills the installed-model list.
 2. It checks your Desktop for `.env` or `.env.txt` (a Notepad file is fine). Keys load into memory and recognized providers get profiles; no cloud model is contacted during discovery.
-3. The untouched default agent can select an installed coding model. Use **Setup & updates** to review/change it, refresh discovery or disable automatic key-file loading.
+3. The untouched default agent can select an installed coding model. Use **Settings** to review/change it, refresh discovery or disable automatic key-file loading.
 4. Open **Workbench**, create a disposable project, and try: “Create hello.py that prints Hello, Aigentics. Use your file tools, then explain what changed.” Review the real diff before approving it.
 
-The app checks GitHub Releases at launch. **Setup & updates → Download update → Install & restart** verifies the installer, backs up history, and opens the wizard when your tasks are finished. It does not install in the middle of a task. Your projects, key file and history remain separate from application binaries.
+The app checks GitHub Releases at launch. **Settings → Download update → Install & restart** verifies the installer, backs up history, and opens the wizard when your tasks are finished. It does not install in the middle of a task. Your projects, key file and history remain separate from application binaries.
 
 ### Source/development installation
 
@@ -83,7 +91,7 @@ Read the [upgrade plan](docs/maintenance/UPGRADE_050_PLAN.md), [source research]
 
 ## Your Desktop .env
 
-Desktop `.env` and `.env.txt` are detected and loaded into memory automatically on startup. Windows' OS-reported Desktop is checked first, with normal/OneDrive Desktop candidates next; there is no whole-drive scan. Disable this in **Setup & updates** if desired, or choose another file manually. Files must contain `NAME=value` entries and be smaller than 1 MB. Values are not executed or interpolated from the system environment.
+Desktop `.env` and `.env.txt` are detected and loaded into memory automatically on startup. Windows' OS-reported Desktop is checked first, with normal/OneDrive Desktop candidates next; there is no whole-drive scan. Disable this in **Settings** if desired, or choose another file manually. Files must contain `NAME=value` entries and be smaller than 1 MB. Values are not executed or interpolated from the system environment.
 
 Only variable names may appear in the provider interface, never their values. Automatic setup creates matching Groq, OpenRouter, NVIDIA, Gemini-compatible or OpenAI profiles for recognized key names, preserves existing profiles, and makes no cloud requests. Each startup reloads Desktop keys into memory. The original file is not copied into the app, committed, uploaded or written into history. **Save key to OS vault** remains available with no plaintext fallback.
 

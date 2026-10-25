@@ -3,6 +3,7 @@
 from urllib.parse import parse_qs, urlsplit
 import webbrowser
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -16,12 +17,15 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QVBoxLayout,
+    QWidget,
 )
 from .campaign import PLAN_IDS, REQUIREMENT_LABELS, campaign_scope, latest_resumable, plan, run_campaign
 from .crew import ROLES, ensure_roster
 from .crew_cases import CASES as ROLE_CASES
 from .diagnostics import OFFLINE_CHECK_COUNT
 from .reporting import issue_body, prepare_browser_draft, ReportingError
+from .presentation import Disclosure, text_label
+from .measurement import UNKNOWN_CODES
 
 
 class CampaignDialog(QDialog):
@@ -30,17 +34,19 @@ class CampaignDialog(QDialog):
         from .ui import button
 
         self.window, self.worker, self.urls = window, None, []
-        self.setWindowTitle("Midnight Crew • evaluation campaign")
-        self.resize(1000, 780)
+        self.setWindowTitle("Aigentics • Test center")
+        self.resize(1040, 800)
+        self.setMinimumSize(760, 620)
         layout = QVBoxLayout(self)
-        label = QLabel(
-            "Six independent agents • one selected local Ollama model • no orchestration or API checks.\n"
-            f"Default measurement: {OFFLINE_CHECK_COUNT} app checks + 30 repeated local attempts across all six roles and budget comparisons. "
-            "Optional Deep discovery: 66 attempts. One at a time; up to 2 hours total. "
-            "Each uses disposable files; only listed synthetic writes are approved automatically.\n"
-            "Saved personal agents stay unchanged. Detailed bounded evidence stays local; sharing is optional."
+        layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(10)
+        layout.addWidget(text_label("TEST · OBSERVE · IMPROVE", "eyebrow"))
+        layout.addWidget(text_label("Put the Midnight Crew to the test.", "pageTitle"))
+        label = text_label(
+            f"{OFFLINE_CHECK_COUNT} offline app checks + 30 repeated local trials by default. "
+            "One model, six independent roles, disposable files. Up to 2 hours. "
+            "No API checks. Saved personal agents stay unchanged."
         )
-        label.setWordWrap(True)
         layout.addWidget(label)
         self.agents = QComboBox()
         for agent in window.store.agents():
@@ -59,19 +65,44 @@ class CampaignDialog(QDialog):
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
         layout.addWidget(self.mode)
-        crew = QLabel("  •  ".join(f"{r.name}: {r.title}" for r in ROLES.values()))
-        crew.setWordWrap(True)
-        layout.addWidget(crew)
+        dashboard = QHBoxLayout()
+        self.metric_values = {}
+        for key, title in (
+            ("immediate", "PASSED FIRST TRY"),
+            ("corrected", "AFTER CORRECTION"),
+            ("failed", "NEEDS WORK"),
+            ("unknown", "NOT COMPLETED"),
+        ):
+            card = QWidget()
+            card.setObjectName("metricCard")
+            card_layout = QVBoxLayout(card)
+            card_layout.addWidget(text_label(title, "eyebrow"))
+            value = text_label("0", "metricValue")
+            card_layout.addWidget(value)
+            dashboard.addWidget(card, 1)
+            self.metric_values[key] = value
+        layout.addLayout(dashboard)
+        self.current_case = text_label("Ready when you are. Failures and interruptions are useful evidence.")
+        layout.addWidget(self.current_case)
         self.results = QTableWidget(len(PLAN_IDS), 4)
         self.results.setHorizontalHeaderLabels(["Agent / scenario", "Result", "Time", "Native calls"])
         self.results.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.results.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.results.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.results.setMaximumHeight(280)
-        layout.addWidget(self.results)
+        self.results.setMinimumHeight(150)
+        self.results.setAlternatingRowColors(True)
+        self.results.setShowGrid(False)
+        self.results.verticalHeader().hide()
+        self.results.verticalHeader().setDefaultSectionSize(36)
+        self.results.setSelectionBehavior(QTableWidget.SelectRows)
+        self.results.setAccessibleName("Agent test results; select a row to inspect evidence")
+        layout.addWidget(self.results, 1)
         self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
-        layout.addWidget(self.output)
+        self.output.setMaximumHeight(190)
+        self.output.setAccessibleName("Test execution records and report previews")
+        self.details = Disclosure("Execution records and report details", self.output)
+        layout.addWidget(self.details)
         self.progress = QProgressBar()
         layout.addWidget(self.progress)
         self.status = QLabel(
@@ -86,14 +117,21 @@ class CampaignDialog(QDialog):
         layout.addLayout(row)
         self.go = button("Go • start new campaign", self.start, row, True)
         self.resume = button("Continue unfinished campaign", lambda: self.start(True), row)
-        button("Stop safely", self.cancel, row)
-        self.zip_button = button(
-            "Review / save diagnostic ZIP (partial results supported)", self.export_zip, layout
+        self.stop_button = button("Stop safely", self.cancel, row)
+        self.stop_button.setEnabled(False)
+        self.zip_button = button("Review / save diagnostic ZIP", self.export_zip, layout, True)
+        self.zip_button.setToolTip(
+            "Review and save all retained safe evidence, even after a partial run. Nothing uploads automatically."
         )
         self.approval = QCheckBox("I reviewed BOTH previews and approve opening both public GitHub drafts.")
         self.approval.setEnabled(False)
-        layout.addWidget(self.approval)
-        self.share = button("Open both approved GitHub drafts", self.open_drafts, layout)
+        sharing = QWidget()
+        sharing_layout = QVBoxLayout(sharing)
+        sharing_layout.setContentsMargins(0, 0, 0, 0)
+        sharing_layout.addWidget(self.approval)
+        self.share = button("Open both approved GitHub drafts", self.open_drafts, sharing_layout)
+        self.github_sharing = Disclosure("Optional · share public GitHub issue drafts", sharing)
+        layout.addWidget(self.github_sharing)
         self.share.setEnabled(False)
         self.approval.toggled.connect(self.share.setEnabled)
         self.results.cellClicked.connect(self.inspect)
@@ -101,6 +139,30 @@ class CampaignDialog(QDialog):
         self.agents.currentIndexChanged.connect(self.refresh)
         self.rows = {}
         self.refresh()
+
+    @staticmethod
+    def unknown(row):
+        return (
+            row.get("code") in UNKNOWN_CODES
+            or row.get("status") not in ("passed", "failed")
+            or row.get("evidence", {}).get("runtime_state") == "cancelled"
+        )
+
+    def update_dashboard(self):
+        counts = {"immediate": 0, "corrected": 0, "failed": 0, "unknown": 0}
+        for row in self.rows.values():
+            key = (
+                "unknown"
+                if self.unknown(row)
+                else "corrected"
+                if row["status"] == "passed" and row.get("evidence", {}).get("completion_feedback_count")
+                else "immediate"
+                if row["status"] == "passed"
+                else "failed"
+            )
+            counts[key] += 1
+        for key, value in self.metric_values.items():
+            value.setText(str(counts[key]))
 
     def export_zip(self):
         if self.worker and self.worker.isRunning():
@@ -155,18 +217,41 @@ class CampaignDialog(QDialog):
         role_cases = {c.id: c for c in ROLE_CASES}
         for trial in measurement_plan():
             role = ROLES[role_cases[trial.case_id].role].name if trial.case_kind == "role" else "George"
-            titles[trial.id] = f"{role} • {trial.case_id} • {trial.arm} • repetition {trial.repeat}"
+            scenario = (
+                role_cases[trial.case_id].title
+                if trial.case_kind == "role"
+                else {"unicode": "Unicode file round-trip", "noop": "Unchanged file check"}[trial.case_id]
+            )
+            arm = {
+                "reference": "reference",
+                "output_only": "output allowance",
+                "coordinated": "output + time",
+            }[trial.arm]
+            total = 3 if trial.case_kind == "role" else 2
+            titles[trial.id] = f"{role} • {scenario} • {arm} • {trial.repeat}/{total}"
         for index, identity in enumerate(self.identities):
-            self.results.setItem(index, 0, QTableWidgetItem(titles.get(identity, "George • " + identity)))
+            label = titles.get(identity, "George • " + identity)
+            item = QTableWidgetItem(label)
+            item.setToolTip(label + "\n" + identity)
+            self.results.setItem(index, 0, item)
             self.results.setItem(index, 1, QTableWidgetItem("Ready"))
             self.results.setItem(index, 2, QTableWidgetItem(""))
             self.results.setItem(index, 3, QTableWidgetItem(""))
         self.progress.setRange(0, OFFLINE_CHECK_COUNT + len(self.identities))
+        self.update_dashboard()
         try:
             scope = campaign_scope(self.window.store, self.agent(), self.mode.currentData())
             self.resume.setEnabled(latest_resumable(self.window.store, scope) is not None)
+            self.zip_button.setEnabled(
+                any(
+                    row["payload"].get("kind") == "crew_campaign"
+                    and row["payload"].get("local_scope") == scope
+                    for row in self.window.store.diagnostic_reports()
+                )
+            )
         except (ValueError, AttributeError):
             self.resume.setEnabled(False)
+            self.zip_button.setEnabled(False)
 
     def tick(self):
         self.elapsed += 1
@@ -198,6 +283,9 @@ class CampaignDialog(QDialog):
         self.refresh()
         self.progress.setValue(0)
         self.output.clear()
+        self.zip_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+        self.current_case.setText("Checking the app before local agent trials…")
         self.approval.setChecked(False)
         self.approval.setEnabled(False)
         for control in (self.go, self.resume, self.agents, self.mode):
@@ -230,6 +318,8 @@ class CampaignDialog(QDialog):
         self.go.setEnabled(True)
         self.agents.setEnabled(True)
         self.mode.setEnabled(True)
+        self.zip_button.setEnabled(True)
+        self.stop_button.setEnabled(False)
         try:
             scope = campaign_scope(self.window.store, self.agent(), self.mode.currentData())
             self.resume.setEnabled(latest_resumable(self.window.store, scope) is not None)
@@ -248,6 +338,8 @@ class CampaignDialog(QDialog):
         elif kind == "campaign.started":
             index = self.identities.index(data["id"])
             self.results.setItem(index, 1, QTableWidgetItem("Running…"))
+            self.current_case.setText(self.results.item(index, 0).text())
+            self.results.scrollToItem(self.results.item(index, 0))
         elif kind == "campaign.result":
             self.rows[data["id"]] = data
             index = self.identities.index(data["id"])
@@ -261,13 +353,26 @@ class CampaignDialog(QDialog):
                         else "Passed immediately"
                     )
                     if data["status"] == "passed"
+                    else "Not completed"
+                    if self.unknown(data)
                     else data["status"],
                     f"{data['duration_ms'] / 1000:.1f}s",
                     str(evidence.get("native_calls_total", "?")),
                 ),
                 1,
             ):
-                self.results.setItem(index, col, QTableWidgetItem(value))
+                item = QTableWidgetItem(value)
+                if col == 1:
+                    color = (
+                        "#a8b8d2"
+                        if self.unknown(data)
+                        else "#89d6bd"
+                        if data["status"] == "passed"
+                        else "#ffb7c6"
+                    )
+                    item.setForeground(QColor(color))
+                self.results.setItem(index, col, item)
+            self.update_dashboard()
             self.output.appendPlainText(f"{data['id']}: {data['status']} • {data['code']}")
             for key, passed in evidence.get("requirement_checks", {}).items():
                 if not passed:
@@ -279,6 +384,7 @@ class CampaignDialog(QDialog):
         data = self.rows.get(self.identities[index])
         if not data:
             return
+        self.details.set_expanded(True)
         e = data.get("evidence", {})
         text = [f"\nDETAIL: {data['id']} • {data['code']}"]
         text.extend(
@@ -305,6 +411,8 @@ class CampaignDialog(QDialog):
 
     def done(self, reports):
         campaign = reports[-1]
+        self.current_case.setText("Results saved locally. Review the ZIP and share it when you choose.")
+        self.update_dashboard()
         rows = campaign["checks"]
         repaired = sum(
             r["status"] == "passed" and bool(r.get("evidence", {}).get("completion_feedback_count"))

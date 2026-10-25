@@ -1,3 +1,16 @@
+# 0.16.0 — a calmer Midnight Crew desktop
+
+- New sidebar navigation, clearer page headings, consistent dark theme, original role emblems, improved spacing and keyboard/hover focus states.
+- Workbench puts the conversation first. Files/history panels can be hidden and their visibility remembered; opening a file reveals its actual preview. Expected output scope stays visible; advanced checks, context and session capture are under Task options.
+- Ctrl K navigation command search; Ctrl1/2/3 pages, Ctrl B files, Ctrl Shift I history. Ctrl Enter runs only from the focused task composer. New task protects an active run's context/evidence.
+- Agent forms scroll while Save remains accessible. Saved instructions, selected models and permissions are preserved. Projects has an actionable empty state.
+- Test center separates first-try passes, corrections, failures and incomplete attempts. Readable case labels, active-case progress and expandable records make the run easier to follow. Reviewed local ZIP export is prominent; public GitHub drafts remain optional and approval-gated.
+- Model/harness/benchmark/storage behavior remains unchanged from0.15. Existing test results stay usable and matching partial campaigns can continue. No new background model/API calls.
+
+Keep Ollama running. Save the current test ZIP before updating when convenient, then Update/install/restart. Use Test center for queued test progress and Review / save diagnostic ZIP when finished. Nothing is shared automatically.
+
+Research and actual native screenshots are documented in docs/design/UI_RESEARCH_0160.md. Developer tests, actual Windows installation/0.15upgrade/data-preservation/restart and public updater checks gate delivery. This release improves presentation; it does not claim improved model performance.
+
 # 0.15.0 — precise failure evidence and repeated local measurement
 
 - Default tests now run 30 repeated local trials across all six agents and output/time comparisons, plus 25 offline app checks. Optional Discovery keeps the broader 66-case suite. API checks remain excluded.

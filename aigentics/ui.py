@@ -7,8 +7,8 @@ import tempfile
 import threading
 from pathlib import Path
 from uuid import uuid4
-from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile, Qt
-from PySide6.QtGui import QIcon, QDesktopServices
+from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile, Qt, QSize
+from PySide6.QtGui import QIcon, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTabWidget,
     QListWidget,
+    QListWidgetItem,
+    QScrollArea,
+    QSizePolicy,
     QPlainTextEdit,
     QLineEdit,
     QComboBox,
@@ -36,6 +39,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QProgressBar,
     QGridLayout,
+    QMenu,
 )
 from . import __version__
 from .credentials import Credentials
@@ -48,38 +52,18 @@ from .store import Store
 from .projects import Projects
 from .tools import Workspace
 
-STYLE = """
-QWidget { background: #101721; color: #d9e3ef; font-family: 'Segoe UI', sans-serif; font-size: 13px; }
-QMainWindow { background: #101721; }
-QTabWidget::pane { border: 1px solid #29374a; border-radius: 6px; }
-QTabBar::tab { background: #192333; padding: 12px 24px; margin-right: 3px; }
-QTabBar::tab:selected { background: #243d50; color: #69dbc6; }
-QPlainTextEdit, QLineEdit, QListWidget, QComboBox, QSpinBox, QTreeWidget {
- background: #0c121b; border: 1px solid #304157; border-radius: 4px; padding: 6px; selection-background-color: #315971;
-}
-QLineEdit, QComboBox, QSpinBox { min-height: 24px; padding: 4px 6px; }
-QPlainTextEdit { font-family: Consolas, monospace; }
-QToolTip { color: #edf8ff; background: #203849; border: 1px solid #72e2cb; padding: 8px; }
-QPushButton:pressed { background: #124f57; }
-QPushButton:focus { border: 2px solid #72e2cb; }
-QPushButton { background: #26394d; border: 1px solid #3c566e; border-radius: 9px; padding: 9px 14px; }
-QPushButton:hover { background: #36546a; }
-QPushButton:disabled { color: #657487; background: #192332; }
-QPushButton#primary { background: #166b61; border-color: #2c9e8d; }
-QLabel#title { font-size: 23px; font-weight: 600; color: #72e2cb; }
-QCheckBox { padding: 3px; }
-QSplitter::handle { background: #243247; width: 3px; }
-"""
+from .presentation import STYLE, CommandPalette, Disclosure, ElidedLabel, icon, navigation_button, text_label
 
 
 def button(text, callback, layout, primary=False):
-    result = QPushButton(text)
+    result = QPushButton(text.replace("&", "&&"))
+    result.setAccessibleName(text)
     result.setCursor(Qt.PointingHandCursor)
     result.setToolTip(
         {
             "Update": "Check for an update, download it, and queue the guided tests after restart.",
-            "Test suite": "Run a same-model six-agent campaign plus app checks, then review two shareable reports.",
-            "Run task": "Run the selected agent. File edits and host commands pause for approval.",
+            "Test suite": "Run repeated six-agent trials and app checks, then review and save one diagnostic ZIP.",
+            "Run task": "Run the selected agent. File edits and commands pause for approval. Ctrl Enter works in the task box.",
             "Diagnose": "Choose app checks and optional model tests. Results stay local until you approve sharing.",
             "Test APIs": "Fetch model lists only; no generation tokens are used.",
             "Test model": "Check native tool-call compatibility with one small model request.",
@@ -265,24 +249,39 @@ class Window(QMainWindow):
             store.save_profile(Profile(id="ollama", name="Local Ollama"))
         if not store.agents():
             store.save_agent(Agent())
-        root, layout = panel()
-        title = QLabel("AIGENTICS  /  DESKTOP")
-        title.setObjectName("title")
+        root = QWidget()
+        shell = QHBoxLayout(root)
+        shell.setContentsMargins(0, 0, 0, 0)
+        shell.setSpacing(0)
+        self.sidebar = QWidget()
+        self.sidebar.setObjectName("sidebar")
+        self.sidebar.setFixedWidth(184)
+        self.sidebar_layout = QVBoxLayout(self.sidebar)
+        self.sidebar_layout.setContentsMargins(14, 22, 14, 18)
+        self.sidebar_layout.setSpacing(6)
+        shell.addWidget(self.sidebar)
+        content, layout = panel()
+        layout.setContentsMargins(22, 18, 22, 14)
+        shell.addWidget(content, 1)
         heading = QHBoxLayout()
         layout.addLayout(heading)
-        heading.addWidget(title, 1)
-        button("Diagnose", lambda: self.open_diagnostics(False), heading)
-        button("Test APIs", lambda: self.open_records(True), heading)
-        button("Test model", self.open_model_probe, heading)
-        button("Local data", self.open_records, heading)
-        button("Test suite", self.open_suite, heading)
+        title_group, title_layout = panel()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(3)
+        title_layout.addWidget(text_label("MIDNIGHT CREW / AGENT STUDIO", "eyebrow"))
+        self.page_title = text_label("Your agents", "pageTitle")
+        title_layout.addWidget(self.page_title)
+        heading.addWidget(title_group, 1)
+        self.command_button = button("Commands  ·  Ctrl K", self.open_command_palette, heading)
+        self.command_button.setIcon(icon("search"))
+        self.command_button.setToolTip(
+            "Find navigation and settings actions. No model call runs from search."
+        )
         self.update_button = button("Update", self.update_action, heading)
-        button("Setup & updates", self.open_setup, heading)
-        self.setup_banner = QLabel("Local setup is available from Setup & updates.")
-        self.setup_banner.setWordWrap(True)
+        self.setup_banner = text_label("Local setup is available in Settings.", "setupBanner")
         layout.addWidget(self.setup_banner)
-        layout.addWidget(QLabel("Local execution. Inspectable evidence. Agents you control."))
         self.tabs = QTabWidget()
+        self.tabs.tabBar().hide()
         layout.addWidget(self.tabs, 1)
         self.make_agents()
         self.make_workbench()
@@ -290,6 +289,7 @@ class Window(QMainWindow):
 
         self.project_panel = ProjectPanel(self)
         self.tabs.addTab(self.project_panel, "PROJECTS")
+        self.configure_navigation()
         for name, tip in {
             "expected_files": "Only these relative output paths may be written. Separate multiple paths with commas.",
             "require_task_tools": "A text-only model answer cannot satisfy this task check.",
@@ -327,6 +327,148 @@ class Window(QMainWindow):
             store.set_setting("pending_update", None)
         if startup:
             QTimer.singleShot(250, self.startup_tasks)
+
+    def configure_navigation(self):
+        layout = self.sidebar_layout
+        layout.addWidget(text_label("AIGENTICS", "brand"))
+        layout.addWidget(text_label("THE MIDNIGHT CREW", "eyebrow"))
+        layout.addSpacing(18)
+        new_task = button("New task", self.focus_new_task, layout, True)
+        new_task.setIcon(icon("plus", "#ffffff"))
+        new_task.setToolTip("Start fresh context and keep your draft, project files and history.")
+        layout.addSpacing(18)
+        layout.addWidget(text_label("WORKSPACE", "eyebrow"))
+        self.navigation_buttons = {}
+        for index, title, symbol, shortcut in (
+            (2, "Projects", "projects", "Ctrl 1"),
+            (1, "Workbench", "workbench", "Ctrl 2"),
+            (0, "Agents", "agents", "Ctrl 3"),
+        ):
+            nav = navigation_button(
+                title, symbol, lambda checked=False, i=index: self.navigate(i), checkable=True
+            )
+            nav.setToolTip(f"Open {title.lower()} · {shortcut}")
+            layout.addWidget(nav)
+            self.navigation_buttons[index] = nav
+        layout.addSpacing(18)
+        layout.addWidget(text_label("OBSERVE & IMPROVE", "eyebrow"))
+        for title, symbol, callback, hint in (
+            (
+                "Test center",
+                "tests",
+                self.open_suite,
+                "Repeated six-agent tests, progress and reviewed diagnostic ZIPs.",
+            ),
+            (
+                "Diagnostics",
+                "diagnose",
+                self.open_diagnostics,
+                "Choose offline checks and inspect saved reports. Nothing runs until you start.",
+            ),
+            ("Local data", "data", self.open_records, "Inspect local storage, reports and retention."),
+            (
+                "Connections",
+                "connections",
+                self.open_connections,
+                "Manage providers and keys. API and model tests run only when requested.",
+            ),
+        ):
+            nav = navigation_button(title, symbol, callback)
+            nav.setToolTip(hint)
+            layout.addWidget(nav)
+        layout.addStretch()
+        settings = navigation_button("Settings", "settings", self.open_setup)
+        settings.setToolTip("Local discovery, key-file loading and verified application updates.")
+        layout.addWidget(settings)
+        layout.addSpacing(12)
+        layout.addWidget(text_label(f"LOCAL FIRST  /  v{__version__}", "eyebrow"))
+        layout.addWidget(text_label("Your agents. Your evidence."))
+        self.tabs.currentChanged.connect(self.navigation_changed)
+        self.navigation_changed(self.tabs.currentIndex())
+        for key, callback in (
+            ("Ctrl+1", lambda: self.tabs.setCurrentIndex(2)),
+            ("Ctrl+2", lambda: self.tabs.setCurrentIndex(1)),
+            ("Ctrl+3", lambda: self.tabs.setCurrentIndex(0)),
+            ("Ctrl+K", self.open_command_palette),
+            ("Ctrl+B", self.files_toggle.toggle),
+            ("Ctrl+Shift+I", self.inspector_toggle.toggle),
+            ("Ctrl+Return", self.run_from_shortcut),
+        ):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.activated.connect(callback)
+
+    def navigate(self, index):
+        self.tabs.setCurrentIndex(index)
+        self.navigation_changed(index)
+
+    def navigation_changed(self, index):
+        titles = {0: "Your agents", 1: "Workbench", 2: "Projects"}
+        self.page_title.setText(titles.get(index, "Aigentics"))
+        for page, nav in self.navigation_buttons.items():
+            nav.setChecked(page == index)
+
+    def open_connections(self):
+        self.tabs.setCurrentIndex(0)
+        self.agent_sections.setCurrentIndex(1)
+
+    def open_command_palette(self):
+        self.command_palette = CommandPalette(
+            self,
+            (
+                ("Projects", "Open recent folders and project briefs", lambda: self.tabs.setCurrentIndex(2)),
+                ("Workbench", "Open your task conversation and files", lambda: self.tabs.setCurrentIndex(1)),
+                (
+                    "Agents",
+                    "Edit saved agents, instructions and permissions",
+                    lambda: self.tabs.setCurrentIndex(0),
+                ),
+                ("Test center", "Open repeated tests and diagnostic ZIP export", self.open_suite),
+                ("Diagnostics", "Choose app checks and saved reports", self.open_diagnostics),
+                ("Connections", "Manage providers, models and credential references", self.open_connections),
+                ("Settings", "Setup, local discovery and updates", self.open_setup),
+                ("Local data", "Review local records and retention", self.open_records),
+            ),
+        )
+        self.command_palette.show()
+        self.command_palette.raise_()
+        self.command_palette.search.setFocus()
+
+    def focus_new_task(self):
+        self.tabs.setCurrentIndex(1)
+        if self.worker and self.worker.isRunning():
+            self.statusBar().showMessage("Finish or stop the active operation before starting fresh context.")
+            return
+        self.new_conversation()
+        self.task.setFocus()
+
+    def run_from_shortcut(self):
+        if self.tabs.currentIndex() == 1 and self.task.hasFocus() and self.work_run.isEnabled():
+            self.start_run(False)
+
+    def set_files_visible(self, visible):
+        self._files_preference = visible
+        self.explorer_panel.setVisible(visible)
+        self.store.set_setting("ui_files_visible", visible)
+
+    def set_inspector_visible(self, visible):
+        self.inspector_tabs.setVisible(visible)
+        if visible:
+            self.work_splitter.setSizes([195, max(300, self.width() - 750), 300])
+        self.store.set_setting("ui_inspector_visible", visible)
+
+    def update_transcript_style(self, detailed):
+        self.work_output.setProperty("technical", detailed)
+        self.work_output.style().unpolish(self.work_output)
+        self.work_output.style().polish(self.work_output)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "files_toggle") and getattr(self, "_files_preference", None) is None:
+            visible = self.width() >= 1200
+            self.files_toggle.blockSignals(True)
+            self.files_toggle.setChecked(visible)
+            self.files_toggle.blockSignals(False)
+            self.explorer_panel.setVisible(visible)
 
     def open_diagnostics(self, autorun=False):
         from .diagnostics_ui import DiagnosticsDialog
@@ -736,31 +878,46 @@ class Window(QMainWindow):
 
     def make_agents(self):
         page, layout = panel()
-        sections = QTabWidget()
+        sections = self.agent_sections = QTabWidget()
         layout.addWidget(sections)
         self.tabs.addTab(page, "AGENTS")
         studio, sl = panel()
         split = QSplitter()
         sl.addWidget(split)
         library, ll = panel()
-        ll.addWidget(QLabel("AGENT LIBRARY"))
+        ll.addWidget(text_label("YOUR AGENTS", "eyebrow"))
         self.agent_list = QListWidget()
+        self.agent_list.setObjectName("agentLibrary")
+        self.agent_list.setAccessibleName("Saved agents")
+        self.agent_list.setIconSize(QSize(26, 26))
         self.agent_list.currentRowChanged.connect(self.load_agent)
         ll.addWidget(self.agent_list, 1)
         row = QHBoxLayout()
         ll.addLayout(row)
-        button("New", self.new_agent, row)
-        button("Read-only template", self.readonly_template, ll)
-        button("Builder template", self.builder_template, ll)
-        button("Tools & permissions", self.show_tool_registry, ll)
+        button("New agent", self.new_agent, row)
+        manage = button("More", lambda: None, row)
+        manage.setToolTip("Duplicate, import, export or delete an agent. Delete still requires confirmation.")
+        menu = QMenu(manage)
+        for label, callback in (
+            ("Duplicate agent", self.duplicate_agent),
+            ("Import agent", self.import_agent),
+            ("Export agent", self.export_agent),
+            ("Delete agent…", self.delete_agent),
+        ):
+            menu.addAction(label, callback)
+        manage.setMenu(menu)
         button("Add Midnight Crew", self.add_midnight_crew, ll)
-        button("Duplicate", self.duplicate_agent, row)
-        button("Delete", self.delete_agent, row)
-        row = QHBoxLayout()
-        ll.addLayout(row)
-        button("Import", self.import_agent, row)
-        button("Export", self.export_agent, row)
+        presets, preset_layout = panel()
+        preset_layout.setContentsMargins(0, 0, 0, 0)
+        button("Read-only template", self.readonly_template, preset_layout)
+        button("Builder template", self.builder_template, preset_layout)
+        button("Tools and permissions", self.show_tool_registry, preset_layout)
+        ll.addWidget(Disclosure("Templates and tools", presets))
         editor, el = panel()
+        self.agent_heading = text_label("Agent configuration", "agentTitle")
+        self.agent_role_label = text_label("Choose a saved agent or create your own.")
+        el.addWidget(self.agent_heading)
+        el.addWidget(self.agent_role_label)
         form = QFormLayout()
         el.addLayout(form)
         self.agent_name = QLineEdit()
@@ -770,10 +927,14 @@ class Window(QMainWindow):
         form.addRow("Name", self.agent_name)
         form.addRow("Description", self.agent_description)
         form.addRow("Provider profile", self.agent_profile)
-        form.addRow("Model (installed list or manual name)", self.agent_model)
+        form.addRow("Model", self.agent_model)
+        self.agent_model.setToolTip("Choose an installed model or enter its exact name.")
+        form.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.agent_profile.currentIndexChanged.connect(self.refresh_model_choices)
         el.addWidget(QLabel("Instructions"))
         self.instructions = QPlainTextEdit()
+        self.instructions.setMinimumHeight(145)
+        self.instructions.setAccessibleName("Agent instructions")
         el.addWidget(self.instructions, 2)
         tools_row = QGridLayout()
         el.addLayout(tools_row)
@@ -785,7 +946,7 @@ class Window(QMainWindow):
             check = QCheckBox(spec.title)
             check.setToolTip(spec.description + "\nPermission category: " + spec.permission)
             self.tool_checks[tool] = check
-            tools_row.addWidget(check, index // 4, index % 4)
+            tools_row.addWidget(check, index // 3, index % 3)
         self.allow_writes = QCheckBox("Allow writes (every diff requires approval)")
         self.allow_commands = QCheckBox("Allow host commands (every command requires approval)")
         el.addWidget(self.allow_writes)
@@ -808,9 +969,20 @@ class Window(QMainWindow):
         el.addWidget(self.fallbacks)
         self.agent_revision = QLabel()
         el.addWidget(self.agent_revision)
-        button("Save agent", lambda: self.guarded(self.save_agent), el, True)
+        library.setMinimumWidth(165)
+        library.setMaximumWidth(240)
+        editor_scroll = QScrollArea()
+        editor_scroll.setWidgetResizable(True)
+        editor_scroll.setWidget(editor)
+        editor_container, editor_layout = panel()
+        editor_layout.setContentsMargins(0, 0, 0, 0)
+        editor_layout.addWidget(editor_scroll, 1)
+        self.save_agent_button = button(
+            "Save agent", lambda: self.guarded(self.save_agent), editor_layout, True
+        )
         split.addWidget(library)
-        split.addWidget(editor)
+        split.addWidget(editor_container)
+        split.setSizes([210, 800])
         split.setStretchFactor(1, 3)
         sections.addTab(studio, "Studio")
         providers, pl = panel()
@@ -840,7 +1012,7 @@ class Window(QMainWindow):
         self.provider_output.setReadOnly(True)
         self.provider_output.setMaximumHeight(150)
         pl.addWidget(self.provider_output)
-        sections.addTab(providers, "Providers & credentials")
+        sections.addTab(providers, "Connections")
         lab, labl = panel()
         labl.addWidget(
             QLabel("AGENT LABORATORY · Same runtime, disposable scratch project, real model requests")
@@ -876,17 +1048,29 @@ class Window(QMainWindow):
         button("Open project", self.open_project, row)
         button("Create project", self.create_project, row)
         self.recent_projects = QComboBox()
-        self.recent_projects.setMaximumWidth(240)
+        self.recent_projects.setMaximumWidth(180)
+        self.recent_projects.setMinimumContentsLength(10)
+        self.recent_projects.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.recent_projects.currentIndexChanged.connect(self.choose_recent_project)
         row.addWidget(self.recent_projects)
-        self.project_label = QLabel("Choose a project folder")
+        self.project_label = ElidedLabel("Choose a project folder")
         row.addWidget(self.project_label, 1)
         self.run_agent = QComboBox()
-        row.addWidget(self.run_agent)
-        split = QSplitter()
+        self.run_agent.setMinimumContentsLength(10)
+        self.run_agent.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.files_toggle = button("Files", lambda: None, row)
+        self.files_toggle.setObjectName("panelToggle")
+        self.files_toggle.setCheckable(True)
+        self.files_toggle.setToolTip("Show or hide the project explorer. Ctrl B")
+        self.inspector_toggle = button("History", lambda: None, row)
+        self.inspector_toggle.setObjectName("panelToggle")
+        self.inspector_toggle.setCheckable(True)
+        self.inspector_toggle.setToolTip("Show history, evidence and file preview. Ctrl Shift I")
+        split = self.work_splitter = QSplitter()
         layout.addWidget(split, 1)
         explorer, el = panel()
-        el.addWidget(QLabel("PROJECT FILES"))
+        self.explorer_panel = explorer
+        el.addWidget(text_label("PROJECT FILES", "eyebrow"))
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
         self.tree.itemExpanded.connect(self.expand_directory)
@@ -896,19 +1080,33 @@ class Window(QMainWindow):
         button("Task plan", self.open_task_plan, el)
         button("Check Python file", lambda: self.guarded(self.check_python_file), el)
         center, cl = panel()
-        cl.addWidget(QLabel("TASK & EXECUTION · Model completion is not proof that tests passed"))
+        cl.setContentsMargins(8, 8, 8, 8)
+        cl.addWidget(text_label("CONVERSATION", "eyebrow"))
         self.run_facts = QLabel("Runtime evidence will appear here separately from the model's response.")
+        self.run_facts.setObjectName("runFacts")
         self.run_facts.setWordWrap(True)
         cl.addWidget(self.run_facts)
         self.work_output = QPlainTextEdit()
         self.work_output.setReadOnly(True)
+        self.work_output.setObjectName("conversation")
+        self.work_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
+        self.work_output.setAccessibleName("Task conversation and recorded execution")
+        self.work_output.setPlaceholderText(
+            "What will you build next?\n\nOpen a project, choose an agent, and describe a focused task below.\nYour agent’s response and recorded tool results will appear here."
+        )
         cl.addWidget(self.work_output, 1)
+        composer, composer_layout = panel()
+        composer.setObjectName("composer")
+        composer_layout.setSpacing(6)
         self.task = QPlainTextEdit()
-        self.task.setPlaceholderText("Describe a focused coding task…")
-        self.task.setMaximumHeight(110)
-        cl.addWidget(self.task)
+        self.task.setAccessibleName("Describe your task")
+        self.task.setPlaceholderText("Describe your task. What should the agent build, inspect or fix?")
+        self.task.setFixedHeight(76)
+        composer_layout.addWidget(self.task)
+        cl.addWidget(composer)
+        cl = composer_layout
         self.expected_files = QLineEdit()
-        cl.addWidget(QLabel("Expected output files (optional) · review before Run"))
+        cl.addWidget(text_label("Write scope · optional output files; review before running"))
         self.expected_files.setPlaceholderText(
             "Expected output files, comma separated · optional; limits file-tool writes"
         )
@@ -918,6 +1116,10 @@ class Window(QMainWindow):
         cl.addWidget(self.expected_files)
         self._suggested_files = ""
         self.task.textChanged.connect(self.suggest_task_files)
+        extra, extra_layout = panel()
+        extra_layout.setContentsMargins(0, 0, 0, 0)
+        task_layout = cl
+        cl = extra_layout
         options = QHBoxLayout()
         cl.addLayout(options)
         self.require_task_tools = QCheckBox("Require real tools")
@@ -936,6 +1138,13 @@ class Window(QMainWindow):
         self.detailed_activity = QCheckBox("Show detailed execution records")
         self.detailed_activity.toggled.connect(self.show_history)
         cl.addWidget(self.detailed_activity)
+        self.task_options = Disclosure("Task options · checks, session memory and context", extra)
+        task_layout.addWidget(self.task_options)
+        self.detailed_activity.toggled.connect(self.update_transcript_style)
+        cl = task_layout
+        selectors = QHBoxLayout()
+        cl.addLayout(selectors)
+        selectors.addWidget(self.run_agent, 1)
         row = QHBoxLayout()
         cl.addLayout(row)
         self.task_mode = QComboBox()
@@ -944,12 +1153,15 @@ class Window(QMainWindow):
         self.task_mode.currentIndexChanged.connect(
             lambda: self.expected_files.setEnabled(self.task_mode.currentData() != "plan")
         )
-        row.addWidget(self.task_mode)
+        selectors.addWidget(self.task_mode)
         self.work_run = button("Run task", lambda: self.start_run(False), row, True)
         self.cancel_button = button("Cancel", self.cancel_run, row)
         button("New conversation", self.new_conversation, row)
         split.addWidget(explorer)
-        split.addWidget(center)
+        self.workspace_scroll = QScrollArea()
+        self.workspace_scroll.setWidgetResizable(True)
+        self.workspace_scroll.setWidget(center)
+        split.addWidget(self.workspace_scroll)
         split.setStretchFactor(1, 3)
         history, hl = panel()
         hl.addWidget(QLabel("LOCAL EVIDENCE & HISTORY"))
@@ -991,8 +1203,28 @@ class Window(QMainWindow):
         self.file_preview = QPlainTextEdit()
         self.file_preview.setReadOnly(True)
         evidence_tabs.addTab(self.file_preview, "File preview")
+        self.inspector_tabs = evidence_tabs
+        history_scroll = QScrollArea()
+        history_scroll.setWidgetResizable(True)
+        evidence_tabs.removeTab(0)
+        history_scroll.setWidget(history)
+        evidence_tabs.insertTab(0, history_scroll, "Run history")
+        evidence_tabs.setCurrentIndex(0)
         split.addWidget(evidence_tabs)
-        split.setSizes([210, 620, 400])
+        split.setChildrenCollapsible(False)
+        split.setSizes([195, 760, 300])
+        self._files_preference = self.store.setting("ui_files_visible", None)
+        if type(self._files_preference) is not bool:
+            self._files_preference = None
+        self.files_toggle.setChecked(
+            self._files_preference if self._files_preference is not None else self.width() >= 1200
+        )
+        inspector_open = self.store.setting("ui_inspector_visible", False) is True
+        self.inspector_toggle.setChecked(inspector_open)
+        explorer.setVisible(self.files_toggle.isChecked())
+        evidence_tabs.setVisible(inspector_open)
+        self.files_toggle.toggled.connect(self.set_files_visible)
+        self.inspector_toggle.toggled.connect(self.set_inspector_visible)
 
     def add_midnight_crew(self):
         from .crew import ensure_roster
@@ -1012,7 +1244,13 @@ class Window(QMainWindow):
         self.agent_list.blockSignals(True)
         self.agent_list.clear()
         for agent in agents:
-            self.agent_list.addItem(agent.name)
+            from .crew import ROLES
+
+            role = next((key for key in ROLES if agent.id == f"midnight-{key}-v1"), None)
+            item = QListWidgetItem(agent.name)
+            item.setIcon(icon(role or "agents", ROLES[role].color if role else "#b7a7fa"))
+            item.setToolTip(agent.description or "Saved agent configuration")
+            self.agent_list.addItem(item)
         self.agent_list.blockSignals(False)
         for combo in (self.run_agent, self.lab_agent):
             previous = combo.currentData()
@@ -1032,8 +1270,11 @@ class Window(QMainWindow):
     def display_agent(self, agent):
         self.agent_id = agent.id
         self.editing_agent = agent
+        self.agent_heading.setText(agent.name)
+        self.agent_role_label.setText(agent.description or "Your saved instructions, model and permissions.")
         self.agent_name.setText(agent.name)
         self.agent_description.setText(agent.description)
+        self.agent_description.setCursorPosition(0)
         index = self.agent_profile.findData(agent.primary.profile_id)
         if index < 0:
             self.agent_profile.addItem(agent.primary.profile_id, agent.primary.profile_id)
@@ -1386,11 +1627,15 @@ class Window(QMainWindow):
     def preview_file(self, item, _column):
         data = item.data(0, 256)
         if data and not data[1]:
-            self.guarded(
-                lambda: self.file_preview.setPlainText(
+
+            def show():
+                self.file_preview.setPlainText(
                     self.credentials.redact(Workspace(self.workspace).read(data[0])["content"])
                 )
-            )
+                self.inspector_tabs.setCurrentWidget(self.file_preview)
+                self.inspector_toggle.setChecked(True)
+
+            self.guarded(show)
 
     def review_saved_report(self, report, sharing=False):
         self.open_diagnostics(False)

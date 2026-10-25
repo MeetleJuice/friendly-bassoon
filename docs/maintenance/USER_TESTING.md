@@ -1,5 +1,13 @@
 # 0.14.1 — recover and share one ZIP
 
+## 0.16 interface acceptance
+
+Save the current0.15test ZIP before updating when convenient; no need to interrupt that run. Update/install/restart after it finishes. Your definitions/history/reports remain local. Matching interrupted campaigns continue without replay; existing automatic post-update testing remains.
+
+Use the sidebar: Projects to open a folder, Agents to edit roles, Workbench for tasks, Test center for suite progress, Diagnostics for old reports and Settings for setup/update. Files/History toggle extra panes. Task options holds checks, capture and context; output scope remains visible. Ctrl K finds navigation without making model requests.
+
+After testing, Review / save diagnostic ZIP → inspect → approve local saving → Save → drag ZIP into chat. Report any clipped controls, unreadable text or confusing action, including your display resolution/scaling if known. No key or transcript is needed. UI changes are not proof of model improvement.
+
 ## 0.15 acceptance: one repeated campaign and one ZIP
 
 1. Keep Ollama running and click Update. Finish installation/restart; the queued default is Measurement (30 local trials plus25offline app checks).

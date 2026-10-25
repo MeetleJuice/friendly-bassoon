@@ -1,5 +1,9 @@
 # Verification
 
+## 0.16.0 UI validation in progress
+
+Research/implementation and local tests are complete; Windows/public delivery gates follow. Read maintenance/UPGRADE_0160_PLAN.md and design/UI_RESEARCH_0160.md. Local1062passed/1optional live model skipped; actual Qt navigation/forms/approval/campaign/ZIP and constrained geometry are covered. Benchmark digest remains0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d. No remote interaction with the user's currently running0.15campaign or live model/key was performed. A published installer is not claimed until verified.
+
 ## 0.15.0 verified delivery
 
 Published [0.15.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.15.0) from immutable `84866b7a184bfcb81e2065d49302745d82b713e5`. Source Windows run40173676957 and tag/release run40174199391 attempt1 passed tests/lint, packaging, actual installation/shortcut/startup,25offline diagnostics, pinned released0.14.1 upgrade/data preservation and silent restart. Local1045tests passed/1optional live model skipped; Ruff/dependencies/source smokes/wheel and green-red-green pre-fix proof passed. Production Updater(current_version=0.14.1) discovered/downloaded/reverified the public installer: **42455740bytes**, SHA256 `ae4f463aab3724e81537cae624aaf2298580381cd4b5d0d35bbfd0c379e860c9`. No live user model/key or support POST used; model improvement remains for user acceptance.
@@ -267,3 +271,6 @@ Local 0.15 validation: 1043 passed /1 optional live-model skipped in75.18s. Ruff
 
 
 Final corrected local suite:1045passed/1optional live model skipped; new in-flight stop regressions pass for both measurement and discovery. Ruff lint/format, rebuilt wheel, source startup/25offline diagnostic smoke and dependencies pass. Benchmark digest0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d. Source Windows gate will rerun for this correction.
+
+
+Final0.16local validation:1062passed/1optional live model skipped, followed by27focused UI/campaign/ZIP tests after final presentation-only labels/control states. Ruff lint/format, dependency check, wheel/source fidelity, source startup and25offline diagnostics passed. Actual synthetic renders at900×650,1000×740,1440×900 were inspected and included in design notes. Frozen benchmark unchanged. Windows source/release and production-updater delivery gates follow.

@@ -40,3 +40,8 @@ The reference uses individual portrait cards, large agent names, role labels, sh
 The user supplied seven additional inline images: six individual character portraits and a six-column emblem sheet. George occupies a blue celestial observatory with crown and galaxy orb; Scout investigates in a teal library with magnifier and goggles; Ada builds in an amber mechanical workshop with articulated tools; Vera floats among violet crystals with spectacles and a book; Sentinel carries a crimson shield in an armored hall; Atlas appears as an indigo owl scholar with orbiting pages and books. The emblem sheet names Nexus Crown, All-Seeing Lens, Forge Spark, Truth Prism, Crimson Aegis, and Eternal Archive. It includes large emblems, primary square icons, simplified variants, monochrome outlines and small UI icon studies. Names, readable role labels and text status must accompany color. Portraits should support a future roster gallery, not obscure task evidence or imply implemented orchestration.
 
 These images are visible in chat but no downloadable file IDs or local binaries were exposed. The exact seven originals are therefore **not archived**. Save original file attachments unchanged under docs/design/reference/ when available; do not generate replicas and describe them as originals. Functional completion/verification work proceeds independently.
+
+
+## 0.16 native identity
+
+Original lightweight geometric emblems now render in the saved agent library and navigation, using existing crew role colors. They are independent native symbols, not extracted character artwork or a claim that the user's original image binaries were archived. See UI_RESEARCH_0160.md and its actual synthetic Aigentics screenshots. No third-party logos/screenshots are packaged.

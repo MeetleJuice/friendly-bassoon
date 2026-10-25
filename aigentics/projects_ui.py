@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from .projects import Projects
 from .tools import Workspace
 from .ui import button
+from .presentation import text_label
 
 
 class ProjectPanel(QWidget):
@@ -25,14 +26,38 @@ class ProjectPanel(QWidget):
         self.window, self.projects = window, Projects(window.store)
         self.last_context = None
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("PROJECTS · Local briefs, current source excerpts and source citations"))
-        row = QHBoxLayout()
-        layout.addLayout(row)
+        layout.addWidget(text_label("Keep your project, its brief and the evidence together."))
+        self.toolbar = QWidget()
+        row = QHBoxLayout(self.toolbar)
+        row.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.toolbar)
         button("Open folder…", window.open_project, row)
         button("Create project…", window.create_project, row)
         button("Open selected in Workbench", self.open_selected, row, True)
         button("Forget selected", self.forget, row)
-        split = QSplitter()
+        self.empty_state = QWidget()
+        empty = QVBoxLayout(self.empty_state)
+        empty.setContentsMargins(40, 40, 40, 40)
+        empty.addStretch()
+        empty.addWidget(text_label("A SPACE FOR YOUR NEXT IDEA", "eyebrow"))
+        empty.addWidget(text_label("Start with a project.", "pageTitle"))
+        empty.addWidget(
+            text_label(
+                "Open a folder or create a new one. Add a short brief, then bring an agent into Workbench to get started."
+            )
+        )
+        actions = QHBoxLayout()
+        empty.addLayout(actions)
+        button("Open a folder", window.open_project, actions, True)
+        button("Create a project", window.create_project, actions)
+        actions.addStretch()
+        empty.addSpacing(24)
+        empty.addWidget(
+            text_label("01  Choose a project     02  Describe your task     03  Review the evidence")
+        )
+        empty.addStretch()
+        layout.addWidget(self.empty_state, 1)
+        split = self.project_splitter = QSplitter()
         layout.addWidget(split, 1)
         self.list = QListWidget()
         self.list.currentRowChanged.connect(self.selected)
@@ -87,6 +112,9 @@ class ProjectPanel(QWidget):
         else:
             self.brief.clear()
             self.location.setText("Open or create a project to begin.")
+        self.empty_state.setVisible(not bool(self.rows))
+        self.project_splitter.setVisible(bool(self.rows))
+        self.toolbar.setVisible(bool(self.rows))
 
     def row(self):
         index = self.list.currentRow()

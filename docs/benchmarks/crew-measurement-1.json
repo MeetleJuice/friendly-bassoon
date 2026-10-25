@@ -963,6 +963,7 @@
     "completion_feedback_limit": 1,
     "reasoning_control": "unchanged_no_toggle",
     "budget_ceilings": "clamp_to_profile_and_agent_limits",
-    "comparison": "output_only isolates allowance; coordinated changes allowance_and_time"
+    "comparison": "output_only isolates allowance; coordinated changes allowance_and_time",
+    "interrupted_runtime": "unknown_not_model_failure"
   }
 }

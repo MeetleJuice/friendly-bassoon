@@ -231,6 +231,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
             "reasoning_control": "unchanged_no_toggle",
             "budget_ceilings": "clamp_to_profile_and_agent_limits",
             "comparison": "output_only isolates allowance; coordinated changes allowance_and_time",
+            "interrupted_runtime": "unknown_not_model_failure",
             **(policy or {}),
         },
     }
@@ -257,7 +258,11 @@ def _usage(row, key):
 
 
 def _outcome(row):
-    if row.get("code") in UNKNOWN_CODES or row.get("status") not in ("passed", "failed"):
+    if (
+        row.get("code") in UNKNOWN_CODES
+        or row.get("evidence", {}).get("runtime_state") == "cancelled"
+        or row.get("status") not in ("passed", "failed")
+    ):
         return None
     return row["status"] == "passed"
 

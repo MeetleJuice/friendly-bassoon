@@ -373,6 +373,9 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 "duration_ms": round((time.monotonic() - started) * 1000),
                 "evidence": {"local_error_type": type(exc).__name__},
             }
+        if row.get("evidence", {}).get("runtime_state") == "cancelled":
+            row["status"] = "failed"
+            row["code"] = "CANCELLED" if cancel.is_set() else "CAMPAIGN_BUDGET_EXHAUSTED"
         row["id"] = identity
         if identity in MEASUREMENT_TRIALS:
             trial = MEASUREMENT_TRIALS[identity]

@@ -31,9 +31,11 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           AIGENTICS_CI_PROGRESS: .ci-active-test.txt
         run: |
-          python -m pytest -q --junitxml=test-results.xml
-          if ($LASTEXITCODE -ne 0) {
-            $testExitCode = $LASTEXITCODE
+          $PSNativeCommandUseErrorActionPreference = $false
+          python -u -m pytest -q --junitxml=test-results.xml 2>&1 | Tee-Object -FilePath ci-test-output.txt
+          $testExitCode = $LASTEXITCODE
+          "$testExitCode" | Set-Content .ci-test-exit.txt
+          if ($testExitCode -ne 0) {
             $lastTest = if (Test-Path .ci-active-test.txt) { (Get-Content .ci-active-test.txt -Raw).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A') } else { 'unknown' }
             Write-Output "::error title=Python test process::Exit code $testExitCode; last started test: $lastTest"
             if (Test-Path test-results.xml) { python scripts/report_test_failures.py test-results.xml }
@@ -45,6 +47,16 @@ jobs:
         if: always()
         run: |
           Write-Output "::notice title=Test phase::Outcome ${{ steps.tests.outcome }}"
+          if (Test-Path .ci-test-exit.txt) {
+            $processExit = (Get-Content .ci-test-exit.txt -Raw).Trim()
+            Write-Output "::notice title=Python test exit code::$processExit"
+          }
+          if ('${{ steps.tests.outcome }}' -ne 'success' -and (Test-Path ci-test-output.txt)) {
+            $tail = (Get-Content ci-test-output.txt -Tail 35) -join "`n"
+            if ($tail.Length -gt 6000) { $tail = $tail.Substring($tail.Length - 6000) }
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Test output tail::$tail"
+          }
           if ('${{ steps.tests.outcome }}' -ne 'success' -and (Test-Path .ci-active-test.txt)) {
             $lastTest = (Get-Content .ci-active-test.txt -Raw).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error title=Last started test::$lastTest"
@@ -102,10 +114,13 @@ jobs:
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: Windows-setup-diagnostics
+          include-hidden-files: true
           path: |
             ${{ runner.temp }}/aigentics-setup.log
             build/Aigentics/warn-Aigentics.txt
             test-results.xml
+            ci-test-output.txt
+            .ci-test-exit.txt
             .ci-active-test.txt
           if-no-files-found: ignore
 

@@ -332,3 +332,13 @@ Reproduced two initial failing synthetic regressions: runtime no-op missing fina
 
 
 Local0.17validation:1104passed/1optional live-model skipped in93.68s;45final focused tests, Ruff lint/format, source startup/27offline diagnostic smoke, pipcheck and wheel/source fidelity passed. Native Test center/Connections previews inspected. Frozen measurement2digest e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e; archived1bytes unchanged. Windows/public delivery gates pending.
+
+
+### 0.17 source Windows attempt1
+
+Source b146258d6d71eb5c834a96fd2386cb7b88435f80 /run40203797626 attempt1 failed during tests (14:47:16–14:58:17UTC,11m1s), exit1; this was not the12minute phase timeout. Last-started breadcrumb tests/test_task_checks_070.py::test_wrong_existing_target_blocked_before_approval_even_if_unchanged. Annotations expose several28–45s test calls but no assertion or traceback. Detailed signed log downloadHTTP403; no downloadable JUnit artifact available. Cause remains unclassified, not attributed to that last test. Same isolated node passes locally. Unchanged failed-job retryattempt2 requested on fresh runner; no source, permissions, time ceilings, tests or tag changed. No release published.
+
+
+### Windows failure observability correction
+
+The new frequent progress annotations could consume GitHub's per-step annotation quota before critical errors. Switched progress/slow-phase events to ordinary log lines; retained stdout, explicit native process exit and hidden breadcrumb in the synthetic CI artifact; separate always-run phase emits bounded output tail/exit annotations. This changes CI observability only, not tests, assertions, platform gates or12minute ceiling. Run-level detailed log route also returned403. Initial isolated breadcrumb passes1/0.14s locally. Supersede still-running unchangedretry with this diagnostic correction; no published tag exists. Failure cause remains unclassified pending real traceback.

@@ -40,10 +40,10 @@ def pytest_runtest_logreport(report):
     if report.when == "call" or report.when == "setup" and report.skipped:
         _ci_completed += 1
         if _ci_completed % 100 == 0:
-            print(f"\n::notice title=Test progress::{_ci_completed} test calls completed", flush=True)
+            print(f"\nCI test progress: {_ci_completed} test calls completed", flush=True)
     if report.duration >= 10:
         phase = report.when if report.when in ("setup", "call", "teardown") else "unknown"
         print(
-            f"\n::notice title=Slow test phase::{phase} took {report.duration:.1f}s; {_ci_completed} calls completed",
+            f"\nCI slow test phase: {phase} took {report.duration:.1f}s; {_ci_completed} calls completed",
             flush=True,
         )

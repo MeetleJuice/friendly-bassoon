@@ -1,5 +1,7 @@
 # Project maintenance workspace
 
+Latest data: [0.18 completed ZIP analysis](RESULTS_0180_REVIEW.md), including per-role modes, Vera recovery and Orion pre-dispatch failures. App unchanged by review.
+
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
 - [0.18 Orion/calibration implementation plan](UPGRADE_0180_PLAN.md) and [latest 0.17 result review](RESULTS_0170_REVIEW.md) — delivered; [verified installer receipt](RELEASE_0180_VERIFIED.json).

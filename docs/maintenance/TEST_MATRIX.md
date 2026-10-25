@@ -1,5 +1,11 @@
 # Test matrix
 
+## 0.20 targeted evidence
+
+Verification-only native feedback after corrected JSON write: successful current read, no-read final, denied write/command/unrelated read, denial followed by valid read, unrelated earlier error, wrong semantic values, absent valid write, external revision changes before/after feedback, exhausted steps, cancellation and missing source/tool/unchanged proof. Error counters survive success; no extra feedback or permissions. Installed30th offline fixture tests recovery and blocked mutation without a model.
+
+Actual Orion/Ada/Sentinel child inspection under shared limits, early final with missing required review, prose-only unverified review, measured direct budget reservations and private-safe flags. Shifted-line native search versus guessed citation; clean negative and comment trap. Frozen measurement5 and unchanged archives1–4; actual0.19 report roundtrip, focused32/full64/Discovery66 separation and real Qt62-result reviewed ZIP. These synthetic checks do not establish local-model quality gains.
+
 | Layer | Location | Acceptance | Limits |
 | --- | --- | --- | --- |
 | Unit/regressions | Linux and Windows CI | Temporary filesystem/process operations, controlled provider HTTP, permissions, protocol, catalogs/retention and UI workers | Fixtures are not live models |

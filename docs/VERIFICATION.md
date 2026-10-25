@@ -318,3 +318,8 @@ Final corrected local suite:1045passed/1optional live model skipped; new in-flig
 
 
 Final0.16local validation:1062passed/1optional live model skipped, followed by27focused UI/campaign/ZIP tests after final presentation-only labels/control states. Ruff lint/format, dependency check, wheel/source fidelity, source startup and25offline diagnostics passed. Actual synthetic renders at900×650,1000×740,1440×900 were inspected and included in design notes. Frozen benchmark unchanged. Windows source/release and production-updater delivery gates follow.
+
+
+## 0.20 local evidence
+
+One full run:1209passed/1optional live skip/1obsolete workload count expectation,110.94s. Corrected count assertions preserve no-offdispatch/profile integrity; final57targeted pass12.42s, plus4finalmanifest/export checks. Prior88evaluation and10Qt/export passes. OldRuntime red/newRuntime green proof retains failed counters. Lint/format/dependencies/startup/30offline smoke pass; isolated wheel/Windows/promotion/publicUpdater checks follow. No model/API/reportPOST used.

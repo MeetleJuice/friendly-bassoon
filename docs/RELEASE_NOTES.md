@@ -1,3 +1,12 @@
+# 0.20.0 — finish verification, ground reviews and measure the team
+
+- Corrected JSON writes can receive one strictly read-only final-proof feedback round when only current readback remains. Writes, commands and unrelated reads are rejected in that phase. Original failures remain counted; denials, wrong values and other unresolved errors do not qualify.
+- Recommended Focused expands to32trials plus30offlinechecks:62outcomes when complete. New comment-trap, shifted-line/native-search and clean-review cases broaden the evidence; two required-review trials must actually dispatch and verify Sentinel after Ada. Ordinary review remains optional. Shared call/output/time limits are unchanged.
+- Direct and managed workflows now both export measured budget counters. Reviewed ZIPs distinguish verification-only assistance and actual reviewer completion. Measurement5 preserves archives1–4 and their original results; full64 and Discovery66 remain optional separate scopes.
+- Main README includes original Midnight Crew emblems, a labelled historical0.19 graph, native interface imagery and current installation/testing/privacy guidance.
+
+Keep the same8Bengine and Ollama running. Update→install/restart→queued Recommended Focused(orTestcenter→Go)→Review/save diagnostic ZIP→approve local saving→Save→attach ZIP. No manual agent edits/token/issues needed. No automatic upload, model switch, context pin, API-key tests, email connection or training. Actual model improvement awaits the next local run; developer checks prove harness behavior only.
+
 # 0.19.0 — clearer handoffs, checked JSON proposals and focused testing
 
 - Orion uses explicit role choices and short application-issued handoff handles. The harness still checks the recorded file snapshot before dispatch, enforces one Ada build/optional Sentinel review, and shares the original call/output/time limits. A malformed dispatch may receive one bounded schema correction; stale, denied, duplicate and recursive actions are not replayed. Native rejection reasons now survive the reviewed ZIP.

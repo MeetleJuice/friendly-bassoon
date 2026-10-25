@@ -29,8 +29,8 @@ from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
 from .ollama_settings import OLLAMA_USAGE_FIELDS, public_thinking
 
-SUITE_VERSION = "11"
-OFFLINE_CHECK_COUNT = 29
+SUITE_VERSION = "12"
+OFFLINE_CHECK_COUNT = 30
 
 
 def model_evidence(events):
@@ -121,6 +121,10 @@ def model_evidence(events):
             (e["data"].get("mismatches", []) for e in events if e["kind"] == "completion.evaluated"), []
         ),
         "completion_feedback_count": sum(e["kind"] == "completion.feedback_requested" for e in events),
+        "verification_feedback_count": sum(
+            e["kind"] == "completion.feedback_requested" and e["data"].get("verification_only") is True
+            for e in events
+        ),
         "initial_task_checks": next(
             (
                 e["data"]["checks"]
@@ -358,6 +362,11 @@ class DiagnosticRunner:
         from .self_checks_0190 import json_proposal_check
 
         return json_proposal_check(self.credentials)
+
+    def verification_fixture(self):
+        from .self_checks_0200 import verification_check
+
+        return verification_check(self.credentials)
 
     def __init__(self, store, credentials, provider_factory=Provider, updater=None):
         self.store, self.credentials = store, credentials
@@ -861,6 +870,7 @@ class DiagnosticRunner:
                 ("thinking_control_fixture", lambda: self.thinking_control_fixture()),
                 ("team_pilot_fixture", self.team_pilot_fixture),
                 ("json_proposal_fixture", self.json_proposal_fixture),
+                ("verification_fixture", self.verification_fixture),
             ]
             for identity, function in cases:
                 if cancel.is_set():

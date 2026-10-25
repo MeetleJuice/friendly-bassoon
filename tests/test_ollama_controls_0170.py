@@ -164,7 +164,7 @@ def test_context_observation_reports_actual_loaded_context_without_names(credent
     )
 
 
-def test_unknown_capability_skips_only_four_experiments_without_changing_saved_profile(store, credentials):
+def test_unknown_capability_skips_only_explicit_off_trials_without_changing_saved_profile(store, credentials):
     from aigentics.campaign import run_campaign
     from test_campaign_0120 import CrewScripted
 
@@ -193,9 +193,9 @@ def test_unknown_capability_skips_only_four_experiments_without_changing_saved_p
         mode="measurement",
         provider_factory=Unknown,
     )[1]
-    assert report["planned_cases"] == 56 and report["summary"]["passed"] == 30
+    assert report["planned_cases"] == 64 and report["summary"]["passed"] == 33
     skipped = [r for r in report["checks"] if r["status"] == "skipped"]
-    assert len(skipped) == 26 and all(r["code"] == "THINKING_CONTROL_UNAVAILABLE" for r in skipped)
+    assert len(skipped) == 31 and all(r["code"] == "THINKING_CONTROL_UNAVAILABLE" for r in skipped)
     assert "off" not in seen and store.profiles()[0].model_dump() == before
 
 

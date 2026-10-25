@@ -11,11 +11,12 @@ import re
 from math import comb
 from typing import Literal
 
-MEASUREMENT_VERSION = "crew-measurement-4"
+MEASUREMENT_VERSION = "crew-measurement-5"
 ARCHIVED_MANIFESTS = {
     "crew-measurement-1": "0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d",
     "crew-measurement-2": "e5efea395071aff13862f9d943e5a9909b1e0a537e0727a2bc51e08bc51a847e",
     "crew-measurement-3": "2e90f43b81731250ffe9d77c4a17256ebdcb45bafa6d2109c9f33f1ba8749142",
+    "crew-measurement-4": "158ad54343cc8565ca22544d71487a636281c2824c0a6efe8d322dc57e15068e",
 }
 GRADER_VERSION = "strict-contract-5"
 REFERENCE_CASES = (
@@ -28,6 +29,7 @@ REFERENCE_CASES = (
     ("baseline", "unicode"),
     ("baseline", "noop"),
 )
+EXPANDED_CASES = (("role", "scout_comment"), ("role", "sentinel_shifted"), ("role", "sentinel_clean"))
 
 UNKNOWN_CODES = frozenset(
     (
@@ -129,7 +131,7 @@ def measurement_plan(version=MEASUREMENT_VERSION):
         return tuple(t for t in trials if t.arm != "thinking_off")
     if version == "crew-measurement-2":
         return tuple(trials)
-    if version not in (MEASUREMENT_VERSION, "crew-measurement-3"):
+    if version not in (MEASUREMENT_VERSION, "crew-measurement-3", "crew-measurement-4"):
         raise ValueError("Unknown measurement version")
     # Short paired calibration first: Scout and Vera expose the recent failure modes.
     # Preserve all 34 retained comparisons; add 18 per-role off trials and 4 team trials.
@@ -161,6 +163,23 @@ def measurement_plan(version=MEASUREMENT_VERSION):
                     180,
                 )
             )
+    if version == MEASUREMENT_VERSION:
+        for kind, identity in EXPANDED_CASES:
+            for arm in ("thinking_off", "reference"):
+                trials.append(Trial(f"measure-{identity}-{arm}-r1", kind, identity, arm, 1, 4096, 120, 180))
+        for repeat in (1, 2):
+            trials.append(
+                Trial(
+                    f"measure-team_review-managed-r{repeat}",
+                    "workflow",
+                    "ada_review",
+                    "managed",
+                    repeat,
+                    4096,
+                    120,
+                    180,
+                )
+            )
     priority = {"scout_symbol": 0, "vera_exclusive": 1}
     calibration = sorted(
         (t for t in trials if t.case_id in priority and t.repeat == 1),
@@ -171,8 +190,8 @@ def measurement_plan(version=MEASUREMENT_VERSION):
 
 
 def focused_plan(version=MEASUREMENT_VERSION):
-    """24 declared trials: changed failure paths first, retained canaries after."""
-    if version != "crew-measurement-4":
+    """Declared focused subset; archived4 keeps24, current5 adds8 targeted probes."""
+    if version not in ("crew-measurement-4", MEASUREMENT_VERSION):
         raise ValueError("Focused mode was introduced with measurement4")
     full = measurement_plan(version)
 
@@ -186,6 +205,7 @@ def focused_plan(version=MEASUREMENT_VERSION):
             and trial.arm in ("coordinated", "thinking_off")
             or trial.case_id == "noop"
             and trial.arm == "thinking_off"
+            or trial.case_id in {identity for _, identity in EXPANDED_CASES}
         )
 
     selected = [trial for trial in full if select(trial)]
@@ -217,7 +237,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
     """
     from .crew import CREW_VERSION, make_agent
     from .contracts import HINTS, MAX_MISMATCHES, MAX_POINTER, PARSE_REASONS, contract_prompt
-    from .crew_cases import CASES as ROLE_CASES
+    from .crew_cases import MEASUREMENT_CASES as ROLE_CASES
     from .models import ModelRef
     from .test_suite import CASES, CASE_OUTPUTS, COMPLEX_CASES, baseline_files
     from .runtime import RUNTIME_POLICY_VERSION
@@ -231,7 +251,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
     selected = []
     primary = ModelRef(profile_id="measurement-definition", model="excluded-from-manifest")
     agents = {}
-    for kind, identity in REFERENCE_CASES:
+    for kind, identity in (*REFERENCE_CASES, *EXPANDED_CASES, ("workflow", "ada_review")):
         if kind == "baseline":
             _, prompt, required = by_id[identity]
             files = baseline_files(identity)
@@ -273,8 +293,9 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
                 "output_json": dict(case.output_json),
                 "answer": case.answer,
                 "required_reads": list(case.required_reads),
+                "required_tools": list(case.required_tools),
                 "tools": list(agent.tools),
-                "max_steps": 10,
+                "max_steps": 12 if kind == "workflow" else 10,
                 "context_chars": agent.context_chars,
                 "task_checks": {
                     "json_outputs": {
@@ -286,6 +307,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
                     "require_readback": True,
                     "require_tools": True,
                     "required_reads": list(case.required_reads),
+                    "required_tools": list(case.required_tools),
                 },
             }
         selected.append(descriptor)
@@ -342,6 +364,7 @@ def measurement_manifest(*, grader_version=GRADER_VERSION, policy=None):
             "max_total_calls": MAX_CALLS,
             "max_total_output_reservation": MAX_OUTPUT_RESERVATION,
             "task_case": "ada_repair",
+            "required_review_case": "ada_review",
             "thinking": "off_if_eligible_else_skip",
             "review": "advisory_and_read_only",
             "authority": "application_owned_checks",
@@ -375,8 +398,19 @@ def _number(value):
     return min(value, 10**15) if type(value) is int and value >= 0 else None
 
 
-def _usage(row, key):
+def _usage(row, key, version=MEASUREMENT_VERSION):
     evidence = row.get("evidence", {})
+    if version == MEASUREMENT_VERSION and isinstance(evidence.get("actor_statistics"), list):
+        sample_key = "prompt_samples" if key == "prompt_eval_count" else "eval_samples"
+        known = [
+            _number(actor.get(key))
+            for actor in evidence["actor_statistics"]
+            if _number(actor.get(sample_key)) not in (None, 0)
+        ]
+        known = [value for value in known if value is not None]
+        if known:
+            rejected = _number(evidence.get("failure_usage", {}).get(key))
+            return sum(known) + (rejected or 0)
     known = []
     for trace in evidence.get("request_traces", [])[:8]:
         value = _number(trace.get("usage", {}).get(key))
@@ -427,7 +461,7 @@ def summarize_trials(rows, *, version=MEASUREMENT_VERSION, mode="measurement"):
             if row.get("evidence", {}).get("timing_unknown") is not True
             and (duration := _number(row.get("duration_ms"))) is not None
         ]
-        usage = {key: [_usage(row, key) for _, row in records] for key in USAGE_KEYS}
+        usage = {key: [_usage(row, key, version) for _, row in records] for key in USAGE_KEYS}
         result.append(
             {
                 "case_kind": kind,
@@ -464,10 +498,12 @@ def summarize_trials(rows, *, version=MEASUREMENT_VERSION, mode="measurement"):
     summary = {
         "measurement_version": version,
         "groups": result,
-        "usage_basis": "Retained traces plus known rejected-response counters; not billing totals",
+        "usage_basis": "All-recorded actor known counters when available, otherwise retained traces plus rejected-response counters; not billing totals"
+        if version == MEASUREMENT_VERSION
+        else "Retained traces plus known rejected-response counters; not billing totals",
         "sampling_note": "Observed repetitions only; no deterministic model or pass@k estimate claimed",
     }
-    if version in (MEASUREMENT_VERSION, "crew-measurement-3", "crew-measurement-2"):
+    if version in (MEASUREMENT_VERSION, "crew-measurement-4", "crew-measurement-3", "crew-measurement-2"):
         pairs = thinking_pairs(rows, version=version)
         if mode == "focused":
             planned_ids = {trial.id for trial in planned}
@@ -490,12 +526,21 @@ def thinking_pairs(rows, *, version=MEASUREMENT_VERSION):
     results = []
     cases = ("unicode", "noop") + (
         tuple(identity for kind, identity in REFERENCE_CASES if kind == "role")
-        if version in (MEASUREMENT_VERSION, "crew-measurement-3")
+        if version in (MEASUREMENT_VERSION, "crew-measurement-4", "crew-measurement-3")
         else ()
     )
+    if version == MEASUREMENT_VERSION:
+        cases += tuple(identity for _, identity in EXPANDED_CASES)
     for case in cases:
         reference_arm = "coordinated" if case in ("unicode", "noop") else "reference"
-        for repeat in (1, 2) if case in ("unicode", "noop") else (1, 2, 3):
+        repeats = (
+            (1,)
+            if case in {identity for _, identity in EXPANDED_CASES}
+            else (1, 2)
+            if case in ("unicode", "noop")
+            else (1, 2, 3)
+        )
+        for repeat in repeats:
             left = index.get(f"measure-{case}-{reference_arm}-r{repeat}", {})
             right = index.get(f"measure-{case}-thinking_off-r{repeat}", {})
             a, b = left.get("evidence", {}), right.get("evidence", {})

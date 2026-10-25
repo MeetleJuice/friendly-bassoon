@@ -5,9 +5,9 @@ from pathlib import Path
 import tempfile
 import time
 
-from .coordination import Coordinator, RootBudget, MAX_CALLS, MAX_OUTPUT_RESERVATION
+from .coordination import Coordinator, RootBudget, MAX_CALLS
 from .crew import make_agent
-from .crew_cases import CASES
+from .crew_cases import MEASUREMENT_CASES as CASES
 from .contracts import contract_prompt, evaluate_contract
 from .diagnostics import model_evidence
 from .runtime import Runtime
@@ -44,12 +44,11 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
         with closing(Store(Path(folder) / "evidence.sqlite3", credentials)) as db:
             db.save_profile(profile)
             factory = provider_factory or Provider
+            direct_budget = RootBudget(trial.session_budget_seconds, cancel=cancel)
             runtime = (
                 Coordinator(db, credentials, factory)
                 if trial.arm == "managed"
-                else Runtime(
-                    db, credentials, RootBudget(trial.session_budget_seconds, cancel=cancel).factory(factory)
-                )
+                else Runtime(db, credentials, direct_budget.factory(factory))
             )
             sid, state = runtime.run(
                 agent,
@@ -63,6 +62,7 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
                 cancel,
                 task_checks=checks,
                 acceptance=lambda ws, content: evaluate_contract(case, ws.root, content),
+                **({"require_review": trial.case_id == "ada_review"} if trial.arm == "managed" else {}),
             )
             events = db.events(sid)
             summary = next(
@@ -70,6 +70,13 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
             )
             passed = state == "completed" and all(evaluate_contract(case, root, "")["checks"].values())
             children = summary.get("children", [])
+            budget = summary["budget"] if trial.arm == "managed" else direct_budget.summary()
+            review_completed = any(
+                stage.get("role") == "sentinel" and stage.get("verified") is True
+                for stage in summary.get("stages", [])
+            )
+            if trial.case_id == "ada_review":
+                passed = passed and review_completed
             child_events = [event for child in children for event in db.events(child)]
             evidence = model_evidence(sorted(events + child_events, key=lambda e: e["sequence"]))
             evidence.update(
@@ -80,20 +87,22 @@ def run_trial(store, credentials, primary, trial, cancel, provider_factory=None)
                 **trial.budget,
                 team_metrics={
                     "dispatches": len(children),
-                    "total_calls": summary.get("budget", {}).get(
-                        "calls", sum(e["kind"] == "model.requested" for e in events)
-                    ),
-                    "call_limit": MAX_CALLS,
-                    "output_limit": MAX_OUTPUT_RESERVATION,
-                    "output_reserved": summary.get("budget", {}).get("output_reserved", 0),
+                    "total_calls": budget["calls"],
+                    "call_limit": budget["call_limit"],
+                    "output_limit": budget["output_limit"],
+                    "output_reserved": budget["output_reserved"],
                     "format_feedback_count": summary.get("format_feedback_count", 0),
                     "stages_verified": sum(stage["verified"] for stage in summary.get("stages", [])),
                     "managed": trial.arm == "managed",
+                    "review_required": trial.case_id == "ada_review",
+                    "review_completed": review_completed,
                 },
             )
             evidence["requirement_checks"] = evaluate_contract(case, Workspace(root).root, "")["checks"] | {
                 "RUN_COMPLETED": state == "completed"
             }
+            if trial.case_id == "ada_review":
+                evidence["requirement_checks"]["REVIEW_COMPLETED"] = review_completed
     return {
         "id": trial.id,
         "status": "passed" if passed else "failed",

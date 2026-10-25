@@ -329,6 +329,7 @@ def public_report(report, include_model=False):
         "empty_final_fixture_verified",
         "team_pilot_fixture_verified",
         "json_proposal_fixture_verified",
+        "verification_fixture_verified",
     }
     if include_model:
         allowed.add("model")
@@ -366,6 +367,11 @@ def public_report(report, include_model=False):
         if type(evidence.get("completion_feedback_count")) is int:
             check["evidence"]["completion_feedback_count"] = min(
                 1, max(0, evidence["completion_feedback_count"])
+            )
+        if type(evidence.get("verification_feedback_count")) is int:
+            check["evidence"]["verification_feedback_count"] = min(
+                check["evidence"].get("completion_feedback_count", 0),
+                max(0, evidence["verification_feedback_count"]),
             )
         if "initial_task_checks" in evidence:
             from .task_checks import public_task_checks
@@ -906,6 +912,7 @@ def safe_campaign_row(check, original):
     for key in (
         "requirement_checks",
         "completion_feedback_count",
+        "verification_feedback_count",
         "initial_task_checks",
         "mismatches",
         "initial_mismatches",

@@ -127,6 +127,7 @@ def clean_report(report, credentials):
                 "thinking_control_fixture",
                 "team_pilot_fixture",
                 "json_proposal_fixture",
+                "verification_fixture",
                 "update_connection",
                 "selected_local_model",
             }

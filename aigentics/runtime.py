@@ -46,7 +46,7 @@ def looks_like_text_tool_call(text):
     return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
-RUNTIME_POLICY_VERSION = "verified-completion-4"
+RUNTIME_POLICY_VERSION = "verified-completion-5"
 
 
 class RunTimeout(TimeoutError):
@@ -106,6 +106,7 @@ class Runtime:
         checks = TaskChecks.model_validate(task_checks or {})
         task_evidence = TaskEvidence(ws, checks)
         completion_feedback_count = 0
+        verification_only_targets = {}
         acceptance_result = {}
         mismatches = []
         final_content = ""
@@ -282,6 +283,37 @@ class Runtime:
                 - tool_counts["recovered_validation_errors"]
                 - tool_counts["recovered_proposal_errors"],
             )
+
+        def verification_targets(pending):
+            """Offer one read-only proof turn; do not forgive any error here."""
+            if (
+                not checks.require_readback
+                or not pending.get("missing_readbacks")
+                or any(
+                    pending.get(key, 0)
+                    for key in (
+                        "missing_writes",
+                        "revision_mismatches",
+                        "missing_sources",
+                        "missing_tools",
+                        "missing_unchanged_files",
+                        "content_failures",
+                    )
+                )
+                or not proposal_errors
+                or unresolved_errors() != sum(proposal_errors.values())
+            ):
+                return {}
+            missing = {
+                key: digest
+                for key, digest in task_evidence.writes.items()
+                if task_evidence.readbacks.get(key) != digest
+            }
+            if not {key for key, _ in proposal_errors} <= missing.keys():
+                return {}
+            # evaluate_checks already confirmed these writes still match disk. Snapshot
+            # the permitted paths; the phase cannot write or expand to unrelated reads.
+            return missing
 
         state, outcome = "failed", "Runtime did not complete"
         tools = tool_definitions(agent)
@@ -497,12 +529,13 @@ class Runtime:
                         {"checks": pending, "acceptance": acceptance_result, "mismatches": mismatches},
                     )
                     unresolved = unresolved_errors()
+                    proof_targets = verification_targets(pending) if unresolved else {}
                     if (
                         checks.completion_feedback
                         and (checks.configured or acceptance is not None)
                         and pending["status"] != "passed"
                         and completion_feedback_count == 0
-                        and unresolved == 0
+                        and (unresolved == 0 or proof_targets)
                         and "CHECKER_ERROR" not in acceptance_result
                         and all(value == "passed" for value in python_checks.values())
                         and step + 1 < agent.max_steps
@@ -510,6 +543,9 @@ class Runtime:
                         and time.monotonic() < deadline
                     ):
                         completion_feedback_count += 1
+                        verification_only_targets = proof_targets
+                        if proof_targets:
+                            tools = [tool for tool in tools if tool["function"]["name"] == "read_file"]
                         event(
                             "completion.feedback_requested",
                             {
@@ -518,18 +554,25 @@ class Runtime:
                                 "checks": pending,
                                 "acceptance": acceptance_result,
                                 "mismatches": mismatches,
+                                "verification_only": bool(proof_targets),
                             },
                         )
                         messages.append(
                             {
                                 "role": "user",
                                 "content": self.credentials.redact(
-                                    "Application verification: the original task is unfinished. "
-                                    "Use native tools to satisfy these checks within the original permissions. "
-                                    "Repair failing artifacts FIRST, then read_file EACH final artifact AFTER the last change, then finish. "
-                                    "Inspect required sources and compare values, types, boundaries and formatting against the brief. "
-                                    "Only correct artifacts that fail acceptance; do not rewrite an already correct output, "
-                                    "bypass a denial, change unrelated files, or claim success without evidence. "
+                                    (
+                                        "Verification-only phase: use read_file on the listed unfinished outputs, "
+                                        "then return your final answer. Writes, commands and unrelated reads are disabled. "
+                                        "Earlier errors remain unresolved until current saved revisions are read. "
+                                        if proof_targets
+                                        else "Application verification: the original task is unfinished. "
+                                        "Use native tools to satisfy these checks within the original permissions. "
+                                        "Repair failing artifacts FIRST, then read_file EACH final artifact AFTER the last change, then finish. "
+                                        "Inspect required sources and compare values, types, boundaries and formatting against the brief. "
+                                        "Only correct artifacts that fail acceptance; do not rewrite an already correct output, "
+                                        "bypass a denial, change unrelated files, or claim success without evidence. "
+                                    )
                                     + json.dumps({"checks": pending, "remaining": details})
                                 ),
                             }
@@ -582,6 +625,11 @@ class Runtime:
                         },
                     )
                     try:
+                        if verification_only_targets and (
+                            call.name != "read_file"
+                            or path_key(ws, call.arguments.get("path", "")) not in verification_only_targets
+                        ):
+                            raise PermissionError("Verification-only phase permits pending output reads only")
                         result = tool_runner.execute(call)
                         ok = not (
                             call.name == "run_command"
@@ -802,6 +850,7 @@ class Runtime:
                     "mismatches": mismatches,
                     "task_checks": task_result,
                     "completion_feedback_count": completion_feedback_count,
+                    "verification_feedback_count": int(bool(verification_only_targets)),
                     "final_response_status": final_response_status,
                     "terminal_response_status": "accepted"
                     if state in ("completed", "response_only")

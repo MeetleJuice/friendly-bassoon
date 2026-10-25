@@ -24,6 +24,7 @@ class Case:
     answer: dict | None = None
     required_reads: tuple[str, ...] = ()
     output_json: Mapping[str, object] = field(default_factory=dict)
+    required_tools: tuple[str, ...] = ()
 
     def __post_init__(self):
         for name in ("files", "outputs", "output_json"):
@@ -530,6 +531,40 @@ VARIATIONS = (
 )
 ORIGINAL_CASES = CASES
 CASES = (*ORIGINAL_CASES, *VARIATIONS)
+
+# New evaluation-only probes do not silently expand the optional Discovery workload.
+MEASUREMENT_CASES = (
+    *CASES,
+    Case(
+        "sentinel_shifted",
+        "sentinel",
+        "Ground a citation after comments and blank lines",
+        READ_ONLY + "Read access.py and spec.txt. Use native search(query='return age') to obtain the actual "
+        "one-based source line. Return findings with file, line (integer), and issue. "
+        "Use issue='exclusive_boundary' for an incorrectly exclusive age limit; cite the return statement.",
+        {
+            "access.py": b"# Access policy implementation\n\n# Boundary behavior is specified separately.\ndef allowed(age):\n    return age > 18\n",
+            "spec.txt": b"Access is allowed at age 18 or above.\n",
+        },
+        answer={"findings": [{"file": "access.py", "line": 5, "issue": "exclusive_boundary"}]},
+        required_reads=("access.py", "spec.txt"),
+        required_tools=("search",),
+    ),
+    Case(
+        "ada_review",
+        "ada",
+        "Repair and independently inspect a boundary condition",
+        WRITE + "Read eligibility.py and spec.txt. Correct eligibility.py to implement the spec. "
+        "Keep the two-line function and final newline. An independent Sentinel read-only inspection "
+        "is required after the build; it does not replace the application's strict output checks.",
+        {
+            "eligibility.py": b"def eligible(age):\n    return age > 18\n",
+            "spec.txt": b"Eligibility starts at age 18, inclusive.\n",
+        },
+        {"eligibility.py": b"def eligible(age):\n    return age >= 18\n"},
+        required_reads=("eligibility.py", "spec.txt"),
+    ),
+)
 
 
 def _equal_json(actual, expected):

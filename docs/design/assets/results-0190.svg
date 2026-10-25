@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1152pt" height="612pt" viewBox="0 0 1152 612" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-25T23:38:06.404354</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 612 
+L 1152 612 
+L 1152 0 
+L 0 0 
+z
+" style="fill: #f1f5fa"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 161.28 446.76 
+L 552.96 446.76 
+L 552.96 293.76 
+L 161.28 293.76 
+z
+" style="fill: #f1f5fa"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 161.28 300.714545 
+L 271.924068 300.714545 
+L 271.924068 311.175422 
+L 161.28 311.175422 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 161.28 313.112621 
+L 493.212203 313.112621 
+L 493.212203 323.573497 
+L 161.28 323.573497 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #008c7c"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 161.28 339.458531 
+L 327.246102 339.458531 
+L 327.246102 349.919407 
+L 161.28 349.919407 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 161.28 351.856607 
+L 493.212203 351.856607 
+L 493.212203 362.317483 
+L 161.28 362.317483 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #008c7c"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 161.28 378.202517 
+L 327.246102 378.202517 
+L 327.246102 388.663393 
+L 161.28 388.663393 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 161.28 390.600593 
+L 493.212203 390.600593 
+L 493.212203 401.061469 
+L 161.28 401.061469 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #008c7c"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 161.28 416.946503 
+L 493.212203 416.946503 
+L 493.212203 427.407379 
+L 161.28 427.407379 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 161.28 429.344578 
+L 493.212203 429.344578 
+L 493.212203 439.805455 
+L 161.28 439.805455 
+z
+" clip-path="url(#p4e4520db1f)" style="fill: #008c7c"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52657d" x="161.28" y="457.858437" transform="rotate(-0 161.28 457.858437)">0%</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52657d" x="327.246102" y="457.858437" transform="rotate(-0 327.246102 457.858437)">50%</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52657d" x="493.212203" y="457.858437" transform="rotate(-0 493.212203 457.858437)">100%</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="157.78" y="316.323162" transform="rotate(-0 157.78 316.323162)">Vera</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_5"/>
+     <g id="text_5">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="157.78" y="355.067148" transform="rotate(-0 157.78 355.067148)">Scout</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_6"/>
+     <g id="text_6">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="157.78" y="393.811134" transform="rotate(-0 157.78 393.811134)">Sentinel</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_7"/>
+     <g id="text_7">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="157.78" y="432.555119" transform="rotate(-0 157.78 432.555119)">Unicode</text>
+     </g>
+    </g>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="278.562712" y="308.704359" transform="rotate(-0 278.562712 308.704359)">1/3</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="499.850847" y="321.102434" transform="rotate(-0 499.850847 321.102434)">3/3</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="333.884746" y="347.448344" transform="rotate(-0 333.884746 347.448344)">1/2</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="499.850847" y="359.84642" transform="rotate(-0 499.850847 359.84642)">2/2</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="333.884746" y="386.19233" transform="rotate(-0 333.884746 386.19233)">1/2</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="499.850847" y="398.590406" transform="rotate(-0 499.850847 398.590406)">2/2</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="499.850847" y="424.936316" transform="rotate(-0 499.850847 424.936316)">2/2</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="499.850847" y="437.334391" transform="rotate(-0 499.850847 437.334391)">2/2</text>
+   </g>
+  </g>
+  <g id="text_16">
+   <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #008c7c" x="51.84" y="36.72" transform="rotate(-0 51.84 36.72)">REAL RUNS. RECORDED EVIDENCE.</text>
+  </g>
+  <g id="text_17">
+   <text style="font-weight: 700; font-size: 28px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="51.84" y="74.664" transform="rotate(-0 51.84 74.664)">The 0.19 local test snapshot</text>
+  </g>
+  <g id="text_18">
+   <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="51.84" y="102.204" transform="rotate(-0 51.84 102.204)">Focused campaign • 8B-class local model • Completed in 9m 42s</text>
+  </g>
+  <g id="text_19">
+   <text style="font-weight: 700; font-size: 31px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #008c7c" x="69.12" y="165.852" transform="rotate(-0 69.12 165.852)">29/29</text>
+  </g>
+  <g id="text_20">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="69.12" y="192.168" transform="rotate(-0 69.12 192.168)">App checks passed</text>
+  </g>
+  <g id="text_21">
+   <text style="font-weight: 700; font-size: 31px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #306bd9" x="334.08" y="165.852" transform="rotate(-0 334.08 165.852)">20/24</text>
+  </g>
+  <g id="text_22">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="334.08" y="192.168" transform="rotate(-0 334.08 192.168)">Agent trials passed</text>
+  </g>
+  <g id="text_23">
+   <text style="font-weight: 700; font-size: 31px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #008c7c" x="599.04" y="165.852" transform="rotate(-0 599.04 165.852)">53/53</text>
+  </g>
+  <g id="text_24">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="599.04" y="192.168" transform="rotate(-0 599.04 192.168)">Outcomes recorded</text>
+  </g>
+  <g id="text_25">
+   <text style="font-weight: 700; font-size: 31px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #306bd9" x="864" y="165.852" transform="rotate(-0 864 165.852)">2/2</text>
+  </g>
+  <g id="text_26">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="864" y="192.168" transform="rotate(-0 864 192.168)">Orion → Ada runs passed</text>
+  </g>
+  <g id="text_27">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="69.12" y="244.8" transform="rotate(-0 69.12 244.8)">Matched thinking-mode comparison</text>
+  </g>
+  <g id="text_28">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="69.12" y="266.22" transform="rotate(-0 69.12 266.22)">Default: 5/9 passed     Thinking off: 9/9 passed</text>
+  </g>
+  <g id="text_29">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #7488a4" x="161.28" y="481.644" transform="rotate(-0 161.28 481.644)">● Default</text>
+  </g>
+  <g id="text_30">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #008c7c" x="322.56" y="481.644" transform="rotate(-0 322.56 481.644)">● Thinking off</text>
+  </g>
+  <g id="text_31">
+   <text style="font-weight: 700; font-size: 16px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="656.64" y="244.8" transform="rotate(-0 656.64 244.8)">Four failures. Clear next targets.</text>
+  </g>
+  <g id="text_32">
+   <text style="font-weight: 700; font-size: 29px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c84d60" x="656.64" y="306" transform="rotate(-0 656.64 306)">2</text>
+  </g>
+  <g id="text_33">
+   <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="702.72" y="298.044" transform="rotate(-0 702.72 298.044)">VERA</text>
+  </g>
+  <g id="text_34">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="702.72" y="319.464" transform="rotate(-0 702.72 319.464)">Saved correct output; skipped final readback.</text>
+  </g>
+  <g id="text_35">
+   <text style="font-weight: 700; font-size: 29px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c84d60" x="656.64" y="367.2" transform="rotate(-0 656.64 367.2)">1</text>
+  </g>
+  <g id="text_36">
+   <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="702.72" y="359.244" transform="rotate(-0 702.72 359.244)">SCOUT</text>
+  </g>
+  <g id="text_37">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="702.72" y="380.664" transform="rotate(-0 702.72 380.664)">Answered without required source reads.</text>
+  </g>
+  <g id="text_38">
+   <text style="font-weight: 700; font-size: 29px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c84d60" x="656.64" y="428.4" transform="rotate(-0 656.64 428.4)">1</text>
+  </g>
+  <g id="text_39">
+   <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="702.72" y="420.444" transform="rotate(-0 702.72 420.444)">SENTINEL</text>
+  </g>
+  <g id="text_40">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="702.72" y="441.864" transform="rotate(-0 702.72 441.864)">Read sources; cited the wrong line number.</text>
+  </g>
+  <g id="text_41">
+   <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #008c7c" x="656.64" y="481.644" transform="rotate(-0 656.64 481.644)">Vera also recovered from 4 rejected JSON proposals.</text>
+  </g>
+  <g id="text_42">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="51.84" y="535.5" transform="rotate(-0 51.84 535.5)">Scope matters: small repeated scenarios; both Sentinel off passes needed feedback. No full six-agent team result is claimed.</text>
+  </g>
+  <g id="text_43">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="51.84" y="560.592" transform="rotate(-0 51.84 560.592)">Orion delegated to Ada; Sentinel was not dispatched in those runs. Direct Ada also passed 2/2 with fewer model requests.</text>
+  </g>
+  <g id="text_44">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="51.84" y="585.684" transform="rotate(-0 51.84 585.684)">Source: sanitized RESULTS_0190_REVIEW.md • historical baseline, not a prediction or a 0.20 result</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p4e4520db1f">
+   <rect x="161.28" y="293.76" width="391.68" height="153"/>
+  </clipPath>
+ </defs>
+</svg>

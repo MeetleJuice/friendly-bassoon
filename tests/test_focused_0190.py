@@ -5,21 +5,22 @@ import threading
 from aigentics.campaign import plan, run_campaign
 from aigentics.measurement import focused_plan, measurement_plan, summarize_trials
 from aigentics.models import Agent, Profile
+from aigentics.diagnostics import OFFLINE_CHECK_COUNT
 from aigentics.bundles import clean_report
 from test_campaign_0120 import CrewScripted
 
 
 def test_focused_workload_is_explicit_and_does_not_pretend_full_coverage():
     focused = focused_plan()
-    assert len(focused) == 24 and len({t.id for t in focused}) == 24
+    assert len(focused) == 32 and len({t.id for t in focused}) == 32
     assert {t.id for t in focused} < {t.id for t in measurement_plan()}
-    assert all(t.case_kind == "workflow" for t in focused[:4])
-    assert all(t.case_id == "vera_exclusive" for t in focused[4:10])
-    assert sum(t.thinking_mode == "off" for t in focused) == 15
+    assert all(t.case_kind == "workflow" for t in focused[:6])
+    assert all(t.case_id == "vera_exclusive" for t in focused[6:12])
+    assert sum(t.thinking_mode == "off" for t in focused) == 20
     assert not any(t.case_id == "noop" and t.thinking_mode != "off" for t in focused)
     summary = summarize_trials([], mode="focused")
-    assert sum(group["unrecorded"] for group in summary["groups"]) == 24
-    assert summary["plan_scope"] == "focused" and len(summary["thinking_pairs"]) == 9
+    assert sum(group["unrecorded"] for group in summary["groups"]) == 32
+    assert summary["plan_scope"] == "focused" and len(summary["thinking_pairs"]) == 12
     assert plan("focused") == [t.id for t in focused]
 
 
@@ -34,8 +35,8 @@ def test_native_focused_campaign_and_complete_reviewed_export(store, credentials
         mode="focused",
         provider_factory=CrewScripted,
     )
-    assert health["summary"]["passed"] == 29
-    assert report["planned_cases"] == len(report["checks"]) == report["summary"]["passed"] == 24, [
+    assert health["summary"]["passed"] == OFFLINE_CHECK_COUNT
+    assert report["planned_cases"] == len(report["checks"]) == report["summary"]["passed"] == 32, [
         (r["id"], r["status"]) for r in report["checks"] if r["status"] != "passed"
     ]
     assert report["manifest_verified"] and report["stop_reason"] == "finished"
@@ -43,7 +44,7 @@ def test_native_focused_campaign_and_complete_reviewed_export(store, credentials
     assert exported["mode"] == "focused" and exported["measurement_summary"]["plan_scope"] == "focused"
     assert sum(g["unrecorded"] for g in exported["measurement_summary"]["groups"]) == 0
     manager = [r for r in exported["checks"] if r["evidence"].get("role") == "orion"]
-    assert len(manager) == 2
+    assert len(manager) == 4
     assert manager[0]["evidence"]["team_diagnostics"]
     actors = {s["actor"] for s in manager[0]["evidence"]["actor_statistics"]}
     assert actors == {"orion", "ada", "sentinel"}

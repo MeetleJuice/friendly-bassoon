@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 from .campaign import PLAN_IDS, REQUIREMENT_LABELS, campaign_scope, latest_resumable, plan, run_campaign
 from .crew import ROLES, ensure_roster
-from .crew_cases import CASES as ROLE_CASES
+from .crew_cases import MEASUREMENT_CASES as ROLE_CASES
 from .diagnostics import OFFLINE_CHECK_COUNT
 from .reporting import issue_body, prepare_browser_draft, ReportingError
 from .presentation import Disclosure, text_label
@@ -43,8 +43,8 @@ class CampaignDialog(QDialog):
         layout.addWidget(text_label("TEST · OBSERVE · IMPROVE", "eyebrow"))
         layout.addWidget(text_label("Put the Midnight Crew to the test.", "pageTitle"))
         label = text_label(
-            f"{OFFLINE_CHECK_COUNT} offline app checks + 24 focused trials by default. Orion and Vera first, then source-grounding and file canaries. "
-            "Full 56-trial measurement remains available. One selected local model, serial work, disposable files. Two-hour safety ceiling; stop safely at any time. "
+            f"{OFFLINE_CHECK_COUNT} offline app checks + 32 focused trials by default. Orion and Vera first, then source-grounding, citations and file canaries. "
+            "Full 64-trial measurement remains available. One selected local model, serial work, disposable files. Two-hour safety ceiling; stop safely at any time. "
             "No API checks. Saved personal agents stay unchanged."
         )
         layout.addWidget(label)
@@ -60,8 +60,8 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Recommended • 24 focused trials + app checks", "focused")
-        self.mode.addItem("Full measurement • 56 trials + app checks", "measurement")
+        self.mode.addItem("Recommended • 32 focused trials + app checks", "focused")
+        self.mode.addItem("Full measurement • 64 trials + app checks", "measurement")
         self.mode.addItem("Discovery • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
@@ -218,8 +218,11 @@ class CampaignDialog(QDialog):
         role_cases = {c.id: c for c in ROLE_CASES}
         for trial in measurement_plan():
             if trial.case_kind == "workflow":
+                workflow = (
+                    "Ada + required Sentinel inspection" if trial.case_id == "ada_review" else "Ada build"
+                )
                 titles[trial.id] = (
-                    f"Orion pilot • Ada build • {trial.arm} • {trial.repeat}/2 • thinking off (conditional)"
+                    f"Orion pilot • {workflow} • {trial.arm} • {trial.repeat}/2 • thinking off (conditional)"
                 )
                 continue
             role = ROLES[role_cases[trial.case_id].role].name if trial.case_kind == "role" else "George"
@@ -236,7 +239,7 @@ class CampaignDialog(QDialog):
                 "coordinated": "output + time",
                 "thinking_off": "thinking off (conditional)",
             }[trial.arm]
-            total = 3 if trial.case_kind == "role" else 2
+            total = sum(t.case_id == trial.case_id and t.arm == trial.arm for t in measurement_plan())
             titles[trial.id] = f"{role} • {scenario} • {arm} • {trial.repeat}/{total}"
         for index, identity in enumerate(self.identities):
             label = titles.get(identity, "George • " + identity)

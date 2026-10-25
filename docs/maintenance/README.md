@@ -2,6 +2,8 @@
 
 Latest data: [0.19 completed ZIP analysis](RESULTS_0190_REVIEW.md): 29/29 health checks, 20/24 focused trials, successful Orion→Ada dispatch, verified Vera proposal recovery and four remaining default-thinking failures. App unchanged by review. Previous baseline: [0.18 completed ZIP analysis](RESULTS_0180_REVIEW.md).
 
+[0.20 implementation and validation plan](UPGRADE_0200_PLAN.md): final-proof recovery, grounded cases, reviewer canary, measured budgets and a refreshed main README. Source implementation complete; release gates in progress.
+
 [0.19 implementation plan](UPGRADE_0190_PLAN.md), [research and access limits](RESEARCH_0190.md), [source hashes](RESEARCH_SOURCES_0190.json). Delivered0.19.0; [verified installer receipt](RELEASE_0190_VERIFIED.json).
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.

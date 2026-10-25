@@ -165,3 +165,8 @@ User explicitly requested removal of automatic API checks and richer useful eval
 A separate ordered-acceptance audit rejected three false passes (wrong/no post-read no-op, missing specific stale/reread ordering, input reads after transformation). Real GUI two-step execution verifies fresh context, explicit approval, bound distinct sessions, legitimate overlapping output edits and next-step validation. Qt worker signals are scoped to their originating job so obsolete queued completions cannot bind a new plan. Snapshot confirmation races, foreign projects, absent output, interruption and forbidden acceptance all have concrete disk/SQLite/GUI regressions.
 
 Local528passed/1optional live Ollama skipped; lint/format pass. Primary research cites OpenAI Evals/Pydantic/LangGraph checkpoint source and Temporal documented replay distinction; integrations are not claimed. More test count is not a live model reliability metric. Source smokes, actual Windows released0.10 upgrade and publication follow.
+
+
+## 0.20 implementation
+
+See maintenance/UPGRADE_0200_PLAN.md and latest ENGINEERING_LOG entry. Final-proof recovery, grounded32trialscope, actual requiredreview, measured direct budgets and refreshed README implemented. Health30/62focused outcomes. Local full1209pass/1optional skip/1obsolete count fixture corrected; final57targeted pass. Windows release gates pending; no live model improvement claim.

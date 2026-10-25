@@ -107,9 +107,9 @@ def test_parser_reports_location_without_sensitive_error_text(raw, reason):
 
 def test_all_role_mode_pairs_and_total_budget_workflows_are_predeclared():
     trials = measurement_plan()
-    assert len(trials) == len({t.id for t in trials}) == 56
-    assert len([t for t in trials if t.case_kind == "role" and t.arm == "thinking_off"]) == 18
-    assert len([t for t in trials if t.case_kind == "workflow"]) == 4
+    assert len(trials) == len({t.id for t in trials}) == 64
+    assert len([t for t in trials if t.case_kind == "role" and t.arm == "thinking_off"]) == 21
+    assert len([t for t in trials if t.case_kind == "workflow"]) == 6
     assert [t.case_id for t in trials[:4]] == [
         "scout_symbol",
         "scout_symbol",

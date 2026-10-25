@@ -82,8 +82,9 @@ def public_run_details(value):
             and type(v) is int
             and 0 <= v <= 100000
         }
-        if type(metrics.get("managed")) is bool:
-            safe["team_metrics"]["managed"] = metrics["managed"]
+        for key in ("managed", "review_required", "review_completed"):
+            if type(metrics.get(key)) is bool:
+                safe["team_metrics"][key] = metrics[key]
     safe.update(public_team_evidence(value))
     return safe
 
@@ -97,6 +98,7 @@ TEAM_CODES = frozenset(
         "WORKER_UNVERIFIED",
         "EMPTY_FINAL",
         "NO_WORKER_EVIDENCE",
+        "REVIEW_REQUIRED",
         "ACCEPTANCE_FAILED",
         "STALE_HANDOFF",
         "STALE_FINAL_REVISION",

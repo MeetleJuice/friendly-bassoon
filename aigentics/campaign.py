@@ -11,7 +11,7 @@ import time
 import threading
 
 from .crew import CREW_VERSION, make_agent
-from .crew_cases import CASES as ROLE_CASES, ORIGINAL_CASES, VARIATIONS, evaluate_content
+from .crew_cases import MEASUREMENT_CASES as ROLE_CASES, ORIGINAL_CASES, VARIATIONS, evaluate_content
 from .contracts import evaluate_contract, contract_prompt
 from .diagnostics import DiagnosticRunner, model_evidence
 from .evidence import base_report
@@ -29,7 +29,7 @@ from .test_suite import (
 from .tools import Workspace
 from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials, focused_plan
 
-CAMPAIGN_VERSION = "crew-campaign-7"
+CAMPAIGN_VERSION = "crew-campaign-8"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -42,6 +42,7 @@ REQUIREMENT_LABELS = {
     "READ_BEFORE_WRITE": "Required source reads precede the first saved change",
     "TASK_VERIFIED": "Saved outputs were verified and read back",
     "RUN_COMPLETED": "Runtime completed without unresolved errors",
+    "REVIEW_COMPLETED": "Required independent Sentinel source/output inspection completed",
 }
 EXPERIMENTS = {
     f"experiment-{name}-{cap}": (name, cap) for name in ("unicode", "noop") for cap in (1024, 2048, 4096)
@@ -188,6 +189,7 @@ def role_case(
                     require_tools=True,
                     require_readback=True,
                     required_reads=list(case.required_reads),
+                    required_tools=list(case.required_tools),
                     completion_feedback=True,
                 ),
             )

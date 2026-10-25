@@ -4,7 +4,7 @@ import json
 import threading
 import pytest
 from aigentics import campaign
-from aigentics.crew_cases import CASES
+from aigentics.crew_cases import CASES, MEASUREMENT_CASES
 from aigentics.diagnostics import OFFLINE_CHECK_COUNT
 from aigentics.models import Agent, Profile, Reply, ToolCall
 from aigentics.reporting import issue_body, prepare_browser_draft
@@ -45,10 +45,13 @@ class CrewScripted(Scripted):
         prompt = next(m["content"] for m in messages if m["role"] == "user")
         from aigentics.contracts import contract_prompt
 
-        case = next((c for c in CASES if c.prompt == prompt or contract_prompt(c) in prompt), None)
+        case = next(
+            (c for c in MEASUREMENT_CASES if c.prompt == prompt or contract_prompt(c) in prompt), None
+        )
         if case is None:
             return super().chat(model, messages, tools)
         calls = [("read_file", {"path": name}) for name in case.required_reads]
+        calls += [("search", {"query": "return age"}) for tool in case.required_tools if tool == "search"]
         if "write_file" not in names:
             calls += [
                 ("read_file", {"path": name}) for name in case.outputs if name not in case.required_reads

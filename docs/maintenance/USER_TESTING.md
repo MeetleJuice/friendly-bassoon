@@ -1,3 +1,11 @@
+# 0.14.1 — recover and share one ZIP
+
+After the verified0.14.1release is available, click Update with Ollama running. A matching unfinished campaign continues automatically, preserving committed results; an unknown in-flight attempt is marked interrupted and not replayed. If configuration differs, use the remembered model/mode and Continue unfinished campaign. Do not start new campaigns merely to seek green.
+
+When finished, stopped safely, or after an error, click **Review / save diagnostic ZIP (partial results supported)**. Inspect the exact archive contents, check approval for local saving, click Save approved ZIP, and choose a location (Downloads is suggested). Drag that ZIP into your support chat. No GitHub token, issue creation or complete campaign is required. Nothing uploads automatically. Diagnose also offers Review / save ZIP for a selected campaign or app-health report from history.
+
+The ZIP includes structured sanitized results, bounded numeric request traces, initial/final correctness checks, argument-free action timelines and a SHA256manifest. It excludes credentials/.env, local connection configuration, project files/paths, prompts/transcripts/raw thinking and model names. It cannot recover an attempt never saved by the prior process. Exported ZIPs are user-managed files separate from app retention. GitHub browser summaries remain optional.
+
 # 0.14 next local acceptance
 
 Click Update with Ollama running. After installation/restart, the queued Deep campaign runs once:25offline checks and66local model attempts,91results if it completes. It can take up to2hours; safe stop and matching-configuration continuation remain available. Do not restart simply to seek a green score.

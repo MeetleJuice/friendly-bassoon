@@ -83,6 +83,9 @@ class CampaignDialog(QDialog):
         self.go = button("Go • start new campaign", self.start, row, True)
         self.resume = button("Continue unfinished campaign", lambda: self.start(True), row)
         button("Stop safely", self.cancel, row)
+        self.zip_button = button(
+            "Review / save diagnostic ZIP (partial results supported)", self.export_zip, layout
+        )
         self.approval = QCheckBox("I reviewed BOTH previews and approve opening both public GitHub drafts.")
         self.approval.setEnabled(False)
         layout.addWidget(self.approval)
@@ -94,6 +97,29 @@ class CampaignDialog(QDialog):
         self.agents.currentIndexChanged.connect(self.refresh)
         self.rows = {}
         self.refresh()
+
+    def export_zip(self):
+        if self.worker and self.worker.isRunning():
+            self.window.error("Stop safely or wait before exporting a snapshot.")
+            return
+        from .bundles_ui import BundleDialog
+
+        try:
+            scope = campaign_scope(self.window.store, self.agent(), self.mode.currentData())
+            rows = [r["payload"] for r in self.window.store.diagnostic_reports()]
+            campaign = next(
+                (r for r in rows if r.get("kind") == "crew_campaign" and r.get("local_scope") == scope), None
+            )
+            if campaign is None:
+                self.window.error(
+                    "No saved campaign for this model and mode. Use Diagnose to select an older report."
+                )
+                return
+            health = next((r for r in rows if r.get("kind") == "health"), None)
+            self.bundle_dialog = BundleDialog(self.window, [campaign] + ([health] if health else []))
+            self.bundle_dialog.show()
+        except (ValueError, AttributeError) as exc:
+            self.window.error(str(exc))
 
     def start_queued(self):
         """Recover a matching saved campaign; never repeat an uncertain attempt."""
@@ -185,7 +211,7 @@ class CampaignDialog(QDialog):
 
     def failed(self, error):
         self.status.setText(
-            "Campaign could not finish. Saved results remain available; inspect the error before continuing."
+            "Campaign could not finish. Use Review / save diagnostic ZIP to export saved partial evidence."
         )
         self.window.error(error)
 
@@ -315,6 +341,9 @@ class CampaignDialog(QDialog):
                 f"\nEXACT PUBLIC PREVIEW {index + 1}\n{fields['title'][0]}\n{fields['body'][0]}"
             )
         self.approval.setEnabled(len(self.urls) == 2)
+        self.output.appendPlainText(
+            "Review / save diagnostic ZIP packages detailed evidence locally; you can drag it into your support chat. GitHub sharing is optional."
+        )
         QApplication.beep()
 
     def open_drafts(self):

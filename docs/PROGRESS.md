@@ -2,7 +2,7 @@
 
 ## 0.14.1 storage hotfix pending validation
 
-Read maintenance/HOTFIX_0141.md. User real66case campaign exceeded250KBreport cap. Lossless compact JSON plus bounded1MBcampaign capacity (66casebound; other reports/globalretentionunchanged) and automatic matching interrupted-campaign continuation are implemented. Last unsaved results remain unknown, never replayed. Full tests/Windows0.14upgrade/public updater verification precede publication.
+Read maintenance/HOTFIX_0141.md. User real66case campaign exceeded250KBreport cap. Lossless compact JSON plus bounded1MBcampaign capacity (66casebound; other reports/globalretentionunchanged) and automatic matching interrupted-campaign continuation are implemented. Last unsaved results remain unknown, never replayed. Reviewed localZIPexport now supports partial/completed saved campaign/health reports with immutable sanitized bytes, hashes, rich bounded numeric traces and no upload. Drag the ZIP into support chat; GitHub issues are optional. Combined local885passed/1optional skip; final Windows0.14upgrade/public updater verification precede publication.
 
 ## 0.14.0 verified delivery
 

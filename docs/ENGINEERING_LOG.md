@@ -246,3 +246,10 @@ Release timeout diagnosis: unchanged attempt2 completed its test phase in4m28s (
 User storage-limit exception traced to250KBgeneric cap applied to66case real-model evidence. Read maintenance/HOTFIX_0141.md. Compact lossless JSON, bounded1MB/66casecampaign capacity, unchanged250KBother/global retention, and queued matching-campaign continuation implemented. New growing-report/restart/recovery/oversize-replacement/queued-resume regressions preserve all payload evidence. Earlier committed rows remain; last unsaved/in-flight result cannot be reconstructed and must not replay. No user data accessed remotely. Local/Windows/public-updater validation follows; no release claim yet.
 
 Local0.14.1:876passed/1optional live model skipped; Ruff lint/format, dependency consistency, source startup and25offline smoke pass. Real long-report prefix/restart/recovery and queued-resume behavior covered. Windows/release gate pending.
+
+
+### 0.14.1 expanded ZIP delivery scope
+
+Storage-only candidate a16a561 passed Windows run40152705666, but was not tagged/published: user then explicitly requested reviewed localZIPexport and drag-and-drop analysis. Added bounded immutable archive/manifest with hashes, strict sharing allowlist plus rich numeric traces/action timelines, explicit approval and atomic local save. Campaign partial export is independent of GitHub approval; Diagnose history also exports campaign/health. No upload occurs. Raw supplied progress stays outsideGit; it is incomplete and cannot establish provider failure causes. Final combined source requires new Windows/release validation.
+
+Combined0.14.1local validation:885passed/1optional live model skipped, Ruff lint/format/dependencies and source startup/25offline smoke pass. ZIP-specific tests cover partial GUI export without GitHub completion approval, exact approved bytes, manifest hashes, trace privacy,66case/8trace retention, count bounds and failed atomic replacement. Final Windows validation follows.

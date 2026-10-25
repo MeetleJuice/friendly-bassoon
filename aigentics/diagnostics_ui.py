@@ -105,6 +105,7 @@ class DiagnosticsDialog(QDialog):
         row = QHBoxLayout()
         checks.addLayout(row)
         add_button("Export locally", self.export, row)
+        add_button("Review / save ZIP", self.export_zip, row)
         add_button("Delete report", self.delete, row)
         add_button("Review GitHub report", self.review, row)
         self.tabs.addTab(local, "Tests & local reports")
@@ -179,6 +180,7 @@ class DiagnosticsDialog(QDialog):
         self.history.clear()
         for row in self.rows:
             label = {
+                "crew_campaign": "Crew campaign",
                 "api_models": "API checks",
                 "tool_probe": "Tool-call probe",
                 "run_review": "Run review",
@@ -467,6 +469,17 @@ class DiagnosticsDialog(QDialog):
         self.store.diagnostic_submission(report_id, "submitted", url)
         self.share_status.setText("Submitted successfully: " + url)
         self.refresh_reports(report_id)
+
+    def export_zip(self):
+        if not self.report or self.busy():
+            return
+        from .bundles_ui import BundleDialog
+
+        try:
+            self.bundle_dialog = BundleDialog(self.window, [self.report])
+            self.bundle_dialog.show()
+        except ValueError as exc:
+            self.window.error(str(exc))
 
     def export(self):
         if not self.report:

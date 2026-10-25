@@ -213,3 +213,8 @@ Read maintenance/UPGRADE_0140_PLAN.md for evidence, experiments, reference and e
 
 
 Local0.14verification: full865passed/1optional live model skipped, followed by5newreal-HTTP-budget/denial/step-bound regressions (52focused tests pass), plus57GUI/correctness tests after the final UI labels. All25offline packaged-style diagnostics and source startup, Ruff lint/format, dependency consistency and wheel pass. Real66attempt Qt workflow and failure-rich66row browser summary pass. No live user model/key or issue POST used. Windows will validate the complete870test set, actual0.13upgrade and silent restart before release.
+
+
+### 0.14 release retry handoff
+
+Immutable source b9dde2768961ae72a1da47693d4a8c839589af9d passed Windows source run40146622078, including all tests, actual installation, pinned0.13upgrade/data preservation and silent restart. Its test phase took4m47s. Tag v0.14.0 points to that source. Release run40147100352 attempt1 hit its8minute test timeout; last recorded node was tests/test_suite_0110.py::test_approximate_output_is_not_exact_output[unicode-cafe\n]. Packaging/publish did not run. Cause remains unproven; an unchanged failed-job retry is running as attempt2 on a fresh runner. Do not retag or weaken checks. No public0.14installer yet. After successful publication, run the production Updater check/download/SHA verification from current0.13, then record the final receipt/run attempt and update this handoff.

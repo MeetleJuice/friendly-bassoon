@@ -2,6 +2,8 @@
 
 ## 0.14 implementation; release validation pending
 
+Source Windows40146622078passed all gates (tests4m47s); immutable b9dde2768961ae72a1da47693d4a8c839589af9d is taggedv0.14.0. Release40147100352attempt1timedout at its8minute test bound before packaging; last node was Unicode approximate-output acceptance. Unchanged attempt2is running; no published0.14installer yet. Cause is unproven. Keep all gates and do not retag; finish public updater verification after successful publication.
+
 Read maintenance/UPGRADE_0140_PLAN.md. Issues24/25:31/42live attempts pass and24offline checks pass; correct readbacks can still mask wrong artifacts. Added optional bounded independent acceptance at completion/finalization, numeric rejected-response shape, crew2instructions and campaign3Deep66attempts(42comparison+18variations+6budgetexperiments),25offline checks and clearer result labels. Personal agents/store schema remain. No live model or real support POST used. Final checks, actual Windows0.13upgrade/silent restart and public updater verification must finish before delivery. Original artwork binaries remain unavailable.
 
 ## 0.13.0 verified delivery

@@ -46,7 +46,7 @@ def test_old_frozen_manifest_and_export_coverage_remain_intact(credentials):
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    old = json.loads((root / "docs/benchmarks/crew-measurement-1.json").read_text())
+    old = json.loads((root / "docs/benchmarks/crew-measurement-1.json").read_text(encoding="utf-8"))
     digest = manifest_id(old)
     assert digest == ARCHIVED_MANIFESTS["crew-measurement-1"]
     assert len(measurement_plan("crew-measurement-1")) == 30

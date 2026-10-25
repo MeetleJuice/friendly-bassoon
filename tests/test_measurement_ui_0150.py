@@ -69,6 +69,6 @@ def test_committed_measurement_definition_matches_runtime():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    frozen = json.loads((root / "docs/benchmarks/crew-measurement-2.json").read_text())
+    frozen = json.loads((root / "docs/benchmarks/crew-measurement-2.json").read_text(encoding="utf-8"))
     assert frozen == measurement_manifest()
     assert (root / "docs/benchmarks/crew-measurement-2.sha256").read_text().strip() == manifest_id(frozen)

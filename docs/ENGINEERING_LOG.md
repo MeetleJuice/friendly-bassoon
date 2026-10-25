@@ -352,3 +352,8 @@ Native regression first failed: after closing/cancelling an active window, a que
 
 
 Post-shutdown full local validation:1105passed/1optional live-model skipped in101.83s;14shutdown/realGUI checks, source startup/27offline diagnostic smoke, Ruff lint/format, pipcheck and rebuilt wheel/source fidelity passed. Benchmark2digest unchanged. Source Windows run will repeat every gate; no immutable release tag yet.
+
+
+### Windows completion and explicit Unicode benchmark reader
+
+Shutdown-corrected source6c9a924c333669cffb7bdbe6432c1164606c9999 /Windows40206669640 completed the test process normally (15:23:46–15:30:53UTC,7m7s) with a concrete frozen-manifest mismatch: test_committed_measurement_definition_matches_runtime read new UTF8 JSON using platform-default encoding. No native crash in this run. Corrected both new/archived benchmark fixture reads to explicitUTF8; canonical manifest/hash and all runtime behavior stay unchanged. This is a test-file reader correction, not relaxation of the equality/hash assertion. New source will repeat the Windows gates. User's PC reset is unrelated to cloud build; partial local reports should be retained if any.

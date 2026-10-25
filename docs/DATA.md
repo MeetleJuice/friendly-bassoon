@@ -1,5 +1,14 @@
 # Local engineering evidence contract
 
+## 0.15 diagnostic evidence and storage
+
+Crew campaign4 adds bounded initial/final contract mismatch codes, application-owned JSON schema paths/types/static hints, and up to16correlated completed native calls with safe field types/validation locations/schema digests. No artifact values, arbitrary unexpected keys, raw parser exceptions or raw model reasoning are added. Capture source is explicit for legacy schema fallback.
+
+Measurement reports retain the full synthetic crew-measurement-1 definition and SHA256, actual budget/arm/repetition per row, manifest integrity status and unknown-aware repeated summaries. A separate private configuration fingerprint gates comparison; model/endpoint details do not appear in ZIP exports. The app-owned synthetic definition can be exported when it matches the current manifest. Raw private task/source content remains excluded. Missing observations are not zero usage or known failures.
+
+Campaign storage accepts at most66rows/3,000,000rawUTF8bytes. Above1,000,000bytes it uses a lossless zlib/base64 envelope capped at1,000,000storedbytes with length/hash/stream/expansion checks. Smaller and legacy reports remain ordinary JSON; other report kinds stay250,000bytes. Existing global retention applies to actual stored bytes. Schema remains5; newly compressed payloads require0.15+ and downgrade reading is unsupported. Reviewed ZIPs allow at most3,000,000compressed and8,000,000uncompressedbytes with immutable approval/static names/hashmanifest. No automatic upload.
+
+
 The goal is to turn operational evidence into testable changes. Collection alone does not improve model intelligence or prove product quality.
 
 ## Identities and relationships

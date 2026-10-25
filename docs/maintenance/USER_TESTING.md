@@ -1,5 +1,15 @@
 # 0.14.1 — recover and share one ZIP
 
+## 0.15 acceptance: one repeated campaign and one ZIP
+
+1. Keep Ollama running and click Update. Finish installation/restart; the queued default is Measurement (30 local trials plus25offline app checks).
+2. Let it finish once, or use Stop safely if necessary. Up to2hours total; unfinished/unknown is useful evidence. Do not rerun just for green.
+3. Click Review / save diagnostic ZIP. Inspect the contents, approve local saving and Save approved ZIP. Drag the saved file into support chat. No token, browser issue or manual transcript copying is required.
+4. Tell us whether the run completed or you stopped it, and anything unexpected you saw. Keep your model selection unchanged for meaningful comparisons. Never send .env or keys.
+
+Discovery (66attempts) remains optional; use it deliberately when broader failure discovery is needed. The smaller repeated campaign measures variation across six roles and targeted allowance/time comparisons. Neither proves deployment reliability or model training. In-flight cancelled attempts are unknown, not scored model failures. Partial older reports remain exportable through Diagnose.
+
+
 After the verified0.14.1release is available, click Update with Ollama running. A matching unfinished campaign continues automatically, preserving committed results; an unknown in-flight attempt is marked interrupted and not replayed. If configuration differs, use the remembered model/mode and Continue unfinished campaign. Do not start new campaigns merely to seek green.
 
 When finished, stopped safely, or after an error, click **Review / save diagnostic ZIP (partial results supported)**. Inspect the exact archive contents, check approval for local saving, click Save approved ZIP, and choose a location (Downloads is suggested). Drag that ZIP into your support chat. No GitHub token, issue creation or complete campaign is required. Nothing uploads automatically. Diagnose also offers Review / save ZIP for a selected campaign or app-health report from history.

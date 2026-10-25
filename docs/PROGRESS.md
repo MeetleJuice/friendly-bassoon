@@ -1,8 +1,12 @@
 # Build progress and next actions
 
-## 0.15.0 validation in progress
+## 0.15.0 verified delivery
 
-Implementation and expanded tests are complete; final local checks and Windows publication are being verified. Read maintenance/UPGRADE_0150_PLAN.md and the frozen docs/benchmarks/crew-measurement-1.json. Default 30 local trials plus 25 offline checks, optional Deep66, safe contract/schema diagnostics, checked lossless dense-report storage and local reviewed ZIP. No live model performance or published installer is claimed until verified.
+Published [0.15.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.15.0) from immutable `84866b7a184bfcb81e2065d49302745d82b713e5`. Source Windows run40173676957 and tag/release run40174199391 attempt1 passed tests/lint, packaging, actual installation/shortcut/startup,25offline diagnostics, pinned released0.14.1 upgrade/data preservation and silent restart. Local1045tests passed/1optional live model skipped; Ruff/dependencies/source smokes/wheel and green-red-green pre-fix proof passed. Production Updater(current_version=0.14.1) discovered/downloaded/reverified the public installer: **42455740bytes**, SHA256 `ae4f463aab3724e81537cae624aaf2298580381cd4b5d0d35bbfd0c379e860c9`. No live user model/key or support POST used; model improvement remains for user acceptance.
+
+Default Measurement now has30local attempts plus25offline checks (55results): each of six roles repeats one task three times, and Unicode/no-op each have two repetitions of reference/output-only/coordinated budget arms. Optional Deep discovery66 remains. Frozen synthetic manifest/digest, safe initial/final contract diagnostics and per-call typed schema evidence improve diagnosis; strict grading stays. In-flight cancellations are unknown, not scored model failures. Dense evidence survives bounded lossless campaign compression, database reopen and reviewed localZIP. Private content remains excluded and nothing uploads automatically. No model training/MCP/orchestration/reasoning toggle/tool expansion added. New compressed records require0.15+; downgrade unsupported. Manifest SHA256 `0dcfdb6158c959aa7ac6c6591b862031f7edb75813bccf9aafb3184431b9261d`. Source f48458f/run40173348851 was intentionally superseded before release by the cancellation correction; no published tag was overwritten.
+
+Next: keep Ollama running, Update/install/restart and let the queued Measurement run finish once. After completion or Stop safely, Review / save diagnostic ZIP → inspect → approve local saving → Save → drag ZIP into support chat. No token or issue submission needed. Partial results are useful; do not rerun merely for green. Compare only matching manifest/configuration and inspect repeated coverage/unknowns, content repairs, tool-schema errors and allowance/time outcomes separately.
 
 ## 0.14.1 verified delivery
 

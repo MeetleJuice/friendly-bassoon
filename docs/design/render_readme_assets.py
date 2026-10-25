@@ -25,6 +25,9 @@ def label(fig, x, y, text, size, color, weight="normal", **kwargs):
 def save(fig, name):
     for ext in ("svg", "png"):
         fig.savefig(OUT / f"{name}.{ext}", dpi=160, facecolor=fig.get_facecolor())
+        if ext == "svg":
+            target = OUT / f"{name}.{ext}"
+            target.write_text("\n".join(line.rstrip() for line in target.read_text(encoding="utf-8").splitlines()) + "\n", encoding="utf-8")
     plt.close(fig)
 
 

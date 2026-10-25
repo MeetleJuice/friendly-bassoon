@@ -14,6 +14,18 @@ from .tools import Workspace
 from .tools import VALIDATION_ISSUE_CODES
 
 
+def baseline_files(identity):
+    """One fixture definition shared by execution and frozen manifests."""
+    files = {"input.txt": b"lighthouse\n"}
+    if identity in ("edit", "stale"):
+        files["output.txt"] = b"old\n"
+    elif identity == "noop":
+        files["output.txt"] = b"lighthouse\n"
+    if identity == "transform":
+        files["second_input.txt"] = b"harbor\n"
+    return files
+
+
 def local_profile(store, agent):
     from urllib.parse import urlsplit
     import ipaddress
@@ -238,11 +250,24 @@ def run_suite(
     persist=True,
     completion_feedback=False,
     output_cap=None,
+    budget_override=None,
 ):
     from .providers import Provider
 
     if output_cap is not None and (type(output_cap) is not int or output_cap not in (1024, 2048, 4096)):
         raise ValueError("Unknown comparison output allowance")
+    if budget_override is not None:
+        if set(budget_override) != {"max_output_tokens", "request_timeout_seconds", "session_budget_seconds"}:
+            raise ValueError("Invalid measurement budget")
+        limits = {
+            "max_output_tokens": (1024, 4096),
+            "request_timeout_seconds": (1, 120),
+            "session_budget_seconds": (1, 180),
+        }
+        if any(
+            type(v) is not int or not limits[k][0] <= v <= limits[k][1] for k, v in budget_override.items()
+        ):
+            raise ValueError("Measurement budget outside limits")
     profile = local_profile(store, agent)
     cases = CASES
     if case_ids is not None:
@@ -297,6 +322,16 @@ def run_suite(
                     agent.max_seconds,
                     profile.timeout_seconds,
                 )
+                if budget_override is not None:
+                    budget.update(budget_override)
+                    budget["session_budget_seconds"] = min(
+                        agent.max_seconds, budget["session_budget_seconds"]
+                    )
+                    budget["request_timeout_seconds"] = min(
+                        profile.timeout_seconds,
+                        budget["session_budget_seconds"],
+                        budget["request_timeout_seconds"],
+                    )
                 trial.save_profile(
                     profile.model_copy(update={"timeout_seconds": budget["request_timeout_seconds"]})
                 )
@@ -307,13 +342,8 @@ def run_suite(
                 emit({"kind": "suite.started", "data": {"id": identity, "index": index + 1}})
                 root = scratch / str(index)
                 root.mkdir()
-                (root / "input.txt").write_bytes(b"lighthouse\n")
-                if identity in ("edit", "stale"):
-                    (root / "output.txt").write_bytes(b"old\n")
-                if identity == "noop":
-                    (root / "output.txt").write_bytes(b"lighthouse\n")
-                if identity == "transform":
-                    (root / "second_input.txt").write_bytes(b"harbor\n")
+                for name, data in baseline_files(identity).items():
+                    (root / name).write_bytes(data)
                 outputs = CASE_OUTPUTS.get(identity, {})
                 targets = list(outputs) if identity != "noop" else []
                 allowed_targets = set(outputs) if outputs else {"output.txt"}
@@ -360,14 +390,28 @@ def run_suite(
                         decisions.append((kind, target, allowed))
                         return allowed
 
+                    from .crew_cases import Case
+                    from .contracts import evaluate_contract
+
+                    baseline_contract = Case(
+                        identity,
+                        "george",
+                        "Explicit byte contract",
+                        prompt,
+                        {
+                            p.relative_to(root).as_posix(): p.read_bytes()
+                            for p in root.rglob("*")
+                            if p.is_file()
+                        },
+                        outputs=outputs,
+                    )
+
                     def acceptance(ws, text):
-                        matched = True
-                        for name, expected in outputs.items():
-                            try:
-                                matched = ws.read(name)["content"].encode("utf-8") == expected and matched
-                            except (OSError, ValueError, UnicodeError):
-                                matched = False
-                        return {"EXACT_OUTPUT": matched}
+                        result = evaluate_contract(baseline_contract, ws.root, text)
+                        return {
+                            "checks": {"EXACT_OUTPUT": result["checks"]["OUTPUT_CONTENT"]},
+                            "mismatches": [m for m in result["mismatches"] if m.get("target") in outputs],
+                        }
 
                     try:
                         sid, state = Runtime(trial, credentials, BoundedProvider).run(

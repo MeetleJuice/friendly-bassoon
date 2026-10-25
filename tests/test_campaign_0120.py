@@ -14,7 +14,9 @@ from test_suite_080 import Scripted
 class CrewScripted(Scripted):
     def chat(self, model, messages, tools):
         prompt = next(m["content"] for m in messages if m["role"] == "user")
-        case = next((c for c in CASES if c.prompt == prompt), None)
+        from aigentics.contracts import contract_prompt
+
+        case = next((c for c in CASES if c.prompt == prompt or contract_prompt(c) == prompt), None)
         if case is None:
             return super().chat(model, messages, tools)
         calls = [("read_file", {"path": name}) for name in case.required_reads]
@@ -62,7 +64,11 @@ def test_full_campaign_has_66_distinct_results_two_shareable_reports(store, cred
     assert len({r["id"] for r in report["checks"]}) == 66
     assert report["state"] == "passed"
     assert len([e for e in events if e["kind"] == "campaign.result"]) == 66
-    assert len(json.dumps(report).encode()) < 250000
+    from aigentics.diagnostic_storage import encode_report, decode_report
+
+    stored = encode_report(report, credentials)
+    assert len(stored.encode()) <= 1_000_000
+    assert decode_report(stored) == credentials.scrub(report)
     assert not store.sessions()
     assert all(len(prepare_browser_draft(*issue_body(r, credentials))) <= 7500 for r in reports)
     saved = {r["id"]: r["payload"] for r in store.diagnostic_reports()}

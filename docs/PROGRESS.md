@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.15.0 validation in progress
+
+Implementation and expanded tests are complete; final local checks and Windows publication are being verified. Read maintenance/UPGRADE_0150_PLAN.md and the frozen docs/benchmarks/crew-measurement-1.json. Default 30 local trials plus 25 offline checks, optional Deep66, safe contract/schema diagnostics, checked lossless dense-report storage and local reviewed ZIP. No live model performance or published installer is claimed until verified.
+
 ## 0.14.1 verified delivery
 
 Published [0.14.1](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.14.1) from immutable `20af8cde4232eee532d29b00c617343a4ddb6913`. Source Windows run40153849074 and release run40154380304 attempt1 passed full tests/lint, packaging, actual installation/shortcut/startup,25offline diagnostics, pinned released0.14upgrade/data-preservation and silent restart. Local885tests passed/1optional live model skipped; ZIP-focused9cases, source smokes, dependencies, lint/format and wheel pass. Production Updater(current_version=0.14.0) discovered/downloaded/reverified public installer **42420035bytes**, SHA256 `aeedf86f83c97a8067b09dc89ac2541f5a49b4b785774c5e474ee98057f5429d`. No live user model/key, real support POST or automated upload used.

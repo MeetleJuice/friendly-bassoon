@@ -1,3 +1,3 @@
 """Aigentics Desktop: the runtime defines reality."""
 
-__version__ = "0.14.1"
+__version__ = "0.15.0"

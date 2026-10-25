@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.15 precise diagnostics and repeated measurement](UPGRADE_0150_PLAN.md).
 - [Diagnostic ZIP workflow](DIAGNOSTIC_BUNDLES_PLAN.md) — local review/export in0.14.1; direct upload remains future work.
 - [0.14.1 report-capacity recovery](HOTFIX_0141.md).
 - [0.14 correctness and failure-evidence plan](UPGRADE_0140_PLAN.md).

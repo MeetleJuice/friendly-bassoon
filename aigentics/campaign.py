@@ -12,6 +12,7 @@ import threading
 
 from .crew import CREW_VERSION, make_agent
 from .crew_cases import CASES as ROLE_CASES, ORIGINAL_CASES, VARIATIONS, evaluate_content
+from .contracts import evaluate_contract, contract_prompt
 from .diagnostics import DiagnosticRunner, model_evidence
 from .evidence import base_report
 from .runtime import Runtime
@@ -26,8 +27,9 @@ from .test_suite import (
     bounded_tool_timeline,
 )
 from .tools import Workspace
+from .measurement import measurement_plan, measurement_manifest, manifest_id, summarize_trials
 
-CAMPAIGN_VERSION = "crew-campaign-3"
+CAMPAIGN_VERSION = "crew-campaign-4"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -53,7 +55,13 @@ PLAN_IDS = tuple(
 )
 
 
+MEASUREMENT_TRIALS = {t.id: t for t in measurement_plan()}
+ALL_CASE_IDS = (*PLAN_IDS, *MEASUREMENT_TRIALS)
+
+
 def plan(mode):
+    if mode == "measurement":
+        return list(MEASUREMENT_TRIALS)
     if mode not in ("quick", "standard", "deep"):
         raise ValueError("Unknown campaign mode")
     return [] if mode == "quick" else list(PLAN_IDS[:36] if mode == "standard" else PLAN_IDS)
@@ -86,11 +94,12 @@ def campaign_scope(store, agent, mode):
             "crew": CREW_VERSION,
             "campaign": CAMPAIGN_VERSION,
             "mode": mode,
+            "manifest_id": manifest_id(measurement_manifest()) if mode == "measurement" else None,
         }
     )
 
 
-def role_case(store, credentials, primary, case, cancel, provider_factory=None):
+def role_case(store, credentials, primary, case, cancel, provider_factory=None, *, clarified=False):
     """Run native tools; grade structured data, never execute generated model code."""
     from .providers import Provider
 
@@ -143,12 +152,12 @@ def role_case(store, credentials, primary, case, cancel, provider_factory=None):
             sid, state = Runtime(trial, credentials, BoundedProvider).run(
                 agent,
                 root,
-                case.prompt,
+                contract_prompt(case) if clarified else case.prompt,
                 lambda kind, detail: kind == "write_file"
                 and any(same(detail.get("path"), p) for p in outputs),
                 cancel,
                 capture=False,
-                acceptance=lambda ws, text: evaluate_content(case, ws.root, text),
+                acceptance=lambda ws, text: evaluate_contract(case, ws.root, text),
                 task_checks=TaskChecks(
                     write_targets=sorted(outputs),
                     require_tools=True,
@@ -245,6 +254,10 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 else {},
             },
         )
+    if mode == "measurement":
+        report["measurement_manifest"] = measurement_manifest()
+        report["manifest_id"] = manifest_id(report["measurement_manifest"])
+    report["track"] = "measurement" if mode == "measurement" else "discovery"
     if any(r["id"] not in identities for r in report["checks"]):
         raise ValueError("Saved campaign does not match its manifest")
     uncertain_ms = 0
@@ -293,7 +306,11 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
     for row in report["checks"]:
         emit({"kind": "campaign.result", "data": row})
     by_id = {f"{c.role}-{c.id}": c for c in ROLE_CASES}
+    integrity_ok = True
     for identity in identities:
+        if mode == "measurement" and manifest_id(measurement_manifest()) != report["manifest_id"]:
+            integrity_ok = False
+            break
         if identity in done or bounded_cancel.is_set():
             continue
         report["active_case"] = identity
@@ -304,8 +321,24 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         emit({"kind": "campaign.started", "data": {"id": identity}})
         started = time.monotonic()
         try:
-            if identity.startswith(("baseline-", "repeat-", "experiment-")):
-                name, output_cap = EXPERIMENTS.get(identity, (identity.split("-", 1)[1], None))
+            trial = MEASUREMENT_TRIALS.get(identity)
+            if trial and trial.case_kind == "role":
+                case = next(c for c in ROLE_CASES if c.id == trial.case_id)
+                row = role_case(
+                    store,
+                    credentials,
+                    agent.primary,
+                    case,
+                    CampaignCancel(),
+                    provider_factory,
+                    clarified=True,
+                )
+            elif trial or identity.startswith(("baseline-", "repeat-", "experiment-")):
+                name, output_cap = (
+                    (trial.case_id, None)
+                    if trial
+                    else EXPERIMENTS.get(identity, (identity.split("-", 1)[1], None))
+                )
                 baseline = run_suite(
                     store,
                     credentials,
@@ -317,12 +350,16 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     persist=False,
                     completion_feedback=True,
                     output_cap=output_cap,
+                    budget_override=trial.budget if trial else None,
                 )
                 if not baseline["checks"]:
                     break
                 row = baseline["checks"][0]
                 row["id"] = identity
-                row["evidence"].update(role="george", attempt=2 if identity.startswith("repeat-") else 1)
+                row["evidence"].update(
+                    role="george",
+                    attempt=trial.repeat if trial else 2 if identity.startswith("repeat-") else 1,
+                )
             else:
                 row = role_case(
                     store, credentials, agent.primary, by_id[identity], CampaignCancel(), provider_factory
@@ -336,8 +373,20 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 "duration_ms": round((time.monotonic() - started) * 1000),
                 "evidence": {"local_error_type": type(exc).__name__},
             }
+        row["id"] = identity
+        if identity in MEASUREMENT_TRIALS:
+            trial = MEASUREMENT_TRIALS[identity]
+            row.setdefault("evidence", {}).update(
+                case_id=trial.case_id,
+                arm=trial.arm,
+                repeat=trial.repeat,
+                track="measurement",
+                attempt=trial.repeat,
+            )
         row.setdefault("evidence", {})["group"] = (
-            "experiment"
+            "measurement"
+            if identity in MEASUREMENT_TRIALS
+            else "experiment"
             if identity in EXPERIMENTS
             else "variation"
             if identity in {f"{c.role}-{c.id}" for c in VARIATIONS}
@@ -352,8 +401,17 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         emit({"kind": "campaign.result", "data": row})
     report["duration_ms"] = prior_ms + round((time.monotonic() - before) * 1000)
     report["budget_used_ms"] = prior_budget_ms + round((time.monotonic() - before) * 1000)
+    if mode == "measurement":
+        integrity_ok = integrity_ok and manifest_id(measurement_manifest()) == report["manifest_id"]
+    report["manifest_verified"] = integrity_ok if mode == "measurement" else None
     report["stop_reason"] = (
-        "cancelled" if cancel.is_set() else "campaign_budget" if bounded_cancel.is_set() else "finished"
+        "benchmark_changed"
+        if not integrity_ok
+        else "cancelled"
+        if cancel.is_set()
+        else "campaign_budget"
+        if bounded_cancel.is_set()
+        else "finished"
     )
     report["summary"] = {
         key: sum(row["status"] == key for row in report["checks"])
@@ -363,11 +421,13 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         "cancelled"
         if cancel.is_set()
         else "needs_attention"
-        if bounded_cancel.is_set()
+        if bounded_cancel.is_set() or not integrity_ok
         else "passed"
         if report["summary"]["passed"] == len(identities)
         else "needs_attention"
     )
+    if mode == "measurement":
+        report["measurement_summary"] = summarize_trials(report["checks"])
     store.save_diagnostic(report, refresh_retention=True)
     store.prune()
     return [health, report]

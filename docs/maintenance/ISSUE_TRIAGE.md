@@ -53,3 +53,8 @@ Issues9–12 reviewed:9 repeats old Qwen14b failure;10 passes all21 health check
 ## Issues24/25 → 0.14
 
 31/42live attempts pass,24/24offline pass. See UPGRADE_0140_PLAN.md for the full failure classification and caveats. Prioritize content correctness inside bounded feedback, pre-tool output-limit shape, misleading-source variants and group-separated comparisons. Do not infer exact wrong bytes/answers from the public flags; raw synthetic outputs are not in these reports.
+
+
+## Approved ZIP ea5d5fe33596 — 0.15 response
+
+Full manifest hashes validated.66 campaign rows=36passed,28evaluatedfailures,2unknown; health25/25. Rich exported counters expose token/time limits and verification-only repairs, but absent actual artifacts prevent semantic diagnosis. Add safe mismatch types/schema pointers and per-call argument/type/schema evidence. Freeze repeated measurement separately from discovery; do not expand scenarios and call the resulting score a controlled improvement. Synthetic contract calibration found strict formatting/key/citation ambiguity and one real numeric grader crash, now covered. Raw ZIP and transcripts remain outsideGit. See UPGRADE_0150_PLAN.md.

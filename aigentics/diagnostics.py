@@ -33,6 +33,8 @@ OFFLINE_CHECK_COUNT = 25
 
 def model_evidence(events):
     """Bounded protocol structure only, never raw synthetic/model/provider text."""
+    from .tool_diagnostics import tool_diagnostics
+
     metadata, traces = {}, []
     requests = {e["data"]["request_id"]: e["data"] for e in events if e["kind"] == "model.requested"}
     invalid = {e["data"]["request_id"] for e in events if e["kind"] == "protocol.invalid_response"}
@@ -77,6 +79,13 @@ def model_evidence(events):
                 }
             )
     return {
+        "tool_diagnostics": tool_diagnostics(events),
+        "mismatches": next(
+            (e["data"].get("mismatches", []) for e in reversed(events) if e["kind"] == "run.summary"), []
+        ),
+        "initial_mismatches": next(
+            (e["data"].get("mismatches", []) for e in events if e["kind"] == "completion.evaluated"), []
+        ),
         "completion_feedback_count": sum(e["kind"] == "completion.feedback_requested" for e in events),
         "initial_task_checks": next(
             (

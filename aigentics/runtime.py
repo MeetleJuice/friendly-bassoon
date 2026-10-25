@@ -44,6 +44,9 @@ def looks_like_text_tool_call(text):
     return function.get("name") in SCHEMAS and isinstance(function.get("arguments"), (dict, str))
 
 
+RUNTIME_POLICY_VERSION = "native-diagnostics-1"
+
+
 class RunTimeout(TimeoutError):
     pass
 
@@ -96,15 +99,23 @@ class Runtime:
         task_evidence = TaskEvidence(ws, checks)
         completion_feedback_count = 0
         acceptance_result = {}
+        mismatches = []
         final_content = ""
 
         def evaluate_checks(content):
-            nonlocal acceptance_result
+            nonlocal acceptance_result, mismatches
             pending, details = task_evidence.evaluate()
             if acceptance is not None:
                 # Application-owned, bounded pure checker; never model-provided executable code.
                 try:
                     value = acceptance(ws, content)
+                    if isinstance(value, dict) and set(value) == {"checks", "mismatches"}:
+                        from .contracts import public_mismatches
+
+                        mismatches = public_mismatches(value["mismatches"])
+                        value = value["checks"]
+                    else:
+                        mismatches = []
                     if not isinstance(value, dict) or not 1 <= len(value) <= 16:
                         raise ValueError("Invalid acceptance contract")
                     if any(
@@ -115,7 +126,9 @@ class Runtime:
                     acceptance_result = value
                 except Exception:
                     acceptance_result = {"CHECKER_ERROR": False}
+                    mismatches = []
                 pending["content_failures"] = sum(not v for v in acceptance_result.values())
+                details["mismatches"] = mismatches
                 details["unmet_acceptance"] = [k for k, v in acceptance_result.items() if not v]
                 if pending["content_failures"]:
                     pending["status"] = "needs_attention"
@@ -423,7 +436,10 @@ class Runtime:
                     final_response_status = "present"
                     final_content = reply.content
                     pending, details = evaluate_checks(final_content)
-                    event("completion.evaluated", {"checks": pending, "acceptance": acceptance_result})
+                    event(
+                        "completion.evaluated",
+                        {"checks": pending, "acceptance": acceptance_result, "mismatches": mismatches},
+                    )
                     unresolved = (
                         tool_counts["failed"]
                         - tool_counts["recovered_edit_errors"]
@@ -444,7 +460,13 @@ class Runtime:
                         completion_feedback_count += 1
                         event(
                             "completion.feedback_requested",
-                            {"attempt": 1, "limit": 1, "checks": pending, "acceptance": acceptance_result},
+                            {
+                                "attempt": 1,
+                                "limit": 1,
+                                "checks": pending,
+                                "acceptance": acceptance_result,
+                                "mismatches": mismatches,
+                            },
                         )
                         messages.append(
                             {
@@ -495,6 +517,8 @@ class Runtime:
                     before = time.monotonic()
                     tool_counts["requested"] += 1
                     execution_id = str(uuid4())
+                    from .tool_diagnostics import argument_metadata
+
                     event(
                         "tool.requested",
                         {
@@ -502,7 +526,7 @@ class Runtime:
                             "execution_id": execution_id,
                             "request_id": request_id,
                             "tool": call.name,
-                            "argument_keys": list(call.arguments),
+                            **argument_metadata(call.name, call.arguments),
                             "arguments_sha256": self.store.fingerprint(call.arguments),
                         },
                     )
@@ -655,6 +679,7 @@ class Runtime:
                     "protocol_retries": protocol_retries,
                     "goal_verification": "explicit_contract" if acceptance is not None else "not_evaluated",
                     "acceptance_checks": acceptance_result,
+                    "mismatches": mismatches,
                     "task_checks": task_result,
                     "completion_feedback_count": completion_feedback_count,
                     "final_response_status": final_response_status,

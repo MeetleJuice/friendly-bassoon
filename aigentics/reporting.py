@@ -217,19 +217,27 @@ def public_report(report, include_model=False):
     }
     campaign = report.get("kind") == "crew_campaign"
     if campaign:
-        from .campaign import PLAN_IDS
+        from .campaign import ALL_CASE_IDS as PLAN_IDS
         from .crew import CREW_VERSION
 
-        if report.get("mode") in ("quick", "standard", "deep"):
+        if report.get("mode") in ("quick", "standard", "deep", "measurement"):
             result["mode"] = report["mode"]
         if report.get("crew_version") == CREW_VERSION:
             result["crew_version"] = CREW_VERSION
-        if report.get("stop_reason") in ("cancelled", "campaign_budget", "finished"):
+        if report.get("stop_reason") in ("cancelled", "campaign_budget", "finished", "benchmark_changed"):
             result["stop_reason"] = report["stop_reason"]
         value = report.get("budget_used_ms")
         if type(value) is int and value >= 0:
             result["budget_used_ms"] = min(value, 7_380_000)
 
+    if campaign:
+        digest = report.get("manifest_id")
+        if isinstance(digest, str) and re.fullmatch(r"[a-f0-9]{64}", digest):
+            result["manifest_id"] = digest
+        if type(report.get("manifest_verified")) is bool:
+            result["manifest_verified"] = report["manifest_verified"]
+        if report.get("track") in ("measurement", "discovery"):
+            result["track"] = report["track"]
     safe_checks = []
     allowed = {
         "request_timeout_seconds",
@@ -347,8 +355,16 @@ def public_report(report, include_model=False):
                 check["evidence"][key] = public_acceptance(evidence[key])
         if "failure_shape" in evidence:
             check["evidence"]["failure_shape"] = public_shape(evidence["failure_shape"])
-        if evidence.get("group") in ("comparison", "variation", "experiment"):
+        if evidence.get("group") in ("comparison", "variation", "experiment", "measurement"):
             check["evidence"]["group"] = evidence["group"]
+        from .contracts import public_mismatches
+        from .tool_diagnostics import public_tool_diagnostics
+
+        for key in ("mismatches", "initial_mismatches"):
+            if key in evidence:
+                check["evidence"][key] = public_mismatches(evidence[key])
+        if "tool_diagnostics" in evidence:
+            check["evidence"]["tool_diagnostics"] = public_tool_diagnostics(evidence["tool_diagnostics"])
         if "task_checks" in evidence:
             from .task_checks import public_task_checks
 
@@ -861,6 +877,9 @@ def safe_campaign_row(check, original):
         "requirement_checks",
         "completion_feedback_count",
         "initial_task_checks",
+        "mismatches",
+        "initial_mismatches",
+        "tool_diagnostics",
         "initial_acceptance_checks",
         "acceptance_checks",
         "failure_shape",
@@ -874,6 +893,11 @@ def safe_campaign_row(check, original):
     ):
         if key in evidence:
             safe[key] = evidence[key]
+    from .campaign import MEASUREMENT_TRIALS
+
+    trial = MEASUREMENT_TRIALS.get(check["id"])
+    if trial:
+        safe.update(case_id=trial.case_id, arm=trial.arm, repeat=trial.repeat, track="measurement")
     final = evidence.get("final_response_status")
     if final in ("present", "missing", "not_reached", "not_recorded"):
         safe["final_response_status"] = final
@@ -936,7 +960,7 @@ def compact_campaign_body(payload):
             known.append(rejected)
         return number(sum(known)) if known else "?"
 
-    modern = payload.get("suite_version") == "crew-campaign-3"
+    modern = payload.get("suite_version") in ("crew-campaign-3", "crew-campaign-4")
 
     def case_name(identity):
         if not modern:
@@ -1031,7 +1055,7 @@ def compact_campaign_body(payload):
         return "; ".join(f"{value}={key}" for key, value in mapping.items()) or "none"
 
     groups = []
-    for group in ("comparison", "variation", "experiment"):
+    for group in ("comparison", "variation", "experiment", "measurement"):
         selected = [r for r in rows if r.get("evidence", {}).get("group") == group]
         if selected:
             groups.append(f"{group}:{sum(r['status'] == 'passed' for r in selected)}/{len(selected)}")
@@ -1063,6 +1087,7 @@ def compact_campaign_body(payload):
         "Reviewed Midnight Crew campaign. Full bounded evidence retained locally.\n"
         + f"Report ID: {payload.get('id')}\n"
         + f"App/suite/result: {payload.get('app_version')}/{payload.get('suite_version')}/{payload.get('state')}\n"
+        + ("Manifest: " + payload["manifest_id"] + "\n" if "manifest_id" in payload else "")
         + f"Crew/mode: {payload.get('crew_version', '?')}/{payload.get('mode', '?')}\n"
         + f"Recorded/planned: {len(rows)}/{payload.get('planned_cases', '?')}\n"
         + f"Stop: {payload.get('stop_reason', 'unknown')}; budget charged ms: {number(payload.get('budget_used_ms'))} (includes reserved interrupted-case allowance).\n"

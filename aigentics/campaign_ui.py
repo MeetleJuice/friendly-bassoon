@@ -35,7 +35,8 @@ class CampaignDialog(QDialog):
         layout = QVBoxLayout(self)
         label = QLabel(
             "Six independent agents • one selected local Ollama model • no orchestration or API checks.\n"
-            f"Deep: {OFFLINE_CHECK_COUNT} app checks + 66 model attempts, one at a time, up to 2 hours total. "
+            f"Default measurement: {OFFLINE_CHECK_COUNT} app checks + 30 repeated local attempts across all six roles and budget comparisons. "
+            "Optional Deep discovery: 66 attempts. One at a time; up to 2 hours total. "
             "Each uses disposable files; only listed synthetic writes are approved automatically.\n"
             "Saved personal agents stay unchanged. Detailed bounded evidence stays local; sharing is optional."
         )
@@ -53,7 +54,8 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Deep • 66 model attempts + app checks", "deep")
+        self.mode.addItem("Measurement • 30 repeated attempts + app checks", "measurement")
+        self.mode.addItem("Discovery • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
         layout.addWidget(self.mode)
@@ -72,7 +74,9 @@ class CampaignDialog(QDialog):
         layout.addWidget(self.output)
         self.progress = QProgressBar()
         layout.addWidget(self.progress)
-        self.status = QLabel("Ready. Deep evaluation is the default after updating.")
+        self.status = QLabel(
+            "Ready. Repeated measurement is the default after updating; ZIP export remains local."
+        )
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         self.elapsed = 0
@@ -146,6 +150,12 @@ class CampaignDialog(QDialog):
                 for identity, (name, cap) in EXPERIMENTS.items()
             }
         )
+        from .measurement import measurement_plan
+
+        role_cases = {c.id: c for c in ROLE_CASES}
+        for trial in measurement_plan():
+            role = ROLES[role_cases[trial.case_id].role].name if trial.case_kind == "role" else "George"
+            titles[trial.id] = f"{role} • {trial.case_id} • {trial.arm} • repetition {trial.repeat}"
         for index, identity in enumerate(self.identities):
             self.results.setItem(index, 0, QTableWidgetItem(titles.get(identity, "George • " + identity)))
             self.results.setItem(index, 1, QTableWidgetItem("Ready"))
@@ -283,6 +293,8 @@ class CampaignDialog(QDialog):
             text.append(
                 "The saved content or final answer failed an explicit acceptance requirement; a readback alone cannot prove correctness."
             )
+        text.append("Mismatch diagnosis: " + str(e.get("mismatches", [])))
+        text.append("Per-call schema evidence: " + str(e.get("tool_diagnostics", [])))
         text.append("Initial content acceptance: " + str(e.get("initial_acceptance_checks", {})))
         text.append("Content acceptance: " + str(e.get("acceptance_checks", {})))
         text.append("Rejected response shape: " + str(e.get("failure_shape", {})))
@@ -313,6 +325,17 @@ class CampaignDialog(QDialog):
             f"Finished • Passed immediately: {passed - repaired} • After correction: {repaired} • "
             f"Failed: {failed} • Not completed: {campaign['planned_cases'] - len(rows) + incomplete} • saved locally."
         )
+        if campaign.get("mode") == "measurement":
+            from .measurement import summarize_trials
+
+            self.output.appendPlainText(
+                "Repeated measurement (unknown attempts excluded from failures): "
+                + str(summarize_trials(campaign["checks"]))
+            )
+        if campaign.get("manifest_verified") is False:
+            self.status.setText(
+                "Benchmark integrity check failed. Saved results are diagnostic only; scores must not be compared."
+            )
         previous = next(
             (
                 r["payload"]
@@ -324,6 +347,10 @@ class CampaignDialog(QDialog):
             ),
             None,
         )
+        if previous and campaign.get("mode") == "measurement":
+            from .measurement import paired_diff
+
+            self.output.appendPlainText("Paired comparison: " + str(paired_diff(previous, campaign)))
         if previous:
             self.output.appendPlainText(
                 "Previous matching configuration: " + str(previous.get("summary", {}))

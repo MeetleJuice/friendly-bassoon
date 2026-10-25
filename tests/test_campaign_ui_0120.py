@@ -24,6 +24,7 @@ def setup_dialog(qtbot, store, credentials, monkeypatch, stop_after_first=False)
     errors = []
     monkeypatch.setattr(window, "error", errors.append)
     dialog = campaign_ui.CampaignDialog(window)
+    dialog.mode.setCurrentIndex(dialog.mode.findData("deep"))
     qtbot.addWidget(dialog)
 
     def execute(*args, **kwargs):

@@ -2,9 +2,15 @@
 
 A native Python / PySide6 desktop coding-agent application. Agents and Workbench use the same bounded runtime. Ollama runs locally; no paid API is required. This is an early functional release, not the full long-term product described in the original brief.
 
+## Repeated measurement and precise diagnostics (0.15.0)
+
+After Update/install/restart, the default campaign runs **25 offline app checks + 30 repeated local attempts** across George, Scout, Ada, Vera, Sentinel and Atlas on the same selected Ollama model. Optional Discovery retains 66 attempts. No API test runs automatically. Static contract/schema diagnosis, frozen benchmark identity, repeated outcomes and separate interrupted/unknown counts make results easier to interpret. Actual model improvement requires the next local run.
+
+After completion or Stop safely, click **Review / save diagnostic ZIP**, inspect, approve local saving and save. Drag the ZIP into support chat; no token or GitHub issue is required. Dense evidence is losslessly compressed within checked limits. Nothing uploads automatically. See the [0.15 plan](docs/maintenance/UPGRADE_0150_PLAN.md).
+
 ## Windows 10/11: easy installation
 
-Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download **Aigentics-Setup-0.7.0.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
+Go to **[Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest)** and download the latest **Aigentics-Setup-<version>.exe** from **Assets**. Double-click it and follow the wizard. Leave **Create a desktop shortcut** selected. The installer bundles Python and dependencies; no VS Code, Git or manual Python installation is needed to run the packaged app. Ollama must be installed/running separately.
 
 The installer is currently unsigned. Do not confuse the green **Code → Download ZIP** source download with the installer in Release Assets. The Windows build publishes an installer only after its tests and installed-executable/shortcut smoke pass. Check [Actions](https://github.com/MeetleJuice/friendly-bassoon/actions) if the asset is not available yet. See [installer details](docs/INSTALLER.md).
 

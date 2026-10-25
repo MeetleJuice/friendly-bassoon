@@ -69,7 +69,7 @@ def test_long_campaign_evidence_survives_each_save_restart_and_recovery(tmp_path
         reopened.close()
 
 
-@pytest.mark.parametrize("kind,size", [("health", 250001), ("crew_campaign", 1000001)])
+@pytest.mark.parametrize("kind,size", [("health", 250001), ("crew_campaign", 3000001)])
 def test_caps_still_reject_oversize_without_replacing_last_saved_record(store, kind, size):
     r = base_report(kind, "test", "Synthetic")
     store.save_diagnostic(r)

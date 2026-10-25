@@ -534,7 +534,11 @@ CASES = (*ORIGINAL_CASES, *VARIATIONS)
 
 def _equal_json(actual, expected):
     if type(actual) in (int, float) and type(expected) in (int, float):
-        return math.isfinite(actual) and math.isfinite(expected) and actual == expected
+        return (
+            (type(actual) is int or math.isfinite(actual))
+            and (type(expected) is int or math.isfinite(expected))
+            and actual == expected
+        )
     if type(actual) is not type(expected):
         return False
     if isinstance(expected, dict):

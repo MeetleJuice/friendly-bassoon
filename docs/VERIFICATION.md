@@ -1,5 +1,9 @@
 # Verification
 
+## 0.15.0 validation in progress
+
+Implementation and expanded tests are complete; final local checks and Windows publication are being verified. Read maintenance/UPGRADE_0150_PLAN.md and the frozen docs/benchmarks/crew-measurement-1.json. Default 30 local trials plus 25 offline checks, optional Deep66, safe contract/schema diagnostics, checked lossless dense-report storage and local reviewed ZIP. No live model performance or published installer is claimed until verified.
+
 
 ## 0.11.0 verified delivery
 
@@ -254,3 +258,6 @@ Combined immutable source20af8cde4232eee532d29b00c617343a4ddb6913 passed Windows
 Published [0.14.1](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.14.1) from immutable `20af8cde4232eee532d29b00c617343a4ddb6913`. Source Windows run40153849074 and release run40154380304 attempt1 passed full tests/lint, packaging, actual installation/shortcut/startup,25offline diagnostics, pinned released0.14upgrade/data-preservation and silent restart. Local885tests passed/1optional live model skipped; ZIP-focused9cases, source smokes, dependencies, lint/format and wheel pass. Production Updater(current_version=0.14.0) discovered/downloaded/reverified public installer **42420035bytes**, SHA256 `aeedf86f83c97a8067b09dc89ac2541f5a49b4b785774c5e474ee98057f5429d`. No live user model/key, real support POST or automated upload used.
 
 Lossless compact JSON plus bounded1MB/66casecampaign allowance fixes the250KBcapacity rejection; other reports retain250KBcaps and global retention remains. Queued updates continue matching interrupted campaigns using existing scope/budget/no-replay guards. Last unsaved results cannot be reconstructed. Reviewed localZIPexport works for partial/completed campaign/health reports independently of GitHub completion approval. Immutable bytes,3MBlimit/static names/hashmanifest, numeric traces/action timelines and strict sharing allowlist preserve useful bounded evidence without private content/model names. User saves locally and drags ZIP into support chat; GitHub issues are optional; direct upload remains future work. Campaign3/crew2tasks/model budgets unchanged, so0.14partialcontinuation remains compatible. The original campaign report can retain0.14.0as its creation version; ZIPmanifest records0.14.1as exporter. User supplied only copied progress, not an approved/submitted full report. Raw text is outsideGit; no actual user's SQLite was remotely inspected.
+
+
+Local 0.15 validation: 1043 passed /1 optional live-model skipped in75.18s. Ruff lint/format, dependency consistency, source startup,25offline diagnostic smoke and wheel passed. Actual Qt30attempt/55result reviewed-ZIP save, dense66case storage/reopen/export and manifest mutation through lastattempt passed. Developer green/red/green proof catches three failures under immutable0.14.1 behavior and passes when restored. Frozen manifest SHA256 4081a368b5c138cd92a9c492bcf7c806bdf035184b039de66de929469d26da3c. Network proxy blocked sandboxed build/GitHub access; approved network execution succeeded without changing application behavior. No live user model/key or support POST used. Windows/public updater validation still pending.

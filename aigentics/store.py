@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 from . import __version__
 from .models import Agent, Profile
+from .diagnostic_storage import encode_report, decode_report
 
 
 def now():
@@ -38,7 +39,7 @@ class Store:
         with self.lock:
             rows = self.db.execute("SELECT payload FROM diagnostics WHERE state='running'").fetchall()
         for row in rows:
-            payload = json.loads(row["payload"])
+            payload = decode_report(row["payload"])
             payload["state"] = "interrupted"
             self.save_diagnostic(payload)
 
@@ -150,15 +151,7 @@ class Store:
     def save_diagnostic(self, report, *, refresh_retention=False):
         # The row timestamp is the retention activity clock. Only an explicit refresh
         # advances it; payload["created"] remains the original report creation time.
-        raw = self.credentials.json(report, separators=(",", ":"))
-        # Multi-attempt campaigns retain bounded per-request evidence across 66 cases.
-        # Other report kinds keep their original cap; total retained bytes stay bounded.
-        campaign = report.get("kind") == "crew_campaign"
-        if campaign and (not isinstance(report.get("checks"), list) or len(report["checks"]) > 66):
-            raise ValueError("Campaign report exceeds the case limit")
-        limit = 1_000_000 if campaign else 250_000
-        if len(raw.encode("utf-8")) > limit:
-            raise ValueError("Diagnostic report exceeds the storage limit")
+        raw = encode_report(report, self.credentials)
         with self.lock, self.db:
             self.db.execute(
                 "INSERT INTO diagnostics(id,created,state,payload) VALUES(?,?,?,?) "
@@ -176,7 +169,7 @@ class Store:
     def diagnostic_reports(self):
         with self.lock:
             return [
-                dict(row) | {"payload": json.loads(row["payload"])}
+                dict(row) | {"payload": decode_report(row["payload"])}
                 for row in self.db.execute("SELECT * FROM diagnostics ORDER BY created DESC LIMIT 232")
             ]
 

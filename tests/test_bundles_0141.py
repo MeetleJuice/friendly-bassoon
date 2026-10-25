@@ -161,6 +161,7 @@ def test_partial_campaign_export_does_not_require_completion_approval(qtbot, sto
     window = Window(store, credentials)
     qtbot.addWidget(window)
     dialog = CampaignDialog(window)
+    dialog.mode.setCurrentIndex(dialog.mode.findData("deep"))
     qtbot.addWidget(dialog)
     assert not dialog.approval.isEnabled()
     dialog.export_zip()

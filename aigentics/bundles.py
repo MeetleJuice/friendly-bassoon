@@ -15,6 +15,7 @@ from .reporting import public_report, public_shape
 from .test_suite import bounded_tool_timeline
 
 MAX_BUNDLE_BYTES = 3_000_000
+MAX_BUNDLE_UNCOMPRESSED_BYTES = 8_000_000
 
 
 def clean_report(report, credentials):
@@ -44,6 +45,9 @@ def clean_report(report, credentials):
             "stop_reason",
             "budget_used_ms",
             "duration_ms",
+            "manifest_id",
+            "manifest_verified",
+            "track",
         )
     }
     safe["schema_version"] = 1
@@ -156,6 +160,15 @@ def clean_report(report, credentials):
             traces.append(entry)
         row["evidence"]["request_traces"] = traces
         row["evidence"]["tool_timeline"] = bounded_tool_timeline(original.get("tool_timeline", []))
+    if report.get("mode") == "measurement":
+        from .measurement import measurement_manifest, manifest_id, summarize_trials
+
+        expected = measurement_manifest()
+        if report.get("measurement_manifest") == expected and report.get("manifest_id") == manifest_id(
+            expected
+        ):
+            safe["measurement_manifest"] = expected
+        safe["measurement_summary"] = summarize_trials(safe["checks"])
     return credentials.scrub(safe)
 
 
@@ -182,7 +195,8 @@ def build_bundle(reports, credentials):
     files["README.txt"] = (
         "Aigentics diagnostic bundle v1\nLocal export; no automatic upload.\n"
         "Includes sanitized results, bounded numeric request traces, correctness checks and argument-free tool timelines.\n"
-        "Excludes credentials, environment files, private project content/paths, prompts, raw thinking and local connection configuration.\n"
+        "Excludes credentials, environment files, private project content/paths, private prompts, raw thinking and local connection configuration.\n"
+        "Measurement bundles include the application-owned synthetic benchmark definition when it matches the current manifest.\n"
         "Partial reports are useful. Recorded cases do not prove all planned cases completed.\n"
         "An unsaved attempt cannot be reconstructed; interrupted attempts are never silently replayed.\n"
         "Usage is known-only, not a complete billing total. Model names are omitted.\n"
@@ -197,8 +211,8 @@ def build_bundle(reports, credentials):
         ],
     }
     files["manifest.json"] = json.dumps(manifest, indent=2).encode()
-    if sum(map(len, files.values())) > MAX_BUNDLE_BYTES:
-        raise ValueError("Diagnostic bundle exceeds its 3 MB uncompressed limit")
+    if sum(map(len, files.values())) > MAX_BUNDLE_UNCOMPRESSED_BYTES:
+        raise ValueError("Diagnostic bundle exceeds its 8 MB uncompressed limit")
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, raw in files.items():

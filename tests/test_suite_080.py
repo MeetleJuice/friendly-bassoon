@@ -324,9 +324,20 @@ def test_full_gui_worker_health_expanded_cases_and_two_drafts(qtbot, store, cred
     qtbot.addWidget(window)
     dialog = SuiteDialog(window)
     qtbot.addWidget(dialog)
+    errors = []
+    monkeypatch.setattr(window, "error", errors.append)
     dialog.start()
-    qtbot.waitUntil(lambda: not dialog.worker.isRunning(), timeout=10000)
-    qtbot.waitUntil(lambda: len(dialog.urls) == 2, timeout=3000)
+    try:
+        # Includes real offline process/SQLite checks; Windows runners exceed 10s.
+        qtbot.waitUntil(lambda: not dialog.worker.isRunning(), timeout=60000)
+        qtbot.waitUntil(lambda: len(dialog.urls) == 2 or bool(errors), timeout=5000)
+        assert not errors
+        assert len(dialog.urls) == 2
+    finally:
+        # Never let failed test teardown destroy a running QThread or its SQLite owner.
+        dialog.cancel()
+        assert dialog.worker.wait(10000)
+        qtbot.wait(1)
     from aigentics.diagnostics import OFFLINE_CHECK_COUNT
 
     assert dialog.progress.value() == dialog.progress.maximum() == OFFLINE_CHECK_COUNT + len(CASES)

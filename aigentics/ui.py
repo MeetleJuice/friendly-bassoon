@@ -7,7 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 from uuid import uuid4
-from PySide6.QtCore import QThread, Signal, QTimer, QStandardPaths, QLockFile, Qt, QSize
+from PySide6.QtCore import QThread, Signal, Slot, QTimer, QStandardPaths, QLockFile, Qt, QSize
 from PySide6.QtGui import QIcon, QDesktopServices, QShortcut, QKeySequence
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
@@ -220,6 +220,7 @@ class Window(QMainWindow):
     def __init__(self, store, credentials, startup=False):
         super().__init__()
         self.store, self.credentials = store, credentials
+        self._closing = False
         self.runtime = Runtime(store, credentials)
         self.worker = None
         self.diagnostic_worker = None
@@ -867,7 +868,10 @@ class Window(QMainWindow):
         self.setup_event(category + ".failed", {"message": message})
         self.update_setup_view()
 
+    @Slot(str)
     def error(self, message):
+        if self._closing:
+            return
         QMessageBox.warning(self, "Aigentics", self.credentials.redact(str(message)))
 
     def guarded(self, fn):
@@ -1508,6 +1512,8 @@ class Window(QMainWindow):
         self.credential_ref.setText("GROQ_API_KEY")
 
     def start_worker(self, function, completed):
+        if self._closing:
+            return False
         if self.diagnostic_worker and self.diagnostic_worker.isRunning():
             self.error("Finish or cancel diagnostics before running an agent task.")
             return False
@@ -1520,11 +1526,17 @@ class Window(QMainWindow):
         self.worker = worker
         # A finished thread can still have queued Qt signals when a new job starts.
         # Never attach an old result/session to the current plan or conversation.
-        worker.succeeded.connect(lambda result: completed(result) if self.worker is worker else None)
+        worker.succeeded.connect(
+            lambda result: completed(result) if self.worker is worker and not self._closing else None
+        )
         worker.failed.connect(lambda message: self.error(message) if self.worker is worker else None)
-        worker.activity.connect(lambda event: self.on_activity(event) if self.worker is worker else None)
+        worker.activity.connect(
+            lambda event: self.on_activity(event) if self.worker is worker and not self._closing else None
+        )
         worker.approval.connect(
-            lambda request: self.on_approval(request) if self.worker is worker else request["done"].set()
+            lambda request: self.on_approval(request)
+            if self.worker is worker and not self._closing
+            else request["done"].set()
         )
         worker.finished.connect(lambda: self.worker_finished() if self.worker is worker else None)
         self.work_run.setEnabled(False)
@@ -1533,6 +1545,8 @@ class Window(QMainWindow):
         return True
 
     def worker_finished(self):
+        if self._closing:
+            return
         if not self.worker or not self.worker.isRunning():
             self.active_plan_step = None
         self.work_run.setEnabled(True)
@@ -2176,6 +2190,7 @@ class Window(QMainWindow):
         self.refresh_history()
 
     def closeEvent(self, event):
+        self._closing = True
         active = [
             worker
             for worker in (self.worker, self.discovery_worker, self.update_worker, self.diagnostic_worker)

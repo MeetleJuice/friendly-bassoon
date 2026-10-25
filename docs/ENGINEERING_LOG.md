@@ -342,3 +342,13 @@ Source b146258d6d71eb5c834a96fd2386cb7b88435f80 /run40203797626 attempt1 failed 
 ### Windows failure observability correction
 
 The new frequent progress annotations could consume GitHub's per-step annotation quota before critical errors. Switched progress/slow-phase events to ordinary log lines; retained stdout, explicit native process exit and hidden breadcrumb in the synthetic CI artifact; separate always-run phase emits bounded output tail/exit annotations. This changes CI observability only, not tests, assertions, platform gates or12minute ceiling. Run-level detailed log route also returned403. Initial isolated breadcrumb passes1/0.14s locally. Supersede still-running unchangedretry with this diagnostic correction; no published tag exists. Failure cause remains unclassified pending real traceback.
+
+
+### Windows trace leads to shutdown and integration-lifecycle correction
+
+Corrected-reporting source c1435e18e515ab7f255a64979520b091ef13ddaf /run40205205939 exposed actual native exit-1073740940 /0xc0000374 (Windows heap failure) while ui.py error() opened QMessageBox during pytestqt setup. Preceding call955 is test_full_gui_worker_health_expanded_cases_and_two_drafts, failed after10.2s with a10s GUI wait. Last task-check breadcrumb is a subsequent setup and is not the failed assertion. Signed artifact/log storage remains403; bounded annotations now preserve exit/trace despite this. The exact native heap root is not independently proven, but the expanded real-check fixture's deadline/unsafe unfinished teardown is concrete and corrected.
+
+Native regression first failed: after closing/cancelling an active window, a queued failure still opens a modal. Window now marks closing, refuses new task starts, skips late task result/activity/finish updates and suppresses late modal errors; error is an explicit Qt Slot. Actual job persistence/cancellation and approvals remain. Integration test uses a bounded60s wait for real Windows process/SQLite checks, asserts collected worker errors and all existing report outcomes, and always cancels/joins its worker before fixture teardown. No model/request/session limit, test assertions or12minute workflow ceiling relaxed. Final full validation and new source Windows run follow.
+
+
+Post-shutdown full local validation:1105passed/1optional live-model skipped in101.83s;14shutdown/realGUI checks, source startup/27offline diagnostic smoke, Ruff lint/format, pipcheck and rebuilt wheel/source fidelity passed. Benchmark2digest unchanged. Source Windows run will repeat every gate; no immutable release tag yet.

@@ -66,3 +66,8 @@ Coverage adds18case exact byte/ordering contracts, negative no-tool prose, wrong
 - Public42row worstcase/privacy/knownusage/unknowninterruptedtiming/twoconsentpreview limits.
 - ActualWindows wizard/shortcut/24packagedchecks/pinned0.11upgrade/silentrelaunch; releasegate.
 - LiveOllama capability remainsuseracceptance, distinctfrom fixture correctness.
+
+
+## 0.14 expanded acceptance
+
+Campaign3Deep66attempts (42existing +18variants +6output-cap comparisons), Standard36, Quick0model calls; health8has25offline checks. Native wrong-content correction, oracle mutations across36specialistcases, typed/truncated response privacy and real66attempt GUI/consent/resume/retention checks added. Final local and Windows counts/run IDs remain in VERIFICATION.md. Windows upgrade pins actual0.13checksum. The global2hourlimit can leave incomplete coverage; fixtures do not establish live model reliability.

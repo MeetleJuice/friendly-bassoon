@@ -11,7 +11,7 @@ import time
 import threading
 
 from .crew import CREW_VERSION, make_agent
-from .crew_cases import CASES as ROLE_CASES, evaluate_content
+from .crew_cases import CASES as ROLE_CASES, ORIGINAL_CASES, VARIATIONS, evaluate_content
 from .diagnostics import DiagnosticRunner, model_evidence
 from .evidence import base_report
 from .runtime import Runtime
@@ -27,7 +27,7 @@ from .test_suite import (
 )
 from .tools import Workspace
 
-CAMPAIGN_VERSION = "crew-campaign-2"
+CAMPAIGN_VERSION = "crew-campaign-3"
 MAX_SECONDS = 7200
 REPEAT_CASES = ("edit", "unicode", "transform", "noop", "stale", "map")
 REQUIREMENT_LABELS = {
@@ -41,10 +41,15 @@ REQUIREMENT_LABELS = {
     "TASK_VERIFIED": "Saved outputs were verified and read back",
     "RUN_COMPLETED": "Runtime completed without unresolved errors",
 }
+EXPERIMENTS = {
+    f"experiment-{name}-{cap}": (name, cap) for name in ("unicode", "noop") for cap in (1024, 2048, 4096)
+}
 PLAN_IDS = tuple(
     [f"baseline-{c[0]}" for c in CASES]
-    + [f"{c.role}-{c.id}" for c in ROLE_CASES]
+    + [f"{c.role}-{c.id}" for c in ORIGINAL_CASES]
     + [f"repeat-{identity}" for identity in REPEAT_CASES]
+    + [f"{c.role}-{c.id}" for c in VARIATIONS]
+    + list(EXPERIMENTS)
 )
 
 
@@ -143,6 +148,7 @@ def role_case(store, credentials, primary, case, cancel, provider_factory=None):
                 and any(same(detail.get("path"), p) for p in outputs),
                 cancel,
                 capture=False,
+                acceptance=lambda ws, text: evaluate_content(case, ws.root, text),
                 task_checks=TaskChecks(
                     write_targets=sorted(outputs),
                     require_tools=True,
@@ -298,8 +304,8 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
         emit({"kind": "campaign.started", "data": {"id": identity}})
         started = time.monotonic()
         try:
-            if identity.startswith(("baseline-", "repeat-")):
-                name = identity.split("-", 1)[1]
+            if identity.startswith(("baseline-", "repeat-", "experiment-")):
+                name, output_cap = EXPERIMENTS.get(identity, (identity.split("-", 1)[1], None))
                 baseline = run_suite(
                     store,
                     credentials,
@@ -310,6 +316,7 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                     case_ids=[name],
                     persist=False,
                     completion_feedback=True,
+                    output_cap=output_cap,
                 )
                 if not baseline["checks"]:
                     break
@@ -329,6 +336,13 @@ def run_campaign(store, credentials, agent, cancel, emit, mode="deep", resume=Fa
                 "duration_ms": round((time.monotonic() - started) * 1000),
                 "evidence": {"local_error_type": type(exc).__name__},
             }
+        row.setdefault("evidence", {})["group"] = (
+            "experiment"
+            if identity in EXPERIMENTS
+            else "variation"
+            if identity in {f"{c.role}-{c.id}" for c in VARIATIONS}
+            else "comparison"
+        )
         report["checks"].append(row)
         report["active_case"] = None
         report["active_case_budget_ms"] = 0

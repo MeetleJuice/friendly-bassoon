@@ -216,3 +216,11 @@ Campaign2 keeps42model attempts/24offline checks and unchanged generation budget
 Seven new inline artworks are inventoried in design/MIDNIGHT_CREW.md and reference/README.md. Their original files remain inaccessible; no raster originals or generated substitutes were committed. Exact-file archival requires original attachments, preferably one ZIP.
 
 Next: Update/restart, keep Ollama running and let queued Deep campaign2 finish once (66results, up to2hours). Review/approve both previews and Create both GitHub issues; compare feedback-needed/final outcomes and source grounding with issues22/23. Do not rerun merely for green.
+
+
+## 0.14 architecture and validation
+
+Read maintenance/UPGRADE_0140_PLAN.md for evidence, experiments, reference and explicit boundaries. Independent application-owned boolean contracts now participate in one bounded completion correction; denied/unresolved operations and checker failures cannot trigger it. Native/compatible truncated responses retain only numeric/enum shape and never dispatch partial calls. Crew2fresh campaign snapshots preserve saved user definitions. Deep66local attempts and health8/25offline checks have group-separated evidence, retained original cases and labelled output-cap comparisons; same case names do not imply unchanged cross-version conditions. New oracle mutation/native correction/privacy/GUI regressions run without live model, user keys or real issue POST. Final checks and Windows gates follow.
+
+
+Local0.14verification: full865passed/1optional live model skipped, followed by5newreal-HTTP-budget/denial/step-bound regressions (52focused tests pass), plus57GUI/correctness tests after the final UI labels. All25offline packaged-style diagnostics and source startup, Ruff lint/format, dependency consistency and wheel pass. Real66attempt Qt workflow and failure-rich66row browser summary pass. No live user model/key or issue POST used. Windows will validate the complete870test set, actual0.13upgrade and silent restart before release.

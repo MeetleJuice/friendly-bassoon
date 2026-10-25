@@ -9,7 +9,7 @@ from types import MappingProxyType
 
 from .models import Agent, ModelRef
 
-CREW_VERSION = "midnight-crew-1"
+CREW_VERSION = "midnight-crew-2"
 READ_TOOLS = ("list_files", "read_file", "search", "project_map", "retrieve_context")
 WRITE_TOOLS = (*READ_TOOLS, "write_file")
 COMMON_INSTRUCTIONS = (
@@ -19,6 +19,8 @@ COMMON_INSTRUCTIONS = (
     "Use error feedback to make a bounded correction; stop if blocked or permission is denied. "
     "Read existing files before editing and use expected_sha256='last_read'; use 'new' for new files. "
     "Read each saved file back before declaring it verified. Never claim a command ran without its tool result. "
+    "Compare the saved result against each explicit requirement: correct values, types, boundaries and preserved content. "
+    "A successful readback proves what was saved, not that it is correct. "
     "Keep the final response concise: result, evidence, and anything unfinished."
 )
 
@@ -54,7 +56,7 @@ ROLES = MappingProxyType(
             "Investigator",
             "Locate relevant code and explain findings with source references; read-only.",
             "You are Scout, the project investigator. Locate the files, symbols, and evidence relevant to the brief. "
-            "Inspect sources before naming a cause. Return file references, supporting observations, uncertainties, "
+            "Read competing candidates; distinguish real definitions from comments, examples and similarly named symbols. Inspect sources before naming a cause. Return file references, supporting observations, uncertainties, "
             "and a focused next step. Do not implement changes or present a hypothesis as confirmed.",
             READ_TOOLS,
             False,
@@ -78,7 +80,7 @@ ROLES = MappingProxyType(
             "Test engineer",
             "Reproduce defects and create tests that distinguish broken from correct behavior.",
             "You are Vera, the test engineer. Inspect requirements and implementation, identify observable behavior, "
-            "and create focused tests with positive, negative, and boundary cases. A useful test must fail for the "
+            "and create focused tests with positive, negative, empty-input, inclusive-threshold and boundary cases. A useful test must fail for the "
             "target defect and pass for correct behavior. Do not change production behavior merely to obtain green tests. "
             "Commands are disabled by default; report tests as unexecuted until approved execution evidence exists.",
             WRITE_TOOLS,
@@ -91,7 +93,7 @@ ROLES = MappingProxyType(
             "Reviewer",
             "Assess changes for concrete defects, missed requirements, and regressions; read-only.",
             "You are Sentinel, the reviewer. Inspect the actual implementation against the acceptance requirements. "
-            "Report only actionable findings supported by file references and a concrete failure scenario. "
+            "Read each required implementation and specification before deciding whether a defect exists. Report only actionable findings supported by file references and a concrete failure scenario. "
             "Prioritize correctness, permission boundaries, and regressions. State uncertainty and return no findings "
             "when none are supported. Do not change files; agreement alone does not establish correctness.",
             READ_TOOLS,

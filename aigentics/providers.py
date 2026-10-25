@@ -8,14 +8,37 @@ import httpx
 from .models import Reply, ToolCall
 
 
+def response_shape(message, reason, streaming=False):
+    message = message if isinstance(message, dict) else {}
+    calls = message.get("tool_calls")
+    return {
+        "stream": bool(streaming),
+        "tool_calls_field_present": "tool_calls" in message,
+        "content_field_present": "content" in message,
+        "thinking_chars": min(len(message["thinking"]), 2_000_000)
+        if isinstance(message.get("thinking"), str)
+        else 0,
+        "content_chars": min(len(message["content"]), 2_000_000)
+        if isinstance(message.get("content"), str)
+        else 0,
+        "native_call_count": min(len(calls), 1000) if isinstance(calls, list) else 0,
+        "finish_reason": reason
+        if reason in ("stop", "length", "tool_calls", "load", "unload", "content_filter")
+        else "other",
+    }
+
+
 class ProviderError(RuntimeError):
-    def __init__(self, message, retryable=False, code="PROVIDER_ERROR", http_status=None, usage=None):
+    def __init__(
+        self, message, retryable=False, code="PROVIDER_ERROR", http_status=None, usage=None, evidence=None
+    ):
         super().__init__(message)
         self.usage = {
             k: min(v, 10**15)
             for k, v in (usage or {}).items()
             if k in ("prompt_eval_count", "eval_count", "total_duration") and type(v) is int and v >= 0
         }
+        self.evidence = evidence or {}
         self.retryable = retryable
         self.code, self.http_status = code, http_status
 
@@ -212,6 +235,7 @@ class Provider:
                     "Provider stopped before a complete response; reduce context or change model",
                     code="OUTPUT_LIMIT",
                     usage=usage,
+                    evidence=response_shape(data.get("message"), "length", streaming),
                     http_status=self.last_http_status,
                 )
             message = data.get("message", {})
@@ -239,7 +263,12 @@ class Provider:
                 choice = data["choices"][0]
                 if choice.get("finish_reason") in ("length", "content_filter"):
                     raise ProviderError(
-                        "Provider stopped before a complete response; reduce context or change model"
+                        "Provider stopped before a complete response; reduce context or change model",
+                        code="OUTPUT_LIMIT" if choice.get("finish_reason") == "length" else "CONTENT_FILTER",
+                        http_status=self.last_http_status,
+                        evidence=response_shape(
+                            choice.get("message"), choice.get("finish_reason"), streaming
+                        ),
                     )
                 message = choice["message"]
             except (KeyError, IndexError, TypeError, AttributeError) as exc:
@@ -264,15 +293,7 @@ class Provider:
             if len({c.id for c in calls}) != len(calls):
                 raise ValueError("Duplicate tool call identifiers")
             reason = data.get("done_reason") if native else choice.get("finish_reason")
-            evidence = {
-                "stream": streaming,
-                "tool_calls_field_present": "tool_calls" in message,
-                "content_field_present": "content" in message,
-                "thinking_chars": len(message["thinking"]) if isinstance(message.get("thinking"), str) else 0,
-                "finish_reason": reason
-                if reason in ("stop", "length", "tool_calls", "load", "unload")
-                else "other",
-            }
+            evidence = response_shape(message, reason, streaming)
             return Reply(content=message.get("content") or "", calls=calls, usage=usage, evidence=evidence)
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise ProviderError(

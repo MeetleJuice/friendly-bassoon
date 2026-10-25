@@ -27,8 +27,8 @@ from .runtime import Runtime, looks_like_text_tool_call
 from .store import Store, now
 from .tools import Workspace, ToolRunner, CommandArgs, run_command
 
-SUITE_VERSION = "7"
-OFFLINE_CHECK_COUNT = 24
+SUITE_VERSION = "8"
+OFFLINE_CHECK_COUNT = 25
 
 
 def model_evidence(events):
@@ -79,8 +79,26 @@ def model_evidence(events):
     return {
         "completion_feedback_count": sum(e["kind"] == "completion.feedback_requested" for e in events),
         "initial_task_checks": next(
-            (e["data"]["checks"] for e in events if e["kind"] == "completion.feedback_requested"), {}
+            (
+                e["data"]["checks"]
+                for e in events
+                if e["kind"] in ("completion.evaluated", "completion.feedback_requested")
+            ),
+            {},
         ),
+        "initial_acceptance_checks": next(
+            (
+                e["data"].get("acceptance", {})
+                for e in events
+                if e["kind"] in ("completion.evaluated", "completion.feedback_requested")
+            ),
+            {},
+        ),
+        "acceptance_checks": next(
+            (e["data"].get("acceptance_checks", {}) for e in reversed(events) if e["kind"] == "run.summary"),
+            {},
+        ),
+        "failure_shape": failures[-1].get("response_shape", {}) if failures else {},
         "model_metadata": metadata,
         "request_traces": traces[:8],
         "failure_usage": failures[-1].get("usage", {}) if failures else {},
@@ -747,6 +765,7 @@ class DiagnosticRunner:
                 validation_recovery_check,
                 checkpoint_recovery_check,
                 crew_evaluation_check,
+                correctness_check,
             )
 
             cases = [
@@ -774,6 +793,7 @@ class DiagnosticRunner:
                 ("validation_recovery_fixture", lambda: validation_recovery_check(self.credentials)),
                 ("checkpoint_recovery_fixture", lambda: checkpoint_recovery_check(self.credentials)),
                 ("crew_evaluation_fixture", lambda: crew_evaluation_check(self.credentials)),
+                ("correctness_fixture", lambda: correctness_check(self.credentials)),
             ]
             for identity, function in cases:
                 if cancel.is_set():

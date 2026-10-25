@@ -237,9 +237,12 @@ def run_suite(
     *,
     persist=True,
     completion_feedback=False,
+    output_cap=None,
 ):
     from .providers import Provider
 
+    if output_cap is not None and (type(output_cap) is not int or output_cap not in (1024, 2048, 4096)):
+        raise ValueError("Unknown comparison output allowance")
     profile = local_profile(store, agent)
     cases = CASES
     if case_ids is not None:
@@ -297,6 +300,8 @@ def run_suite(
                 trial.save_profile(
                     profile.model_copy(update={"timeout_seconds": budget["request_timeout_seconds"]})
                 )
+                if output_cap is not None:
+                    budget["max_output_tokens"] = output_cap
                 observed.clear()
                 before = time.monotonic()
                 emit({"kind": "suite.started", "data": {"id": identity, "index": index + 1}})
@@ -355,6 +360,15 @@ def run_suite(
                         decisions.append((kind, target, allowed))
                         return allowed
 
+                    def acceptance(ws, text):
+                        matched = True
+                        for name, expected in outputs.items():
+                            try:
+                                matched = ws.read(name)["content"].encode("utf-8") == expected and matched
+                            except (OSError, ValueError, UnicodeError):
+                                matched = False
+                        return {"EXACT_OUTPUT": matched}
+
                     try:
                         sid, state = Runtime(trial, credentials, BoundedProvider).run(
                             bounded,
@@ -363,6 +377,9 @@ def run_suite(
                             approve,
                             cancel,
                             capture=False,
+                            acceptance=acceptance
+                            if completion_feedback and outputs and identity != "denial"
+                            else None,
                             task_checks=TaskChecks(
                                 completion_feedback=completion_feedback,
                                 write_targets=targets if identity != "denial" else ["output.txt"],

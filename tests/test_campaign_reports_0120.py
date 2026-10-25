@@ -5,9 +5,12 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from aigentics.campaign import PLAN_IDS, REQUIREMENT_LABELS
+from aigentics.campaign import PLAN_IDS as CURRENT_PLAN_IDS, REQUIREMENT_LABELS
+
 from aigentics.evidence import base_report
 from aigentics.reporting import issue_body, prepare_browser_draft, public_report
+
+PLAN_IDS = CURRENT_PLAN_IDS[:42]
 
 
 def campaign_report():

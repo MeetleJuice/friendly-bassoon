@@ -70,7 +70,7 @@ def test_completed_real_campaign_survives_full_retention_cap_and_reopen(tmp_path
         assert completed["id"] == original["id"]
         assert completed["created"] == origin
         assert completed["checks"][0] == first_result
-        assert completed["summary"]["passed"] == 42
+        assert completed["summary"]["passed"] == 66
         retained = {row["id"]: row for row in store.diagnostic_reports()}
         assert completed["id"] in retained
         assert len(retained) == 5

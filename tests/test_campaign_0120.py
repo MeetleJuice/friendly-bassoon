@@ -50,7 +50,7 @@ def test_specialist_native_actions_and_oracle(case, store, credentials):
     assert not store.sessions()
 
 
-def test_full_campaign_has_42_distinct_results_two_shareable_reports(store, credentials):
+def test_full_campaign_has_66_distinct_results_two_shareable_reports(store, credentials):
     store.save_profile(Profile(id="ollama", name="Local"))
     events = []
     reports = campaign.run_campaign(
@@ -58,10 +58,10 @@ def test_full_campaign_has_42_distinct_results_two_shareable_reports(store, cred
     )
     health, report = reports
     assert health["summary"]["passed"] == OFFLINE_CHECK_COUNT
-    assert report["summary"]["passed"] == report["planned_cases"] == 42, report
-    assert len({r["id"] for r in report["checks"]}) == 42
+    assert report["summary"]["passed"] == report["planned_cases"] == 66, report
+    assert len({r["id"] for r in report["checks"]}) == 66
     assert report["state"] == "passed"
-    assert len([e for e in events if e["kind"] == "campaign.result"]) == 42
+    assert len([e for e in events if e["kind"] == "campaign.result"]) == 66
     assert len(json.dumps(report).encode()) < 250000
     assert not store.sessions()
     assert all(len(prepare_browser_draft(*issue_body(r, credentials))) <= 7500 for r in reports)
@@ -91,7 +91,7 @@ def test_cancel_then_continue_retains_original_results(store, credentials):
     )[1]
     assert second["id"] == first["id"]
     assert second["checks"][0] == first["checks"][0]
-    assert second["summary"]["passed"] == 42
+    assert second["summary"]["passed"] == 66
 
 
 def test_unknown_inflight_case_marked_never_replayed(store, credentials):
@@ -115,7 +115,7 @@ def test_unknown_inflight_case_marked_never_replayed(store, credentials):
     )[1]
     assert result["id"] == report["id"]
     assert result["checks"][0]["code"] == "INTERRUPTED_CASE_NOT_REPLAYED"
-    assert result["summary"] == {"passed": 41, "failed": 1, "skipped": 0, "warning": 0}
+    assert result["summary"] == {"passed": 65, "failed": 1, "skipped": 0, "warning": 0}
 
 
 def test_quick_has_no_model_calls(store, credentials):

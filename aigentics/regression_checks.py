@@ -152,3 +152,53 @@ def crew_evaluation_check(credentials):
         (root / "unexpected.txt").write_bytes(b"not allowed")
         require(evaluate_content(case, root, json.dumps(case.answer))["NO_UNEXPECTED_FILES"] is False)
     return {"crew_fixture_verified": True, "external_requests": 0}
+
+
+def correctness_check(credentials):
+    """A successful native write/readback must not certify incorrect content."""
+    from .task_checks import TaskChecks
+
+    class NativeFixture:
+        def __init__(self, *args):
+            pass
+
+        def capabilities(self, model):
+            return {"tools": True}
+
+        def chat(self, model, messages, tools):
+            count = sum(m["role"] == "tool" for m in messages)
+            if count == 0:
+                return Reply(
+                    calls=[
+                        ToolCall(
+                            id="save",
+                            name="write_file",
+                            arguments={"path": "result.txt", "content": "wrong", "expected_sha256": "new"},
+                        )
+                    ]
+                )
+            if count == 1:
+                return Reply(
+                    calls=[ToolCall(id="inspect", name="read_file", arguments={"path": "result.txt"})]
+                )
+            return Reply(content="Done")
+
+    with tempfile.TemporaryDirectory(prefix="aigentics-correctness-") as folder:
+        root = Path(folder) / "project"
+        root.mkdir()
+        with closing(Store(Path(folder) / "state.sqlite3", credentials)) as store:
+            store.save_profile(Profile(id="ollama", name="Offline fixture"))
+            sid, state = Runtime(store, credentials, NativeFixture).run(
+                Agent(max_steps=5),
+                root,
+                "Save the required correct result",
+                lambda *args: True,
+                task_checks=TaskChecks(write_targets=["result.txt"], completion_feedback=True),
+                acceptance=lambda ws, text: {"EXACT_OUTPUT": ws.read("result.txt")["content"] == "right"},
+            )
+            summary = next(e["data"] for e in store.events(sid) if e["kind"] == "run.summary")
+            require(state == "needs_review" and summary["tools"]["writes_verified"] == 1)
+            require(summary["task_checks"]["missing_readbacks"] == 0)
+            require(summary["task_checks"]["content_failures"] == 1)
+            require(summary["completion_feedback_count"] == 1)
+    return {"correctness_fixture_verified": True, "external_requests": 0}

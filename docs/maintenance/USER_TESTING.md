@@ -1,3 +1,11 @@
+# 0.14 next local acceptance
+
+Click Update with Ollama running. After installation/restart, the queued Deep campaign runs once:25offline checks and66local model attempts,91results if it completes. It can take up to2hours; safe stop and matching-configuration continuation remain available. Do not restart simply to seek a green score.
+
+Inspect failed scenarios and distinguish incorrect content, missing source/readback, provider output limit and incomplete execution. Review both exact public previews, approve opening, then click Create on both GitHub browser drafts and send their issue URLs. Opening a draft is not submission. No GitHub token is needed. API-key/model-catalog checks are not part of this campaign.
+
+Compare the original42tasks separately from18newvariations and6budgetexperiments. Instructions and acceptance changed in0.14; cross-version differences are exploratory. Initial versus corrected outcomes, known usage and time are more useful than a single total score. Full bounded evidence stays local under existing retention controls; no secrets or raw thinking are public.
+
 # 0.13 acceptance — bounded completion feedback
 
 Click Update and keep Ollama running. After restart, allow the queued Deep campaign2 to run once:24app checks+42model attempts, up to2hours. Existing personal agents remain unchanged; the controlled test definitions share the selected local model.

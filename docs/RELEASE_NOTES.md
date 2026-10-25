@@ -1,10 +1,10 @@
-# 0.13.0 — finish verification before declaring completion
+# 0.14.0 — check correctness, not just successful tool use
 
-- Controlled Midnight Crew campaigns now allow one bounded native-tool correction when explicit task checks remain unfinished. Existing time, step, context, approval and file boundaries still apply; unresolved denied/failed operations do not trigger this correction.
-- Specialists have explicit source-read requirements, reducing unsupported reviews and source-free conclusions.
-- Reports retain initial incomplete checks and completion-feedback counts alongside final results. Correct file bytes remain distinct from verified workflows.
-- Campaign version2 keeps42model attempts plus24offline checks, unchanged generation budgets, local retention and two reviewed GitHub drafts. No API checks, cloud fallback, orchestration or arbitrary generated-code execution.
-- Existing agents/settings remain intact. Ordinary TaskChecks keep the prior default unless completion feedback is explicitly enabled.
-- Seven new character/icon references are documented; exact inline image binaries were not exposed and are not claimed archived.
+- Controlled campaigns now check explicit output and sourced-answer contracts before accepting completion. One bounded correction can address failed content requirements as well as missing verification; independent final checks still decide the outcome.
+- Native/compatible output-limit errors preserve safe numeric response-shape evidence. Incomplete calls are never executed, and no hidden retries or blanket token increases are introduced.
+- Updated specialist campaign instructions emphasize concrete source inspection, boundary/type correctness, and preserved surrounding work. Existing personal/saved definitions stay intact.
+- Deep campaign3 includes66local model attempts:42existing scenarios/repeats,18specialist variations and6labelled Unicode/no-op output-budget comparisons. Health8includes25offline checks:91results if Deep finishes. Standard36and offline-only Quick remain available; total campaign time stays bounded to2hours.
+- Results distinguish immediate passes and passes after correction. Initial/final acceptance, failure shapes and grouped outcomes are retained with privacy filtering;66case summaries fit the two-preview GitHub workflow.
+- No automatic API checks, cloud fallback, generated-code execution, orchestration, MCP or model training. Exact original artwork files remain pending.
 
-Windows installer/upgrade/restart validation gates publication. Real Ollama improvements require live acceptance data; development fixtures do not certify agent reliability.
+Publication requires Windows install/upgrade from0.13/data-preservation/silent-restart checks. Development fixtures do not certify the user's live model; the next local campaign measures actual outcomes.

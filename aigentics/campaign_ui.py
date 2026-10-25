@@ -35,7 +35,7 @@ class CampaignDialog(QDialog):
         layout = QVBoxLayout(self)
         label = QLabel(
             "Six independent agents • one selected local Ollama model • no orchestration or API checks.\n"
-            f"Deep: {OFFLINE_CHECK_COUNT} app checks + 42 model attempts, one at a time, up to 2 hours total. "
+            f"Deep: {OFFLINE_CHECK_COUNT} app checks + 66 model attempts, one at a time, up to 2 hours total. "
             "Each uses disposable files; only listed synthetic writes are approved automatically.\n"
             "Saved personal agents stay unchanged. Detailed bounded evidence stays local; sharing is optional."
         )
@@ -53,7 +53,7 @@ class CampaignDialog(QDialog):
         )
         layout.addWidget(self.agents)
         self.mode = QComboBox()
-        self.mode.addItem("Deep • 42 model attempts + app checks", "deep")
+        self.mode.addItem("Deep • 66 model attempts + app checks", "deep")
         self.mode.addItem("Standard • 36 model attempts + app checks", "standard")
         self.mode.addItem("Quick • app checks only, no model generation", "quick")
         layout.addWidget(self.mode)
@@ -63,6 +63,7 @@ class CampaignDialog(QDialog):
         self.results = QTableWidget(len(PLAN_IDS), 4)
         self.results.setHorizontalHeaderLabels(["Agent / scenario", "Result", "Time", "Native calls"])
         self.results.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.results.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.results.setEditTriggers(QTableWidget.NoEditTriggers)
         self.results.setMaximumHeight(280)
         layout.addWidget(self.results)
@@ -102,6 +103,14 @@ class CampaignDialog(QDialog):
         self.identities = plan(self.mode.currentData())
         self.results.setRowCount(len(self.identities))
         titles = {f"{c.role}-{c.id}": f"{ROLES[c.role].name} • {c.title}" for c in ROLE_CASES}
+        from .campaign import EXPERIMENTS
+
+        titles.update(
+            {
+                identity: f"George • {name}: output allowance {cap}"
+                for identity, (name, cap) in EXPERIMENTS.items()
+            }
+        )
         for index, identity in enumerate(self.identities):
             self.results.setItem(index, 0, QTableWidgetItem(titles.get(identity, "George • " + identity)))
             self.results.setItem(index, 1, QTableWidgetItem("Ready"))
@@ -201,7 +210,13 @@ class CampaignDialog(QDialog):
             self.progress.setValue(self.progress.value() + 1)
             for col, value in enumerate(
                 (
-                    data["status"],
+                    (
+                        "Passed after correction"
+                        if evidence.get("completion_feedback_count")
+                        else "Passed immediately"
+                    )
+                    if data["status"] == "passed"
+                    else data["status"],
                     f"{data['duration_ms'] / 1000:.1f}s",
                     str(evidence.get("native_calls_total", "?")),
                 ),
@@ -225,6 +240,17 @@ class CampaignDialog(QDialog):
             ("PASS: " if passed else "UNMET: ") + REQUIREMENT_LABELS.get(key, key)
             for key, passed in e.get("requirement_checks", {}).items()
         )
+        if e.get("provider_error_code") == "OUTPUT_LIMIT":
+            text.append(
+                "The model reached its output allowance before a complete response. Partial tool calls were not executed."
+            )
+        elif e.get("task_checks", {}).get("content_failures"):
+            text.append(
+                "The saved content or final answer failed an explicit acceptance requirement; a readback alone cannot prove correctness."
+            )
+        text.append("Initial content acceptance: " + str(e.get("initial_acceptance_checks", {})))
+        text.append("Content acceptance: " + str(e.get("acceptance_checks", {})))
+        text.append("Rejected response shape: " + str(e.get("failure_shape", {})))
         text.append("Task counters: " + str(e.get("task_checks", {})))
         text.append("Actions (no source or arguments): " + str(e.get("tool_timeline", [])))
         text.append("Provider: " + e.get("provider_error_code", "NONE"))
@@ -232,7 +258,26 @@ class CampaignDialog(QDialog):
 
     def done(self, reports):
         campaign = reports[-1]
-        self.status.setText(f"Finished: {campaign['state']} • {campaign['summary']} • results saved locally.")
+        rows = campaign["checks"]
+        repaired = sum(
+            r["status"] == "passed" and bool(r.get("evidence", {}).get("completion_feedback_count"))
+            for r in rows
+        )
+        passed = sum(r["status"] == "passed" for r in rows)
+        incomplete = sum(
+            r.get("code") in ("INTERRUPTED_CASE_NOT_REPLAYED", "CANCELLED", "CAMPAIGN_BUDGET_EXHAUSTED")
+            or r["status"] in ("skipped", "warning")
+            for r in rows
+        )
+        failed = sum(r["status"] == "failed" for r in rows) - sum(
+            r["status"] == "failed"
+            and r.get("code") in ("INTERRUPTED_CASE_NOT_REPLAYED", "CANCELLED", "CAMPAIGN_BUDGET_EXHAUSTED")
+            for r in rows
+        )
+        self.status.setText(
+            f"Finished • Passed immediately: {passed - repaired} • After correction: {repaired} • "
+            f"Failed: {failed} • Not completed: {campaign['planned_cases'] - len(rows) + incomplete} • saved locally."
+        )
         previous = next(
             (
                 r["payload"]

@@ -1,5 +1,9 @@
 # Build progress and next actions
 
+## 0.14 implementation; release validation pending
+
+Read maintenance/UPGRADE_0140_PLAN.md. Issues24/25:31/42live attempts pass and24offline checks pass; correct readbacks can still mask wrong artifacts. Added optional bounded independent acceptance at completion/finalization, numeric rejected-response shape, crew2instructions and campaign3Deep66attempts(42comparison+18variations+6budgetexperiments),25offline checks and clearer result labels. Personal agents/store schema remain. No live model or real support POST used. Final checks, actual Windows0.13upgrade/silent restart and public updater verification must finish before delivery. Original artwork binaries remain unavailable.
+
 ## 0.13.0 verified delivery
 
 Published [0.13.0](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.13.0) from immutable `f532ebfea494271e98382df063e9a6fba3c46a3f`. Source Windows run 40141003967 and release run 40141645149 passed all tests, packaging, actual installation/shortcut/startup,24offline diagnostics, pinned0.12upgrade and silent restart. Local727tests passed/1optional live model skipped plus the new report privacy regression; Windows validates the full728test set. Production Updater(current_version=0.12.0) discovered/downloaded/reverified the public installer: **42396457bytes**, SHA256 `7d823956862338bd5ce07bc585e76bc52c533c118f7852fdd18c2767c51fbb00`. No live user model/key/supportPOST used.

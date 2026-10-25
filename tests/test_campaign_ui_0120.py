@@ -65,7 +65,7 @@ def cleanup(window):
     window.lab_dir.cleanup()
 
 
-def test_full_gui_real_42_attempt_worker_and_two_approved_previews(qtbot, store, credentials, monkeypatch):
+def test_full_gui_real_66_attempt_worker_and_two_approved_previews(qtbot, store, credentials, monkeypatch):
     window, dialog, personal, errors = setup_dialog(qtbot, store, credentials, monkeypatch)
     opened = []
     monkeypatch.setattr(campaign_ui.webbrowser, "open", lambda url: opened.append(url) or True)
@@ -73,9 +73,9 @@ def test_full_gui_real_42_attempt_worker_and_two_approved_previews(qtbot, store,
     dialog.start()
     finish(qtbot, dialog)
     assert not errors
-    assert dialog.progress.value() == dialog.progress.maximum() == OFFLINE_CHECK_COUNT + 42
-    assert dialog.results.rowCount() == len(dialog.rows) == 42
-    assert all(dialog.results.item(index, 1).text() == "passed" for index in range(42))
+    assert dialog.progress.value() == dialog.progress.maximum() == OFFLINE_CHECK_COUNT + 66
+    assert dialog.results.rowCount() == len(dialog.rows) == 66
+    assert all(dialog.results.item(index, 1).text() == "Passed immediately" for index in range(66))
     assert len(store.diagnostic_reports()) == 2
     saved = {agent.id: agent for agent in store.agents()}
     assert len(saved) == 7
@@ -127,13 +127,13 @@ def test_cancel_preserves_result_and_continue_finishes_without_replay(qtbot, sto
     )
     dialog.start(True)
     finish(qtbot, dialog)
-    assert not errors and len(dialog.rows) == 42
-    assert dialog.progress.value() == OFFLINE_CHECK_COUNT + 42
+    assert not errors and len(dialog.rows) == 66
+    assert dialog.progress.value() == OFFLINE_CHECK_COUNT + 66
     resumed = next(
         row["payload"] for row in store.diagnostic_reports() if row["payload"].get("kind") == "crew_campaign"
     )
     assert resumed["id"] == saved["id"] and resumed["checks"][0] == first
-    assert resumed["summary"]["passed"] == 42
+    assert resumed["summary"]["passed"] == 66
     assert not dialog.resume.isEnabled()
     cleanup(window)
 

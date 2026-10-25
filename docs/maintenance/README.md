@@ -2,6 +2,7 @@
 
 Start here for the next update. This is durable engineering memory in Git; user traces and credentials belong outside the source tree.
 
+- [0.14 correctness and failure-evidence plan](UPGRADE_0140_PLAN.md).
 - [0.13 bounded completion plan](UPGRADE_0130_PLAN.md).
 - [0.12 Midnight Crew and campaign plan](UPGRADE_0120_PLAN.md): versioned roles, individual evaluations, bounded continuation, and two reviewed reports.
 - [Midnight Crew visual direction](../design/MIDNIGHT_CREW.md): supplied character-sheet reference and original-asset availability.

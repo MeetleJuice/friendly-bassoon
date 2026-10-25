@@ -91,4 +91,4 @@ def test_registry_is_immutable_and_unknown_role_fails(primary):
         ROLES["other"] = ROLES["george"]
     with pytest.raises(KeyError):
         make_agent("unknown", primary)
-    assert CREW_VERSION == "midnight-crew-1"
+    assert CREW_VERSION == "midnight-crew-2"

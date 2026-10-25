@@ -19,9 +19,9 @@ def prepare(case, root):
 
 def test_catalog_covers_all_six_roles_with_three_distinct_cases():
     assert Counter(case.role for case in CASES) == dict.fromkeys(
-        ("george", "scout", "ada", "vera", "sentinel", "atlas"), 3
+        ("george", "scout", "ada", "vera", "sentinel", "atlas"), 6
     )
-    assert len({case.id for case in CASES}) == 18
+    assert len({case.id for case in CASES}) == 36
     for case in CASES:
         assert set(case.required_reads) <= set(case.files)
         assert not (set(case.outputs) & set(case.output_json))
@@ -124,6 +124,12 @@ def test_linked_source_is_rejected_before_read(tmp_path):
 def test_vera_vectors_distinguish_correct_rules_from_seeded_mutants():
     vectors = {case.id: case.output_json["cases.json"]["cases"] for case in CASES if case.role == "vera"}
     rules = {
+        "vera_exclusive": (lambda n: 0 if n > 10 else 3, lambda n: 0 if n >= 10 else 3),
+        "vera_singleton": (
+            lambda xs: sum(xs) / len(xs) if xs else "missing",
+            lambda xs: sum(xs) / len(xs) if xs else 0,
+        ),
+        "vera_bool": (lambda n: n > 0, lambda n: n >= 0),
         "vera_clamp": (lambda n: min(10, max(0, n)), lambda n: n),
         "vera_shipping": (lambda n: 0 if n >= 50 else 5, lambda n: 0 if n > 50 else 5),
         "vera_empty": (

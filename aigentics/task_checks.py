@@ -148,6 +148,7 @@ TASK_COUNT_KEYS = frozenset(
         "missing_readbacks",
         "missing_tools",
         "missing_sources",
+        "content_failures",
         "revision_mismatches",
     )
 )

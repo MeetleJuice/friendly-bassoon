@@ -48,3 +48,8 @@ The supplied Qwen3:8b session proves native approved file writes/read-back work 
 Issues9–12 reviewed:9 repeats old Qwen14b failure;10 passes all21 health checks including live local exact file/read-back;11 catches syntax error line1;12 has7successful tools/one static-checked write but Needs work. The pasted corresponding log confirms wrong output filename and a redundant existing-file rewrite. Supplied Qwen3.5 logs show11successful tools but3empty final answers; no raw server cause established. Captured source hashes confirm literal newline escapes in some earlier Python files. Do not commit original traces/source or infer all reports share the same model/version.
 
 0.7 verifies explicit operations, blocks wrong file-tool targets, preserves incomplete-response work, defaults to actual fresh context and records safe evidence coverage. Generic prose truthfulness, Qwen2.5 repair and gameplay remain unproven. Next acceptance: one fresh simple targeted write plus post-write read-back and actual user assessment; do not repeat unchanged Qwen14b comparisons.
+
+
+## Issues24/25 → 0.14
+
+31/42live attempts pass,24/24offline pass. See UPGRADE_0140_PLAN.md for the full failure classification and caveats. Prioritize content correctness inside bounded feedback, pre-tool output-limit shape, misleading-source variants and group-separated comparisons. Do not infer exact wrong bytes/answers from the public flags; raw synthetic outputs are not in these reports.

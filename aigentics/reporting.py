@@ -145,6 +145,49 @@ class SubmissionUnknown(ReportingError):
     """The server may have created an issue. Never retry a POST automatically."""
 
 
+def public_shape(value):
+    value = value if isinstance(value, dict) else {}
+    safe = {
+        k: min(v, 2_000_000)
+        for k, v in value.items()
+        if k in ("thinking_chars", "content_chars", "native_call_count") and type(v) is int and v >= 0
+    }
+    safe.update(
+        {
+            k: v
+            for k, v in value.items()
+            if k in ("stream", "tool_calls_field_present", "content_field_present") and type(v) is bool
+        }
+    )
+    if value.get("finish_reason") in (
+        "stop",
+        "length",
+        "tool_calls",
+        "load",
+        "unload",
+        "content_filter",
+        "other",
+    ):
+        safe["finish_reason"] = value["finish_reason"]
+    return safe
+
+
+def public_acceptance(value):
+    allowed = {
+        "EXACT_OUTPUT",
+        "OUTPUT_CONTENT",
+        "FINAL_ANSWER",
+        "INPUTS_UNCHANGED",
+        "NO_UNEXPECTED_FILES",
+        "CHECKER_ERROR",
+    }
+    return (
+        {k: v for k, v in value.items() if k in allowed and type(v) is bool}
+        if isinstance(value, dict)
+        else {}
+    )
+
+
 def public_report(report, include_model=False):
     """Rebuild a strictly allowlisted payload, never a whole session/database export."""
     result = {
@@ -166,7 +209,7 @@ def public_report(report, include_model=False):
     }
     planned = report.get("planned_cases")
     if type(planned) is int and (0 if report.get("kind") == "crew_campaign" else 1) <= planned <= (
-        64 if report.get("kind") == "crew_campaign" else 32
+        96 if report.get("kind") == "crew_campaign" else 32
     ):
         result["planned_cases"] = planned
     result["environment"] = {
@@ -194,6 +237,7 @@ def public_report(report, include_model=False):
         "validation_recovery_verified",
         "checkpoint_recovery_verified",
         "crew_fixture_verified",
+        "correctness_fixture_verified",
         "blocked_paths",
         "denied_writes",
         "denied_commands",
@@ -298,6 +342,13 @@ def public_report(report, include_model=False):
             from .task_checks import public_task_checks
 
             check["evidence"]["initial_task_checks"] = public_task_checks(evidence["initial_task_checks"])
+        for key in ("initial_acceptance_checks", "acceptance_checks"):
+            if key in evidence:
+                check["evidence"][key] = public_acceptance(evidence[key])
+        if "failure_shape" in evidence:
+            check["evidence"]["failure_shape"] = public_shape(evidence["failure_shape"])
+        if evidence.get("group") in ("comparison", "variation", "experiment"):
+            check["evidence"]["group"] = evidence["group"]
         if "task_checks" in evidence:
             from .task_checks import public_task_checks
 
@@ -666,6 +717,7 @@ def prepare_browser_draft(title, body):
             "task_checks_fixture_verified",
             "empty_final_fixture_verified",
             "crew_fixture_verified",
+            "correctness_fixture_verified",
             "user_assessment",
         )
         compact_checks = {
@@ -809,6 +861,10 @@ def safe_campaign_row(check, original):
         "requirement_checks",
         "completion_feedback_count",
         "initial_task_checks",
+        "initial_acceptance_checks",
+        "acceptance_checks",
+        "failure_shape",
+        "group",
         "task_checks",
         "execution_counts",
         "failure_usage",
@@ -866,7 +922,7 @@ def safe_campaign_row(check, original):
 def compact_campaign_body(payload):
     """Keep every case and failed requirement in one practical, reviewable browser draft."""
     rows = payload.get("checks", [])
-    if len(rows) > 64:
+    if len(rows) > 96:
         raise ReportingError("Too many campaign cases for browser sharing")
 
     def number(value):
@@ -879,6 +935,25 @@ def compact_campaign_body(payload):
         if type(rejected) is int and rejected >= 0:
             known.append(rejected)
         return number(sum(known)) if known else "?"
+
+    modern = payload.get("suite_version") == "crew-campaign-3"
+
+    def case_name(identity):
+        if not modern:
+            return identity
+        prefixes = {
+            "baseline": "b",
+            "repeat": "r",
+            "george": "g",
+            "scout": "s",
+            "ada": "a",
+            "vera": "v",
+            "sentinel": "t",
+            "atlas": "x",
+            "experiment": "e",
+        }
+        first, _, rest = identity.partition("-")
+        return prefixes.get(first, first) + "." + rest.removeprefix(first + "_")
 
     codes, requirements, budgets, providers = {}, {}, {}, {}
 
@@ -916,7 +991,7 @@ def compact_campaign_body(payload):
         counts = e.get("execution_counts", {})
         task = e.get("task_checks", {})
         fields = [
-            row["id"],
+            case_name(row["id"]),
             {"passed": "P", "failed": "F", "skipped": "S", "warning": "W"}.get(row["status"], "?"),
             cid,
             "?" if e.get("timing_unknown") is True else number(row.get("duration_ms")),
@@ -935,11 +1010,42 @@ def compact_campaign_body(payload):
             pid,
             unmet,
         ]
-        lines.append("|".join(fields))
+        if modern:
+            initial = e.get("initial_task_checks", {})
+            fields[8] += (
+                "/" + number(initial.get("content_failures")) if e.get("completion_feedback_count") else ""
+            )
+            shape = e.get("failure_shape", {})
+            fields.append(
+                "/".join(
+                    number(shape.get(k)) for k in ("thinking_chars", "content_chars", "native_call_count")
+                )
+                if shape
+                else "-"
+            )
+            lines.append(" ".join(f.replace("/", ".") for f in fields))
+        else:
+            lines.append("|".join(fields))
 
     def legend(mapping):
         return "; ".join(f"{value}={key}" for key, value in mapping.items()) or "none"
 
+    groups = []
+    for group in ("comparison", "variation", "experiment"):
+        selected = [r for r in rows if r.get("evidence", {}).get("group") == group]
+        if selected:
+            groups.append(f"{group}:{sum(r['status'] == 'passed' for r in selected)}/{len(selected)}")
+    shapes = []
+    for r in rows:
+        shape = r.get("evidence", {}).get("failure_shape", {})
+        if shape and not modern:
+            shapes.append(
+                r["id"]
+                + ":"
+                + "/".join(
+                    number(shape.get(k)) for k in ("thinking_chars", "content_chars", "native_call_count")
+                )
+            )
     role_scores = []
     for role in CAMPAIGN_ROLES:
         selected = [row for row in rows if row.get("evidence", {}).get("role") == role]
@@ -960,11 +1066,23 @@ def compact_campaign_body(payload):
         + f"Crew/mode: {payload.get('crew_version', '?')}/{payload.get('mode', '?')}\n"
         + f"Recorded/planned: {len(rows)}/{payload.get('planned_cases', '?')}\n"
         + f"Stop: {payload.get('stop_reason', 'unknown')}; budget charged ms: {number(payload.get('budget_used_ms'))} (includes reserved interrupted-case allowance).\n"
+        + ("Groups: " + ", ".join(groups) + "\n" if groups else "")
+        + (
+            "Rejected shapes(thinking-chars/content-chars/native-fields): " + ";".join(shapes) + "\n"
+            if shapes
+            else ""
+        )
         + "Role scores(recorded only): "
         + ", ".join(role_scores)
         + "\n"
         + "P=passed F=failed S=skipped W=warning ?=unknown. Tokens include known rejected-response usage; not billing totals.\n"
-        + "case|result|code|ms|native|writes/errors|missing-readbacks|feedback-turns|initial-missing-write/read/source|tokens-in/out|budget|provider|unmet\n"
+        + (
+            "IDs: b=baseline r=repeat g=george s=scout a=ada v=vera t=sentinel x=atlas e=experiment; role prefixes omitted from scenario names.\n"
+            "Space columns; dots separate numeric groups.\n"
+            "case result code ms native writes.errors missing-readbacks feedback initial-missing-write.read.source.content tokens-in.out budget provider unmet rejected-thinking.content.native\n"
+            if modern
+            else "case|result|code|ms|native|writes/errors|missing-readbacks|feedback-turns|initial-missing-write/read/source|tokens-in/out|budget|provider|unmet\n"
+        )
         + "\n".join(lines)
         + "\nBudgets(output/request-s/session-s): "
         + legend(budgets)

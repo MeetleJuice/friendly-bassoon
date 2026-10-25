@@ -88,12 +88,41 @@ class Runtime:
         capture=False,
         parent=None,
         task_checks=None,
+        acceptance=None,
     ):
         cancel = cancel or threading.Event()
         ws = Workspace(workspace)
         checks = TaskChecks.model_validate(task_checks or {})
         task_evidence = TaskEvidence(ws, checks)
         completion_feedback_count = 0
+        acceptance_result = {}
+        final_content = ""
+
+        def evaluate_checks(content):
+            nonlocal acceptance_result
+            pending, details = task_evidence.evaluate()
+            if acceptance is not None:
+                # Application-owned, bounded pure checker; never model-provided executable code.
+                try:
+                    value = acceptance(ws, content)
+                    if not isinstance(value, dict) or not 1 <= len(value) <= 16:
+                        raise ValueError("Invalid acceptance contract")
+                    if any(
+                        not isinstance(k, str) or not re.fullmatch(r"[A-Z_]{1,40}", k) or type(v) is not bool
+                        for k, v in value.items()
+                    ):
+                        raise ValueError("Invalid acceptance result")
+                    acceptance_result = value
+                except Exception:
+                    acceptance_result = {"CHECKER_ERROR": False}
+                pending["content_failures"] = sum(not v for v in acceptance_result.values())
+                details["unmet_acceptance"] = [k for k, v in acceptance_result.items() if not v]
+                if pending["content_failures"]:
+                    pending["status"] = "needs_attention"
+                elif pending["status"] == "not_configured":
+                    pending["status"] = "passed"
+            return pending, details
+
         if checks.required_reads and "read_file" not in agent.tools:
             raise ValueError("Required source reads need the read_file tool.")
         advertised_names = {tool["function"]["name"] for tool in tool_definitions(agent)}
@@ -304,6 +333,7 @@ class Runtime:
                                 "retryable": exc.retryable,
                                 "code": exc.code,
                                 "usage": exc.usage,
+                                "response_shape": exc.evidence,
                                 "http_status": exc.http_status,
                             },
                         )
@@ -391,7 +421,9 @@ class Runtime:
                         self.store.messages(sid, messages)
                         break
                     final_response_status = "present"
-                    pending, details = task_evidence.evaluate()
+                    final_content = reply.content
+                    pending, details = evaluate_checks(final_content)
+                    event("completion.evaluated", {"checks": pending, "acceptance": acceptance_result})
                     unresolved = (
                         tool_counts["failed"]
                         - tool_counts["recovered_edit_errors"]
@@ -399,24 +431,29 @@ class Runtime:
                     )
                     if (
                         checks.completion_feedback
-                        and checks.configured
+                        and (checks.configured or acceptance is not None)
                         and pending["status"] != "passed"
                         and completion_feedback_count == 0
                         and unresolved == 0
+                        and "CHECKER_ERROR" not in acceptance_result
                         and all(value == "passed" for value in python_checks.values())
                         and step + 1 < agent.max_steps
                         and not cancel.is_set()
                         and time.monotonic() < deadline
                     ):
                         completion_feedback_count += 1
-                        event("completion.feedback_requested", {"attempt": 1, "limit": 1, "checks": pending})
+                        event(
+                            "completion.feedback_requested",
+                            {"attempt": 1, "limit": 1, "checks": pending, "acceptance": acceptance_result},
+                        )
                         messages.append(
                             {
                                 "role": "user",
                                 "content": self.credentials.redact(
                                     "Application verification: the original task is unfinished. "
                                     "Use native tools to satisfy these checks within the original permissions. "
-                                    "Read saved outputs back; inspect required sources. Do not repeat an already successful write, "
+                                    "Read saved outputs back; inspect required sources and compare values, types, boundaries and formatting against the brief. "
+                                    "Only correct artifacts that fail acceptance; do not rewrite an already correct output, "
                                     "bypass a denial, change unrelated files, or claim success without evidence. "
                                     + json.dumps({"checks": pending, "remaining": details})
                                 ),
@@ -598,8 +635,8 @@ class Runtime:
             event("runtime.error", {"type": type(exc).__name__, "message": outcome})
         finally:
             timer.cancel()
-            task_result, task_details = task_evidence.evaluate()
-            if checks.configured:
+            task_result, task_details = evaluate_checks(final_content)
+            if checks.configured or acceptance is not None:
                 event("task.checks_evaluated", task_result | task_details)
                 if task_result["status"] != "passed" and state in ("completed", "response_only"):
                     state, outcome = (
@@ -616,7 +653,8 @@ class Runtime:
                     "state": state,
                     "tools": tool_counts,
                     "protocol_retries": protocol_retries,
-                    "goal_verification": "not_evaluated",
+                    "goal_verification": "explicit_contract" if acceptance is not None else "not_evaluated",
+                    "acceptance_checks": acceptance_result,
                     "task_checks": task_result,
                     "completion_feedback_count": completion_feedback_count,
                     "final_response_status": final_response_status,

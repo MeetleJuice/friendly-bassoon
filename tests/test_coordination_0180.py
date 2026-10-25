@@ -310,3 +310,25 @@ def test_workbench_continue_cannot_silently_restart_a_team(qtbot, store, credent
     assert window.worker is None and not store.sessions()
     assert not (pilot[1] / "answer.txt").exists()
     cleanup(window)
+
+
+def test_root_deadline_releases_outer_worker_approval_wait(store, credentials, pilot):
+    """The UI waits on its own event, not on the nested root wrapper."""
+    import time
+
+    stop = threading.Event()
+    pilot[0].max_seconds = 5
+    asked = []
+
+    def pending_approval(kind, details):
+        asked.append(kind)
+        assert stop.wait(7), "Root deadline did not wake the UI approval wait"
+        return False
+
+    before = time.monotonic()
+    sid, state = execute(store, credentials, pilot, cancel=stop, approve=pending_approval)
+    assert state == "timed_out" and asked == ["write_file"]
+    assert time.monotonic() - before < 7
+    assert not (pilot[1] / "answer.txt").exists()
+    assert not any(s["state"] == "running" for s in store.sessions())
+    assert any(e["kind"] == "team.summary" for e in store.events(sid))

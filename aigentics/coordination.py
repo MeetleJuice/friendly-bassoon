@@ -63,6 +63,8 @@ class RootBudget:
 
     def set(self):
         self.local.set()
+        # UI approval waits observe the outer worker's cancellation event.
+        self.external.set()
 
     def is_set(self):
         return self.local.is_set() or self.external.is_set() or time.monotonic() >= self.deadline
@@ -176,6 +178,9 @@ class Coordinator:
         if profile.kind != "ollama" or profile.ollama_api != "native":
             raise ValueError("The team pilot requires one native local Ollama engine")
         sid = self.store.start(agent, ws.root, capture)
+        timer = threading.Timer(max(0, budget.deadline - time.monotonic()), budget.set)
+        timer.daemon = True
+        timer.start()
         children, results, dispatched = [], [], set()
         state, outcome = "failed", "Team did not finish"
 
@@ -400,13 +405,18 @@ class Coordinator:
                 state, outcome = "limit_reached", "Team model step budget reached"
         except (InterruptedError, RunTimeout):
             state, outcome = (
-                ("timed_out" if time.monotonic() >= budget.deadline else "cancelled"),
+                (
+                    "timed_out"
+                    if budget.local.is_set() or time.monotonic() >= budget.deadline
+                    else "cancelled"
+                ),
                 "Team stopped; saved child effects are retained without replay",
             )
         except Exception as exc:
             state, outcome = "needs_review", self.credentials.redact(f"{type(exc).__name__}: {exc}")
             event("team.error", {"type": type(exc).__name__, "code": getattr(exc, "code", "TEAM_REJECTED")})
         finally:
+            timer.cancel()
             event(
                 "team.summary",
                 {

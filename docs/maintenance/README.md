@@ -1,6 +1,6 @@
 # Project maintenance workspace
 
-Latest data: [0.19 completed ZIP analysis](RESULTS_0190_REVIEW.md): 29/29 health checks, 20/24 focused trials, successful Orion→Ada dispatch, verified Vera proposal recovery and four remaining default-thinking failures. App unchanged by review. Previous baseline: [0.18 completed ZIP analysis](RESULTS_0180_REVIEW.md).
+Latest data: [0.20 completed ZIP analysis](RESULTS_0200_REVIEW.md): 30/30health,30/32trials,62/62outcomes, actual Orion→Ada→Sentinel inspection2/2. Retained core23/24versus20/24; special verification-only phase unused live. Remaining repeated JSON proposal and source-read evidence failures. App unchanged by review. Previous baselines: [0.19](RESULTS_0190_REVIEW.md), [0.18](RESULTS_0180_REVIEW.md).
 
 [0.20 implementation and validation plan](UPGRADE_0200_PLAN.md): final-proof recovery, grounded cases, reviewer canary, measured budgets and a refreshed main README. **Published and verified**; [installer receipt](RELEASE_0200_VERIFIED.json). [Windows profiling evidence](HEALTH_PROFILE_0200.json) records the timeout investigation and its limits.
 

@@ -68,7 +68,11 @@ Use **Ctrl K** for navigation search. **Ctrl Enter** runs a task while the Workb
 
 Tools are registered and permission-filtered by the application. A text block that resembles a tool call does not execute. Approved host commands are **not a security sandbox**; keep backups and use version control for real projects.
 
-## What our latest local tests actually showed
+## What our local tests show
+
+The [latest completed 0.20 run](docs/maintenance/RESULTS_0200_REVIEW.md) recorded **30/30 app checks and 30/32 agent trials passed**, with all62outcomes retained in12m38s. Both required Orion→Ada→Sentinel inspection trials passed. The retained24case core passed23/24versus20/24in0.19; small cross-version samples do not establish a causal reliability gain. Remaining failures are repeated rejected JSON proposals and a correct searched answer without required file reads. The new verification-only phase did not trigger in these live trials; its installed synthetic check passed.
+
+### Historical 0.19 baseline
 
 ![0.19 test results: 29 of 29 app checks passed, 20 of 24 agent trials passed, all 53 outcomes recorded; nine matched thinking-off cases passed versus five default cases](docs/design/assets/results-0190.svg)
 
@@ -79,7 +83,7 @@ This **0.19 baseline** came from a complete, validated diagnostic ZIP using an 8
 - **Four failures exposed precise gaps:** two omitted final readbacks, one missing source inspection and one wrong line citation.
 - **Thinking off was stronger in these narrow comparisons.** Repeated scenarios, a small sample and feedback-dependent successes limit the conclusion. This is not a universal model ranking, a 9B result or evidence of model training.
 
-### The next reliability milestone
+### The 0.20 reliability update
 
 The [0.20 release](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.20.0) adds final-readback recovery, stronger source/citation cases, an actual required reviewer canary and consistent direct/managed budget telemetry. Recommended testing now records 30 app checks plus 32 model trial slots: 62 outcomes. Historical manifests and failures stay intact; changed conditions receive a new benchmark identity. See the [verified installer receipt](docs/maintenance/RELEASE_0200_VERIFIED.json) and [release notes](docs/RELEASE_NOTES.md). Real model improvements remain subject to the next local run.
 

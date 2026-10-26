@@ -323,3 +323,6 @@ Final0.16local validation:1062passed/1optional live model skipped, followed by27
 ## 0.20 local evidence
 
 One full run:1209passed/1optional live skip/1obsolete workload count expectation,110.94s. Corrected count assertions preserve no-offdispatch/profile integrity; final57targeted pass12.42s, plus4finalmanifest/export checks. Prior88evaluation and10Qt/export passes. OldRuntime red/newRuntime green proof retains failed counters. Lint/format/dependencies/startup/30offline smoke pass; isolated wheel/Windows/promotion/publicUpdater checks follow. No model/API/reportPOST used.
+
+
+Corrected0.20full local suite:1219passed/1optional live-model skipped in122.55s after measured bounded per-call redaction optimization. Privacy/legacyparity/rotation/concurrency and cachebounds tests pass; all177profiledsnapshots retained. Lint/format/source startup/30offlinehealth and54filewheel/sourcefidelity pass. First Windowssource40246310010timedoutwithoutassertion; diagnosticprofile40247528337passes and rulesoutnewhealthfixture asdominant. New exact-source Windows gate required; no published0.20claim yet.

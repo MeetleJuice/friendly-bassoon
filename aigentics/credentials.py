@@ -60,16 +60,38 @@ class Credentials:
             self._referenced.add(ref)
 
     def scrub(self, value):
-        if isinstance(value, dict):
-            return {
-                key: "[REDACTED]"
-                if str(key).lower() in {"api_key", "apikey", "password", "secret", "token", "authorization"}
-                else self.scrub(item)
-                for key, item in value.items()
-            }
-        if isinstance(value, (list, tuple)):
-            return [self.scrub(item) for item in value]
-        return self.redact(value) if isinstance(value, str) else value
+        # Report snapshots repeat many schema/enumeration strings. Reuse their
+        # redacted values only during this traversal, within explicit bounds.
+        memo, memo_chars = {}, 0
+
+        def clean(item):
+            nonlocal memo_chars
+            if isinstance(item, dict):
+                return {
+                    key: "[REDACTED]"
+                    if str(key).lower()
+                    in {"api_key", "apikey", "password", "secret", "token", "authorization"}
+                    else clean(child)
+                    for key, child in item.items()
+                }
+            if isinstance(item, (list, tuple)):
+                return [clean(child) for child in item]
+            if isinstance(item, str):
+                eligible = type(item) is str and len(item) <= 4096
+                if eligible and item in memo:
+                    return memo[item]
+                redacted = self.redact(item)
+                cost = len(item) + len(redacted)
+                if eligible and len(redacted) <= 4096 and len(memo) < 1024 and memo_chars + cost <= 262144:
+                    memo[item] = redacted
+                    memo_chars += cost
+                return redacted
+            return item
+
+        # Public credential updates use the same reentrant lock. A traversal
+        # observes one coherent credential state; its memo never escapes here.
+        with self._lock:
+            return clean(value)
 
     def json(self, value, **kwargs):
         import json

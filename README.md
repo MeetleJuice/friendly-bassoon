@@ -35,7 +35,7 @@ This is an actively developed application. Individual specialists and a bounded 
 | **Ada** | Builder | Makes focused changes, preserves unrelated work and verifies saved outputs. |
 | **Vera** | Test engineer | Creates reproduction and boundary tests; distinguishes static checks from executed tests. |
 | **Sentinel** | Reviewer | Checks actual code against requirements and reports concrete defects. Read-only. |
-| **Atlas** | Continuity | Summarizes decisions, progress, uncertainties and next steps from available project evidence. Read-only. |
+| **Atlas** | Continuity | Summarizes decisions, progress, uncertainties and next steps from project evidence. Writes handoff notes only when requested and approved. |
 
 Roles share the selected model in controlled crew evaluations; their instructions and permissions differ. Saved agents remain editable. Historical generalist **George** cases remain in archived comparisons; they are not evidence of Orion's coordination performance. Atlas's role is not a guarantee of automatic or perfect memory.
 

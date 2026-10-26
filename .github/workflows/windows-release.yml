@@ -31,7 +31,10 @@ jobs:
         run: python -m pip install -e ".[dev]" "pyinstaller==6.16.0"
       - name: Validate tests and code
         id: tests
-        timeout-minutes: 12
+        # Measured 0.20 Windows runs advanced from528 to1045+checks after
+        # report-redaction optimization but exhausted12minutes without assertions.
+        # Keep all checks and bounded breadcrumbs; allow the remaining workload.
+        timeout-minutes: 18
         env:
           QT_QPA_PLATFORM: offscreen
           AIGENTICS_CI_PROGRESS: .ci-active-test.txt

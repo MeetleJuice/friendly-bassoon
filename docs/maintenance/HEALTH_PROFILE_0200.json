@@ -1,0 +1,110 @@
+{
+  "workflow": "windows-health-profile.yml",
+  "run_id": 40247528337,
+  "candidate_source": "c480b2495ad7a35af586875a0628f838e2219d6f",
+  "baseline_source": "d398635a22eb2d2307f0f7d65ead7bf3cbf01998",
+  "scope": "Offline synthetic health only, before per-call memoization correction; no live model or credentials",
+  "observations": [
+    {
+      "version": "0.20.0",
+      "memory_proof": true,
+      "duration_ms": 5547,
+      "slowest": [
+        {
+          "check": "command_timeout",
+          "duration_ms": 1109
+        },
+        {
+          "check": "team_pilot_fixture",
+          "duration_ms": 594
+        },
+        {
+          "check": "crew_evaluation_fixture",
+          "duration_ms": 438
+        },
+        {
+          "check": "completion_order_fixture",
+          "duration_ms": 438
+        },
+        {
+          "check": "json_proposal_fixture",
+          "duration_ms": 328
+        },
+        {
+          "check": "native_agent_workflow",
+          "duration_ms": 296
+        }
+      ],
+      "verification_ms": 63
+    },
+    {
+      "version": "0.20.0",
+      "memory_proof": false,
+      "duration_ms": 6297,
+      "slowest": [
+        {
+          "check": "command_timeout",
+          "duration_ms": 1062
+        },
+        {
+          "check": "team_pilot_fixture",
+          "duration_ms": 781
+        },
+        {
+          "check": "crew_evaluation_fixture",
+          "duration_ms": 515
+        },
+        {
+          "check": "verification_fixture",
+          "duration_ms": 500
+        },
+        {
+          "check": "completion_order_fixture",
+          "duration_ms": 469
+        },
+        {
+          "check": "correctness_fixture",
+          "duration_ms": 344
+        }
+      ],
+      "verification_ms": 500
+    },
+    {
+      "version": "0.19.0",
+      "memory_proof": false,
+      "duration_ms": 6750,
+      "slowest": [
+        {
+          "check": "command_timeout",
+          "duration_ms": 1093
+        },
+        {
+          "check": "team_pilot_fixture",
+          "duration_ms": 641
+        },
+        {
+          "check": "completion_order_fixture",
+          "duration_ms": 593
+        },
+        {
+          "check": "model_catalog_fixture",
+          "duration_ms": 453
+        },
+        {
+          "check": "crew_evaluation_fixture",
+          "duration_ms": 453
+        },
+        {
+          "check": "validation_recovery_fixture",
+          "duration_ms": 422
+        }
+      ],
+      "verification_ms": null
+    }
+  ],
+  "limits": [
+    "One sequential sample per condition on one runner; warm-up/order not controlled",
+    "memory_proof modifies only the temporary verification fixture in this profiling process, never production durability",
+    "This diagnostic workflow is not a successful installer/release gate"
+  ]
+}

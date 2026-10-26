@@ -139,7 +139,35 @@ def results():
     save(fig, "results-0190")
 
 
+def report_profile():
+    """Single before/after developer observations, not a live-model benchmark."""
+    bg, ink, muted = "#F1F5FA", "#192840", "#52657D"
+    before, after = "#AAB9CF", "#008C7C"
+    fig = plt.figure(figsize=(16, 4.5), facecolor=bg)
+    label(fig, .045, .89, "LESS REPEATED WORK. SAME RETAINED EVIDENCE.", 21, ink, "bold")
+    label(fig, .045, .80, "Developer CPU profile • same synthetic 64-case campaign • all 177 report snapshots retained", 12, muted)
+    for x, title, values, maximum, formatter in [
+        (.055, "Redaction calls", (385502, 58255), 460000, lambda v: f"{v:,}"),
+        (.535, "Full profiled test wall time", (16.14, 13.49), 21, lambda v: f"{v:.2f} s"),
+    ]:
+        label(fig, x, .68, title, 14, ink, "bold")
+        ax = fig.add_axes([x+.08, .36, .35, .24], facecolor=bg)
+        ax.barh([1, 0], values, height=.44, color=[before, after])
+        for y, value in zip([1, 0], values):
+            ax.text(value + maximum*.02, y, formatter(value), va="center", fontsize=12, color=ink)
+        ax.set(ylim=(-.5, 1.5), xlim=(0, maximum))
+        ax.set_yticks([1, 0], ["Before", "With memo"], fontsize=11)
+        ax.set_xticks([]); ax.tick_params(length=0, labelcolor=muted)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+    label(fig, .055, .24, "Report-save cumulative time under cProfile: 8.632 → 5.234 seconds.", 12, ink)
+    label(fig, .055, .14, "Single local before/after observations under cProfile. Not a real-model or user-Windows speedup measurement.", 11, muted)
+    label(fig, .055, .065, "The memo is bounded to one scrub traversal. Original redaction rules and SQLite durability are unchanged.", 11, muted)
+    save(fig, "report-profiling-0200")
+
+
 if __name__ == "__main__":
     banner()
     results()
+    report_profile()
     print(OUT)

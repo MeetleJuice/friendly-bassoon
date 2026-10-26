@@ -81,7 +81,16 @@ This **0.19 baseline** came from a complete, validated diagnostic ZIP using an 8
 
 ### The next reliability milestone
 
-The 0.20 work targets final-readback recovery, stronger source/citation cases, an actual required reviewer canary and consistent direct/managed budget telemetry. Historical manifests and failures stay intact; changed conditions receive a new benchmark identity. Published installer availability is always determined by [Releases](https://github.com/MeetleJuice/friendly-bassoon/releases/latest).
+The [0.20 release](https://github.com/MeetleJuice/friendly-bassoon/releases/tag/v0.20.0) adds final-readback recovery, stronger source/citation cases, an actual required reviewer canary and consistent direct/managed budget telemetry. Recommended testing now records 30 app checks plus 32 model trial slots: 62 outcomes. Historical manifests and failures stay intact; changed conditions receive a new benchmark identity. See the [verified installer receipt](docs/maintenance/RELEASE_0200_VERIFIED.json) and [release notes](docs/RELEASE_NOTES.md). Real model improvements remain subject to the next local run.
+
+<details>
+<summary>Developer profiling: less repeated report processing, with the evidence retained</summary>
+
+A bounded per-traversal redaction memo reduced repeated redactor calls in one synthetic 64-case campaign from **385,502 to 58,255**; the profiled test's observed wall time was **16.14 → 13.49 seconds**, with all **177 report snapshots retained**. These are single local developer observations under cProfile, not a live-model or user-Windows speedup measurement. Original redaction rules and SQLite durability are unchanged. See the [profile provenance](docs/design/README_ASSETS.md).
+
+![Developer profile: fewer repeated redaction calls with a bounded memo, a smaller observed whole-test wall time, and all 177 report snapshots retained](docs/design/assets/report-profiling-0200.svg)
+
+</details>
 
 MCP connections, phone/email control and broader autonomous orchestration are future directions, not current integrations. Our near-term priority is dependable local execution with measurable evidence.
 

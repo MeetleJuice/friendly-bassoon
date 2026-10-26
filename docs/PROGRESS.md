@@ -170,3 +170,8 @@ Local528passed/1optional live Ollama skipped; lint/format pass. Primary research
 ## 0.20 implementation
 
 See maintenance/UPGRADE_0200_PLAN.md and latest ENGINEERING_LOG entry. Final-proof recovery, grounded32trialscope, actual requiredreview, measured direct budgets and refreshed README implemented. Health30/62focused outcomes. Local full1209pass/1optional skip/1obsolete count fixture corrected; final57targeted pass. Windows release gates pending; no live model improvement claim.
+
+
+## 0.20 released
+
+v0.20.0published from016f7ab; finalWindows40249231295andimmutablepromotion40250359042passed. ProductionUpdaterfrom0.19verifiedpublicinstaller42568687bytes/SHA256df4799e17fc644e0b3c4214f2cf9c86bd16a08eb8bf4811a55f28d71f5d5a4ba. See maintenance/RELEASE_0200_VERIFIED.json and UPGRADE_0200_PLAN.md. Local1219pass/1optional live skip; real8Bacceptanceawaits oneFocused32/62outcomeZIP. Sameprofiles/model/context, noemail/MCP/keygeneration/automaticupload. Read maintenanceindex for nextiteration.

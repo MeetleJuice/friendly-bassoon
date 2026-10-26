@@ -1,6 +1,6 @@
 # 0.20 — final proof, grounded review and useful measurements
 
-Status: implemented; release validation in progress. Publication requires the exact-source Windows gate and immutable artifact promotion.
+Status: **0.20.0 published; Windows installation/upgrade/restart and public production updater verified.** See [RELEASE_0200_VERIFIED.json](RELEASE_0200_VERIFIED.json). Source016f7ab/run40249231295passed all gates; promotion40250359042reused that installer without rebuilding. Earlier timeout candidates were not published.
 
 ## Evidence and scope
 

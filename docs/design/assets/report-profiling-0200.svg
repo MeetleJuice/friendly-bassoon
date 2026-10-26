@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1152pt" height="324pt" viewBox="0 0 1152 324" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-26T00:27:22.421395</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 324
+L 1152 324
+L 1152 0
+L 0 0
+z
+" style="fill: #f1f5fa"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 155.52 207.36
+L 558.72 207.36
+L 558.72 129.6
+L 155.52 129.6
+z
+" style="fill: #f1f5fa"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 155.52 157.5936
+L 493.420883 157.5936
+L 493.420883 140.4864
+L 155.52 140.4864
+z
+" clip-path="url(#pc0fe9822fc)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 155.52 196.4736
+L 206.581774 196.4736
+L 206.581774 179.3664
+L 155.52 179.3664
+z
+" clip-path="url(#pc0fe9822fc)" style="fill: #008c7c"/>
+   </g>
+   <g id="matplotlib.axis_1"/>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="152.02" y="153.219141" transform="rotate(-0 152.02 153.219141)">Before</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="152.02" y="192.099141" transform="rotate(-0 152.02 192.099141)">With memo</text>
+     </g>
+    </g>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="501.484883" y="152.35125" transform="rotate(-0 501.484883 152.35125)">385,502</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="214.645774" y="191.23125" transform="rotate(-0 214.645774 191.23125)">58,255</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_5">
+    <path d="M 708.48 207.36
+L 1111.68 207.36
+L 1111.68 129.6
+L 708.48 129.6
+z
+" style="fill: #f1f5fa"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 708.48 157.5936
+L 1018.368 157.5936
+L 1018.368 140.4864
+L 708.48 140.4864
+z
+" clip-path="url(#pe5d624328e)" style="fill: #aab9cf"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 708.48 196.4736
+L 967.488 196.4736
+L 967.488 179.3664
+L 708.48 179.3664
+z
+" clip-path="url(#pe5d624328e)" style="fill: #008c7c"/>
+   </g>
+   <g id="matplotlib.axis_3"/>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_3">
+     <g id="line2d_3"/>
+     <g id="text_5">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="704.98" y="153.219141" transform="rotate(-0 704.98 153.219141)">Before</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_4"/>
+     <g id="text_6">
+      <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #52657d" x="704.98" y="192.099141" transform="rotate(-0 704.98 192.099141)">With memo</text>
+     </g>
+    </g>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="1026.432" y="152.35125" transform="rotate(-0 1026.432 152.35125)">16.14 s</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="975.552" y="191.23125" transform="rotate(-0 975.552 191.23125)">13.49 s</text>
+   </g>
+  </g>
+  <g id="text_9">
+   <text style="font-weight: 700; font-size: 21px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="51.84" y="35.64" transform="rotate(-0 51.84 35.64)">LESS REPEATED WORK. SAME RETAINED EVIDENCE.</text>
+  </g>
+  <g id="text_10">
+   <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="51.84" y="64.8" transform="rotate(-0 51.84 64.8)">Developer CPU profile • same synthetic 64-case campaign • all 177 report snapshots retained</text>
+  </g>
+  <g id="text_11">
+   <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="63.36" y="103.68" transform="rotate(-0 63.36 103.68)">Redaction calls</text>
+  </g>
+  <g id="text_12">
+   <text style="font-weight: 700; font-size: 14px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="616.32" y="103.68" transform="rotate(-0 616.32 103.68)">Full profiled test wall time</text>
+  </g>
+  <g id="text_13">
+   <text style="font-size: 12px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #192840" x="63.36" y="246.24" transform="rotate(-0 63.36 246.24)">Report-save cumulative time under cProfile: 8.632 → 5.234 seconds.</text>
+  </g>
+  <g id="text_14">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="63.36" y="278.64" transform="rotate(-0 63.36 278.64)">Single local before/after observations under cProfile. Not a real-model or user-Windows speedup measurement.</text>
+  </g>
+  <g id="text_15">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52657d" x="63.36" y="302.94" transform="rotate(-0 63.36 302.94)">The memo is bounded to one scrub traversal. Original redaction rules and SQLite durability are unchanged.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc0fe9822fc">
+   <rect x="155.52" y="129.6" width="403.2" height="77.76"/>
+  </clipPath>
+  <clipPath id="pe5d624328e">
+   <rect x="708.48" y="129.6" width="403.2" height="77.76"/>
+  </clipPath>
+ </defs>
+</svg>

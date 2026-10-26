@@ -326,3 +326,8 @@ One full run:1209passed/1optional live skip/1obsolete workload count expectation
 
 
 Corrected0.20full local suite:1219passed/1optional live-model skipped in122.55s after measured bounded per-call redaction optimization. Privacy/legacyparity/rotation/concurrency and cachebounds tests pass; all177profiledsnapshots retained. Lint/format/source startup/30offlinehealth and54filewheel/sourcefidelity pass. First Windowssource40246310010timedoutwithoutassertion; diagnosticprofile40247528337passes and rulesoutnewhealthfixture asdominant. New exact-source Windows gate required; no published0.20claim yet.
+
+
+## 0.20 verified release
+
+Source016f7ab/Windows40249231295passed whole suite/lint, actualinstaller/shortcut/startup/30packagedofflinechecks, pinned0.19upgrade/data preservation and restart. Promotion40250359042skippedbuild/reusedexactartifact; productionUpdaterfrom0.19downloaded/reverified42568687bytes/SHA256df4799e17fc644e0b3c4214f2cf9c86bd16a08eb8bf4811a55f28d71f5d5a4ba. Receipt:maintenance/RELEASE_0200_VERIFIED.json. Local1219passed/1optional live skipped122.55s. Two prior12minuteWindows timeoutcandidatesunpublished; profiledserializationcorrection and measured18minuteCIallowance documented. ActualGPU/localmodelimprovement awaits nextuserZIP; no livegenerationclaim.
